@@ -15,42 +15,42 @@ const Profile = () => {
   const menuItems = [
     { 
       id: 'profile',
-      icon: <UserIcon width={22} height={22} stroke={'gray'} />,
+      icon: <UserIcon width={22} height={22} stroke={'black'} />,
       title: 'My Profile',
       subtitle: 'View and edit your profile',
       route: 'ProfileEdit'
     },
     { 
       id: 'complaints',
-      icon: <ComplaintsIcon width={22} height={22} fill={'gray'} />,
+      icon: <ComplaintsIcon width={22} height={22} fill={'black'} />,
       title: 'My Complaints',
       subtitle: 'View your complaint history',
       route: 'Complaints'
     },
     { 
       id: 'amc',
-      icon: <FileIcon width={22} height={22} stroke={'gray'} />,
+      icon: <FileIcon width={22} height={22} stroke={'black'} />,
       title: 'My AMC',
       subtitle: 'View your Annual Maintenance Contracts',
       route: 'AMC'
     },
     { 
       id: 'replace',
-      icon: <ReplaceIcon width={22} height={22} fill={'gray'} />,
+      icon: <ReplaceIcon width={22} height={22} fill={'black'} />,
       title: 'Replace Parts',
       subtitle: 'Order replacement parts',
       route: 'ReplaceParts'
     },
     { 
       id: 'terms',
-      icon: <TermsIcon width={22} height={22} fill={'gray'} />,
+      icon: <TermsIcon width={22} height={22} fill={'black'} />,
       title: 'Terms & Conditions',
       subtitle: 'Read our terms and conditions',
       route: 'TermsConditions'
     },
     { 
       id: 'support',
-      icon: <Icon name="support-agent" size={22} color="gray" />,
+      icon: <Icon name="support-agent" size={22} color="black" />,
       title: 'Support',
       subtitle: 'Get help from our support team',
       route: 'Support'

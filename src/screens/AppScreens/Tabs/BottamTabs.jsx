@@ -5,7 +5,7 @@ import Home from './Home'
 import Profile from './Profile'
 import Parts from './Parts'
 import Scan from './Scan'
-import { HomeIcon, PartsIcon, ProfileIcon, ScanIcon } from '../../../assets/svgIcons/SVGIcons';
+import { HomeIcon, PartIcon, ProfileIcon, ScanIcon } from '../../../assets/svgIcons/SVGIcons';
 import { Colors } from '../../../constants/Color'
 import { ChartArea } from 'lucide-react-native'
 
@@ -17,14 +17,14 @@ const BottomTabs = () => {
       screenOptions={({ route }) => ({
         headerShown: false, // This hides the header for ALL screens
         tabBarActiveTintColor: Colors.brand.primary, // Bright Cyan for active
-        tabBarInactiveTintColor: Colors.gray[500], // Darker cyan for inactive
+        tabBarInactiveTintColor: Colors.gray[800], // Darker cyan for inactive
         tabBarStyle: {
           backgroundColor: Colors.background.primary,
           borderTopWidth: 1,
           borderTopColor: Colors.ui.border,
           paddingBottom: 5,
           paddingTop: 5,
-          height: 60,
+          height: 100,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -47,13 +47,13 @@ const BottomTabs = () => {
         options={{
           tabBarIcon: ({ color, size, focused }) => (
             <HomeIcon
-              color={focused ? Colors.brand.primary : Colors.gray[400]}
+              color={focused ? Colors.brand.primary : Colors.gray[600]}
               size={size}
             />
           ),
           tabBarLabel: ({ focused }) => (
             <Text style={{
-              color: focused ? Colors.brand.primary :  Colors.gray[400],
+              color: focused ? Colors.brand.primary :  Colors.gray[600],
               fontSize: 12,
               fontWeight: focused ? '600' : '500'
             }}>
@@ -70,7 +70,7 @@ const BottomTabs = () => {
         options={{
           tabBarIcon: ({ color, size, focused }) => (
             <ScanIcon
-              stroke={focused ? Colors.brand.primary:  Colors.gray[400]}
+              stroke={focused ? Colors.brand.primary:  Colors.gray[600]}
               size={size}
               width={size}
               height={size}
@@ -78,7 +78,7 @@ const BottomTabs = () => {
           ),
           tabBarLabel: ({ focused }) => (
             <Text style={{
-              color: focused ? Colors.brand.primary:  Colors.gray[400],
+              color: focused ? Colors.brand.primary:  Colors.gray[600],
               fontSize: 12,
               fontWeight: focused ? '600' : '500'
             }}>
@@ -93,14 +93,14 @@ const BottomTabs = () => {
         component={Parts}
         options={{
           tabBarIcon: ({ color, size, focused }) => (
-            <PartsIcon
-              stroke={focused ? Colors.brand.primary:  Colors.gray[400]}
+            <PartIcon
+              fill={focused ? Colors.brand.primary:  Colors.gray[600]}
                size={size}
             />
           ),
           tabBarLabel: ({ focused }) => (
             <Text style={{
-              color: focused ? Colors.brand.primary :  Colors.gray[400],
+              color: focused ? Colors.brand.primary :  Colors.gray[600],
               fontSize: 12,
               fontWeight: focused ? '600' : '500'
             }}>
@@ -118,13 +118,13 @@ const BottomTabs = () => {
           
           tabBarIcon: ({ color, size, focused }) => (
             <ProfileIcon
-              stroke={focused ? Colors.brand.primary :  Colors.gray[400]}
+              stroke={focused ? Colors.brand.primary :  Colors.gray[600]}
               size={size}
             />
           ),
           tabBarLabel: ({ focused }) => (
             <Text style={{
-              color: focused ? Colors.brand.primary:  Colors.gray[400],
+              color: focused ? Colors.brand.primary:  Colors.gray[600],
               fontSize: 12,
               fontWeight: focused ? '600' : '500'
             }}>
