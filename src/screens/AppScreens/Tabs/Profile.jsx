@@ -1,226 +1,173 @@
-import { StyleSheet, Text, View, TouchableOpacity, Alert, ActivityIndicator } from 'react-native'
-import React, { useState } from 'react'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { Text, View, TouchableOpacity, Alert, ActivityIndicator, Image, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { Mail, Phone } from 'lucide-react-native';
+import { ComplaintsIcon, FileIcon, ReplaceIcon, TermsIcon, UserIcon } from '../../../assets/svgIcons/SVGIcons';
+import { useNavigation } from '@react-navigation/native';
 
 const Profile = () => {
   const { user, logout } = useAuth();
+  const navigation = useNavigation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const menuItems = [
+    { 
+      id: 'profile',
+      icon: <UserIcon width={22} height={22} stroke={'gray'} />,
+      title: 'My Profile',
+      subtitle: 'View and edit your profile',
+      route: 'ProfileEdit'
+    },
+    { 
+      id: 'complaints',
+      icon: <ComplaintsIcon width={22} height={22} fill={'gray'} />,
+      title: 'My Complaints',
+      subtitle: 'View your complaint history',
+      route: 'Complaints'
+    },
+    { 
+      id: 'amc',
+      icon: <FileIcon width={22} height={22} stroke={'gray'} />,
+      title: 'My AMC',
+      subtitle: 'View your Annual Maintenance Contracts',
+      route: 'AMC'
+    },
+    { 
+      id: 'replace',
+      icon: <ReplaceIcon width={22} height={22} fill={'gray'} />,
+      title: 'Replace Parts',
+      subtitle: 'Order replacement parts',
+      route: 'ReplaceParts'
+    },
+    { 
+      id: 'terms',
+      icon: <TermsIcon width={22} height={22} fill={'gray'} />,
+      title: 'Terms & Conditions',
+      subtitle: 'Read our terms and conditions',
+      route: 'TermsConditions'
+    },
+    { 
+      id: 'support',
+      icon: <Icon name="support-agent" size={22} color="gray" />,
+      title: 'Support',
+      subtitle: 'Get help from our support team',
+      route: 'Support'
+    }
+  ];
 
   const handleLogout = () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Logout',
           onPress: async () => {
             setIsLoggingOut(true);
             try {
               await logout();
-              // Navigation will automatically switch to Auth stack
             } catch (error) {
               Alert.alert('Error', 'Failed to logout. Please try again.');
-              console.error('Logout error:', error);
             } finally {
               setIsLoggingOut(false);
             }
           },
           style: 'destructive',
         },
-      ],
-      { cancelable: true }
+      ]
     );
   };
 
+  const handleNavigation = (route) => {
+    navigation.navigate(route);
+  };
+
+  const MenuItem = ({ item, isLast }) => (
+    <TouchableOpacity 
+      className={`flex-row items-center py-4 ${!isLast ? 'border-b border-gray-100' : ''}`}
+      onPress={() => handleNavigation(item.route)}
+    >
+      <View className="w-11 h-11 rounded-xl bg-[#f0f2f5] justify-center items-center mr-3">
+        {item.icon}
+      </View>
+      <View className="flex-1">
+        <Text className="text-base font-medium text-gray-800">{item.title}</Text>
+        <Text className="text-xs text-gray-500 mt-0.5">{item.subtitle}</Text>
+      </View>
+      <Icon name="chevron-right" size={24} color="#9ca3af" />
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      {/* User Info Section */}
-      <View style={styles.userInfoSection}>
-        <View style={styles.avatarContainer}>
-          <Text style={styles.avatarText}>
-            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
+        {/* User Info Section */}
+        <View className="bg-white p-5 items-center border-b border-gray-200">
+          <Image
+            source={user?.image ? { uri: user.image } : require('../../../assets/images/profileImage.jpg')}
+            className="w-24 h-24 rounded-full mb-4 border-3 border-white shadow-md"
+          />
+
+          <Text className="text-2xl font-bold text-gray-800">
+            {user?.firstName && user?.lastName 
+              ? `${user.firstName} ${user.lastName}` 
+              : user?.username || 'User Name'}
           </Text>
-        </View>
-        <Text style={styles.userName}>{user?.name || 'User Name'}</Text>
-        <Text style={styles.userEmail}>{user?.email || 'user@email.com'}</Text>
-      </View>
+          
+          <View className="flex-row items-center mt-1 gap-2">
+            <Phone size={14} color="gray" />
+            <Text className="text-xs text-gray-500 font-medium">{user?.phone || '+91 98765 43210'}</Text>
+          </View>
+          
+          <View className="flex-row items-center gap-2">
+            <Mail size={14} color="gray" />
+            <Text className="text-xs text-gray-500 font-medium">{user?.email || 'No email provided'}</Text>
+          </View>
 
-      {/* Settings Options */}
-      <View style={styles.settingsContainer}>
-        <TouchableOpacity style={styles.settingItem}>
-          <Text style={styles.settingIcon}>👤</Text>
-          <Text style={styles.settingText}>Edit Profile</Text>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.settingItem}>
-          <Text style={styles.settingIcon}>🔔</Text>
-          <Text style={styles.settingText}>Notifications</Text>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.settingItem}>
-          <Text style={styles.settingIcon}>🔒</Text>
-          <Text style={styles.settingText}>Privacy</Text>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.settingItem}>
-          <Text style={styles.settingIcon}>🌙</Text>
-          <Text style={styles.settingText}>Dark Mode</Text>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.settingItem}>
-          <Text style={styles.settingIcon}>❓</Text>
-          <Text style={styles.settingText}>Help & Support</Text>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.settingItem}>
-          <Text style={styles.settingIcon}>📜</Text>
-          <Text style={styles.settingText}>Terms & Conditions</Text>
-          <Text style={styles.chevron}>›</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Logout Button */}
-      <View style={styles.logoutContainer}>
-        <TouchableOpacity 
-          style={[styles.logoutButton, isLoggingOut && styles.logoutButtonDisabled]}
-          onPress={handleLogout}
-          disabled={isLoggingOut}
-        >
-          {isLoggingOut ? (
-            <ActivityIndicator color="#ff3b30" />
-          ) : (
-            <>
-              <Text style={styles.logoutIcon}>🚪</Text>
-              <Text style={styles.logoutText}>Logout</Text>
-            </>
+          {user?.username && (user?.firstName || user?.lastName) && (
+            <Text className="text-sm text-gray-500 mt-1">@{user.username}</Text>
           )}
-        </TouchableOpacity>
-      </View>
+        </View>
 
-      {/* App Version */}
-      <Text style={styles.versionText}>Version 1.0.0</Text>
+        {/* Menu Items Section */}
+        <View className="mt-6">
+          <View className="bg-white mx-5 rounded-xl px-4 shadow-md">
+            {menuItems.map((item, index) => (
+              <MenuItem 
+                key={item.id} 
+                item={item} 
+                isLast={index === menuItems.length - 1} 
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* Logout Button */}
+        <View className="mt-8 mx-5 mb-5">
+          <TouchableOpacity
+            className={`bg-red-500 p-4 rounded-xl flex-row items-center justify-center shadow-md ${isLoggingOut ? 'opacity-70' : ''}`}
+            onPress={handleLogout}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Icon name="logout" size={20} color="#fff" style={{ marginRight: 10 }} />
+                <Text className="text-base font-semibold text-white">Logout</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* App Version */}
+        <Text className="text-center mt-2.5 mb-5 text-gray-400 text-xs">Version 1.0.0</Text>
+      </ScrollView>
     </SafeAreaView>
-  )
-}
+  );
+};
 
-export default Profile
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  userInfoSection: {
-    backgroundColor: '#fff',
-    padding: 20,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    marginBottom: 20,
-  },
-  avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#666',
-  },
-  settingsContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    marginHorizontal: 20,
-    paddingHorizontal: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  settingIcon: {
-    fontSize: 20,
-    marginRight: 15,
-    width: 30,
-  },
-  settingText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-  },
-  chevron: {
-    fontSize: 20,
-    color: '#999',
-  },
-  logoutContainer: {
-    marginTop: 30,
-    marginHorizontal: 20,
-  },
-  logoutButton: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#ff3b30',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoutButtonDisabled: {
-    opacity: 0.7,
-  },
-  logoutIcon: {
-    fontSize: 18,
-    marginRight: 10,
-    color: '#ff3b30',
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ff3b30',
-  },
-  versionText: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#999',
-    fontSize: 12,
-  },
-})
+export default Profile;

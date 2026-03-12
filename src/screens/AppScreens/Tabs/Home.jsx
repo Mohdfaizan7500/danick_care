@@ -1,39 +1,402 @@
-import { StyleSheet, Text, View, } from 'react-native'
-import React from 'react'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { StatusBar, StyleSheet, Text, View, Image, FlatList, TouchableOpacity, ScrollView, Pressable } from 'react-native'
+import React, { useState, useRef, useEffect } from 'react'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import LinearGradient from 'react-native-linear-gradient'
+import { Bell, ChevronRight, Wallet } from 'lucide-react-native'
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
+import { Colors } from '../../../constants/Color'
+import { AMCIcon, BucketIcon, CalanderIcon, ComplaintsIcon, CompleteIcon } from '../../../assets/svgIcons/SVGIcons'
+import { useNavigation } from '@react-navigation/native'
+
+// Dummy carousel images
+const carouselImages = [
+  {
+    id: 1,
+    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCg65BGb7qcT77GG52LOysgmpeFT82tJtBhQ&s',
+  },
+  {
+    id: 2,
+    image: 'https://www.creativehatti.com/wp-content/uploads/2023/05/Skilled-maintenance-services-landscape-template-17-small.jpg',
+  },
+  {
+    id: 3,
+    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQPBrmXwxsAUF8alwa1ArjE7c5SOlvKbY0BwQ&s',
+  },
+  {
+    id: 4,
+    image: 'https://static.vecteezy.com/system/resources/previews/009/674/443/non_2x/business-design-drawing-air-conditioning-repair-beauty-repairwoman-technician-repairing-air-conditioner-cooler-unit-repair-maintenance-professional-service-flat-cartoon-style-illustration-vector.jpg',
+  },
+  {
+    id: 5,
+    image: 'https://5.imimg.com/data5/SELLER/Default/2024/12/477202864/OX/SK/EW/110823530/cooler-maintenance-service.jpg',
+  }
+];
 
 const Home = () => {
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Home</Text>
-        <Text style={styles.subtitle}>Home Screen Content</Text>
+  const insets = useSafeAreaInsets();
+  const [activeIndex, setActiveIndex] = useState(0);
+  const flatListRef = useRef(null);
+  const navigation = useNavigation();
+
+  // User data
+  const user = {
+    name: 'John Doe',
+    profileImage: 'https://randomuser.me/api/portraits/men/1.jpg',
+    isActive: true,
+    notificationCount: 3,
+    walletBalance: '₹2,500'
+  };
+
+  // Auto-scroll functionality
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (flatListRef.current) {
+        const nextIndex = (activeIndex + 1) % carouselImages.length;
+        flatListRef.current.scrollToIndex({
+          index: nextIndex,
+          animated: true
+        });
+        setActiveIndex(nextIndex);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [activeIndex]);
+
+  // Click handlers
+  const handleNotificationPress = () => {
+    console.log('Notification icon clicked');
+    navigation.navigate('Notification');
+  };
+
+  const handleWalletPress = () => {
+    console.log('Wallet icon clicked');
+    navigation.navigate('Wallet');
+  };
+
+  const handleCardPress = (cardName) => {
+    console.log(`${cardName} card clicked`);
+    if (cardName === 'Complaints') {
+      navigation.navigate('Complaints')
+    }
+    else if (cardName === 'Bucket') {
+      navigation.navigate('Bucket')
+    }
+    else if (cardName === 'AMC') {
+      navigation.navigate('AMC')
+    }
+    else if (cardName === 'Pre-Booking') {
+      navigation.navigate('PreBooking')
+    }
+    else if (cardName === 'Payout') {
+      navigation.navigate('PayOut')
+    }
+  };
+
+  const renderCarouselItem = ({ item }) => (
+    <View className="w-[400] px-5">
+      <View className="bg-white rounded-2xl overflow-hidden">
+        <Image
+          source={{ uri: item.image }}
+          className="w-full h-48"
+          resizeMode="cover"
+        />
       </View>
-    </SafeAreaView>
+    </View>
+  );
+
+  const handleScroll = (event) => {
+    const scrollPosition = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollPosition / 400);
+    if (index !== activeIndex) {
+      setActiveIndex(index);
+    }
+  };
+
+  const handleMomentumScrollEnd = (event) => {
+    const scrollPosition = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollPosition / 400);
+    setActiveIndex(index);
+  };
+
+  const getItemLayout = (data, index) => ({
+    length: 400,
+    offset: 400 * index,
+    index,
+  });
+
+  return (
+    <LinearGradient
+      colors={[`${Colors.primary.sage400}`, '#fff', '#fff']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      className='flex-1'
+    >
+      <StatusBar backgroundColor={'transparent'} barStyle={'dark-content'} translucent={true} />
+
+      {/* Header with Profile and Icons - Fixed at top */}
+      <View
+        className='w-full bg-transparent flex-row items-center justify-between px-4'
+        style={{ paddingTop: insets.top, paddingBottom: 12 }}
+      >
+        {/* Left side - Profile */}
+        <View className='flex-row items-center flex-1'>
+          <View className='relative'>
+            <Image
+              source={{ uri: user.profileImage }}
+              className='w-12 h-12 rounded-full border-2 border-white'
+            />
+            {/* Active/Inactive Status Dot */}
+            <View className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${user.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
+          </View>
+
+          <View className='ml-3'>
+            <Text className='text-gray-700 text-sm'>Welcome Back</Text>
+            <View className='flex-row items-center'>
+              <Text className='text-gray-900 font-bold text-lg'>{user.name}</Text>
+              <ChevronRight size={18} color="#666" className='ml-1' />
+            </View>
+            <Text className={`text-xs font-medium ${user.isActive ? 'text-green-600' : 'text-gray-500'}`}>
+              {user.isActive ? '● Active' : '● Inactive'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Right side - Wallet and Notification Icons */}
+        <View className='flex-row items-center'>
+          {/* Wallet Icon with Balance */}
+          <TouchableOpacity
+            onPress={handleWalletPress}
+            className='mr-3 flex-row items-center bg-white/20 px-3 py-1.5 rounded-full'
+          >
+            <Wallet size={18} color="#333" />
+            <Text className='ml-1 text-gray-800 font-semibold'>{user.walletBalance}</Text>
+          </TouchableOpacity>
+
+          {/* Notification Bell with Badge */}
+          <TouchableOpacity
+            onPress={handleNotificationPress}
+            className='relative'
+          >
+            <View className='w-10 h-10 bg-white/20 rounded-full items-center justify-center'>
+              <Bell size={22} color="#333" />
+            </View>
+            {user.notificationCount > 0 && (
+              <View className='absolute -top-1 -right-1 bg-red-500 rounded-full min-w-5 h-5 items-center justify-center px-1'>
+                <Text className='text-white text-xs font-bold'>
+                  {user.notificationCount > 9 ? '9+' : user.notificationCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Scrollable Content */}
+      <ScrollView
+        className='flex-1'
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      >
+        {/* Image Carousel */}
+        <View className='mt-2'>
+          <FlatList
+            ref={flatListRef}
+            data={carouselImages}
+            renderItem={renderCarouselItem}
+            keyExtractor={item => item.id.toString()}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            pagingEnabled
+            snapToAlignment="center"
+            snapToInterval={400}
+            decelerationRate="fast"
+            onScroll={handleScroll}
+            onMomentumScrollEnd={handleMomentumScrollEnd}
+            scrollEventThrottle={16}
+            getItemLayout={getItemLayout}
+            contentContainerStyle={{ paddingHorizontal: 0 }}
+          />
+
+          {/* Pagination Dots */}
+          <View className='flex-row justify-center mt-3'>
+            {carouselImages.map((_, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => {
+                  flatListRef.current?.scrollToIndex({
+                    index,
+                    animated: true
+                  });
+                  setActiveIndex(index);
+                }}
+              >
+                <View
+                  className={`w-2 h-2 rounded-full mx-1 ${index === activeIndex ? 'bg-blue-500 w-4' : 'bg-gray-300'
+                    }`}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Cards Section */}
+        <View className='px-4 py-4'>
+          {/* Container 1: Status Cards - Complaints, Onworking, Pending, Complete (2 in a row) */}
+          <View className='mb-6'>
+            <Text className='text-gray-800 font-bold text-lg mb-3'>Status Overview</Text>
+
+            {/* First Row - 2 Cards */}
+            <View className='flex-row justify-between mb-3'>
+              {/* Complaints Card */}
+              <Pressable
+                onPress={() => handleCardPress('Complaints')}
+                className='bg-white rounded-xl p-4 items-center justify-between flex-row border border-gray-200 flex-1 mr-2'
+              >
+
+                <View>
+                  <Text className='text-2xl font-bold text-gray-800'>24</Text>
+                  <Text className='text-xs text-gray-500 text-center'>Complaints</Text>
+                </View>
+                <View className='bg-red-100 p-3 rounded-full mb-2'>
+                  <ComplaintsIcon width={24} height={24} fill={'red'} />
+                </View>
+              </Pressable>
+
+              {/* Onworking Card */}
+              <Pressable
+                onPress={() => handleCardPress('Onworking')}
+                className='bg-white rounded-xl p-4 items-center justify-between flex-row border border-gray-200 flex-1 ml-2'
+              >
+
+                <View>
+                  <Text className='text-2xl font-bold text-gray-800'>08</Text>
+                  <Text className='text-xs text-gray-500 text-center'>Onworking</Text>
+                </View>
+                <View className='bg-yellow-100 p-3 rounded-full mb-2'>
+                  <Icon name="wrench-clock" size={24} color="#eab308" />
+                </View>
+              </Pressable>
+            </View>
+
+            {/* Second Row - 2 Cards */}
+            <View className='flex-row justify-between'>
+              {/* Pending Card */}
+              <Pressable
+                onPress={() => handleCardPress('Pending')}
+                className='bg-white justify-between flex-row rounded-xl p-4 items-center border border-gray-200 flex-1 mr-2'
+              >
+                <View>
+                  <Text className='text-2xl font-bold text-gray-800'>12</Text>
+                  <Text className='text-xs text-gray-500 text-center'>Pending</Text>
+                </View>
+                <View className='bg-orange-100 p-3 rounded-full mb-2'>
+                  <Icon name="clock-outline" size={24} color="#f97316" />
+                </View>
+              </Pressable>
+
+              {/* Complete Card */}
+              <Pressable
+                onPress={() => handleCardPress('Complete')}
+                className='bg-white justify-between flex-row rounded-xl p-4 items-center border border-gray-200 flex-1 ml-2'
+              >
+                <View>
+                  <Text className='text-2xl font-bold text-gray-800'>67</Text>
+                  <Text className='text-xs text-gray-500 text-center'>Complete</Text>
+                </View>
+                <View className='bg-green-100 p-3 rounded-full mb-2'>
+                  <CompleteIcon width={24} height={24} fill={'teal'} />
+                </View>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Container 2: Business Metrics - Complaints, Bucket, AMC, Pre-Booking, Payout (2 in a row, then 3 in a row) */}
+          <View>
+            <Text className='text-gray-800 font-bold text-lg mb-3'>Business Metrics</Text>
+
+            {/* First Row - 2 Cards */}
+            <View className='flex-row justify-between mb-3'>
+              {/* Complaints Card */}
+              <TouchableOpacity
+                onPress={() => handleCardPress('Complaints')}
+                className='bg-white rounded-xl p-4 items-center border border-gray-200 flex-1 mr-2'
+              >
+                <View className='bg-red-100 p-3 rounded-full mb-2'>
+                  <ComplaintsIcon width={24} height={24} fill={'red'} />
+                </View>
+                <Text className='text-2xl font-bold text-gray-800'>24</Text>
+                <Text className='text-xs text-gray-500 text-center'>Complaints</Text>
+              </TouchableOpacity>
+
+              {/* Bucket Card */}
+              <TouchableOpacity
+                onPress={() => handleCardPress('Bucket')}
+                className='bg-white rounded-xl p-4 items-center border border-gray-200 flex-1 ml-2'
+              >
+                <View className='bg-orange-100 p-3 rounded-full mb-2'>
+                  <BucketIcon width={24} height={24} fill={'#f97316'} />
+                </View>
+                <Text className='text-2xl font-bold text-gray-800'>156</Text>
+                <Text className='text-xs text-gray-500 text-center'>Bucket</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Second Row - 3 Cards */}
+            <View className='flex-row justify-between mb-3'>
+              {/* AMC Card */}
+              <TouchableOpacity
+                onPress={() => handleCardPress('AMC')}
+                className='bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mr-2'
+              >
+                <View className='bg-green-100 p-2 rounded-full mb-1'>
+                  <AMCIcon width={22} height={22} stroke={'#22c55e'} />
+
+                </View>
+                <Text className='text-lg font-bold text-gray-800'>32</Text>
+                <Text className='text-[10px] text-gray-500 text-center'>AMC</Text>
+              </TouchableOpacity>
+
+              {/* Pre-Booking Card */}
+              <TouchableOpacity
+                onPress={() => handleCardPress('Pre-Booking')}
+                className='bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mx-1'
+              >
+                <View className='bg-purple-100 p-2 rounded-full mb-1'>
+                  <CalanderIcon width={22} height={22} stroke={'#a855f7'} />
+                </View>
+                <Text className='text-lg font-bold text-gray-800'>45</Text>
+                <Text className='text-[10px] text-gray-500 text-center'>Pre-Booking</Text>
+              </TouchableOpacity>
+
+              {/* Payout Card */}
+              <TouchableOpacity
+                onPress={() => handleCardPress('Payout')}
+                className='bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 ml-2'
+              >
+                <View className='bg-emerald-100 p-2 rounded-full mb-1'>
+                  {/* <Icon name="cash-multiple" size={22} color="#10b981" /> */}
+                  <Wallet size={22} height={22} color="#10b981" />
+                </View>
+                <Text className='text-lg font-bold text-gray-800'>₹12.5k</Text>
+                <Text className='text-[10px] text-gray-500 text-center'>Payout</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Additional row for any extra cards if needed */}
+            <View className='flex-row justify-between'>
+              {/* You can add more cards here if needed */}
+            </View>
+          </View>
+        </View>
+
+        {/* Extra bottom padding for smooth scrolling */}
+        <View className='h-8' />
+      </ScrollView>
+    </LinearGradient>
   )
 }
 
 export default Home
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-  },
-})
+const styles = StyleSheet.create({})

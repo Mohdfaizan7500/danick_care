@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { jwtDecode } from "jwt-decode";
 
 // Create the context
 const AuthContext = createContext({});
@@ -25,12 +26,33 @@ export const AuthProvider = ({ children }) => {
     try {
       const storedAccessToken = await AsyncStorage.getItem('accessToken');
       const storedRefreshToken = await AsyncStorage.getItem('refreshToken');
-      const storedUser = await AsyncStorage.getItem('userData');
       
-      if (storedAccessToken && storedUser && storedAccessToken !== 'undefined' && storedUser !== 'undefined') {
-        setAccessToken(storedAccessToken);
-        setRefreshToken(storedRefreshToken);
-        setUser(JSON.parse(storedUser));
+      if (storedAccessToken && storedAccessToken !== 'undefined') {
+        // Decode token to get user data
+        try {
+          const decodedToken = jwtDecode(storedAccessToken);
+          
+          // Extract user data from token (adjust based on your token structure)
+          const userData = {
+            id: decodedToken.id || decodedToken.sub,
+            username: decodedToken.username || decodedToken.preferred_username,
+            email: decodedToken.email,
+            // Add other fields as they appear in your token
+          };
+          
+          setAccessToken(storedAccessToken);
+          setRefreshToken(storedRefreshToken);
+          setUser(userData);
+        } catch (decodeError) {
+          console.error('Error decoding token:', decodeError);
+          // If token decoding fails, try to get stored user data
+          const storedUser = await AsyncStorage.getItem('userData');
+          if (storedUser && storedUser !== 'undefined') {
+            setAccessToken(storedAccessToken);
+            setRefreshToken(storedRefreshToken);
+            setUser(JSON.parse(storedUser));
+          }
+        }
       }
     } catch (error) {
       console.error('Error checking stored tokens:', error);
@@ -39,30 +61,43 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Login function with validation
+  // Login function
   const login = async (userData, userAccessToken, userRefreshToken = null) => {
-    // Validate inputs before storing
+    // Validate inputs
     if (!userAccessToken || userAccessToken === undefined) {
       console.error('Invalid accessToken: accessToken is undefined');
       return;
     }
 
-    if (!userData || userData === undefined) {
-      console.error('Invalid user data: userData is undefined');
-      return;
-    }
-
     try {
-      setUser(userData);
+      // Store tokens
       setAccessToken(userAccessToken);
       if (userRefreshToken) setRefreshToken(userRefreshToken);
       
-      // Store in AsyncStorage with validation
+      // If userData is not provided, try to decode from token
+      if (!userData && userAccessToken) {
+        try {
+          const decodedToken = jwtDecode(userAccessToken);
+          userData = {
+            id: decodedToken.id || decodedToken.sub,
+            username: decodedToken.username || decodedToken.preferred_username,
+            email: decodedToken.email,
+          };
+        } catch (decodeError) {
+          console.error('Error decoding token during login:', decodeError);
+        }
+      }
+      
+      setUser(userData);
+      
+      // Store in AsyncStorage
       await AsyncStorage.setItem('accessToken', String(userAccessToken));
       if (userRefreshToken) {
         await AsyncStorage.setItem('refreshToken', String(userRefreshToken));
       }
-      await AsyncStorage.setItem('userData', JSON.stringify(userData));
+      if (userData) {
+        await AsyncStorage.setItem('userData', JSON.stringify(userData));
+      }
       
       console.log('Auth data stored successfully');
     } catch (error) {
@@ -103,6 +138,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Function to get fresh user data from token
+  const refreshUserFromToken = () => {
+    if (accessToken) {
+      try {
+        const decodedToken = jwtDecode(accessToken);
+        const userData = {
+          id: decodedToken.id || decodedToken.sub,
+          username: decodedToken.username || decodedToken.preferred_username,
+          email: decodedToken.email,
+        };
+        setUser(userData);
+        return userData;
+      } catch (error) {
+        console.error('Error refreshing user from token:', error);
+      }
+    }
+    return null;
+  };
+
   const value = {
     user,
     accessToken,
@@ -111,6 +165,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateUser,
+    refreshUserFromToken,
     isAuthenticated: !!accessToken
   };
 

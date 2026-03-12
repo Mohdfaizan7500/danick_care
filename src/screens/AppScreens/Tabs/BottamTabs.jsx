@@ -15,6 +15,7 @@ const BottomTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        headerShown: false, // This hides the header for ALL screens
         tabBarActiveTintColor: Colors.brand.primary, // Bright Cyan for active
         tabBarInactiveTintColor: Colors.gray[500], // Darker cyan for inactive
         tabBarStyle: {
@@ -114,6 +115,7 @@ const BottomTabs = () => {
         name="Profile"
         component={Profile}
         options={{
+          
           tabBarIcon: ({ color, size, focused }) => (
             <ProfileIcon
               stroke={focused ? Colors.brand.primary :  Colors.gray[400]}
