@@ -137,7 +137,7 @@ const Home = () => {
       {/* Header with Profile and Icons - Fixed at top */}
       <View
         className='w-full bg-transparent flex-row items-center justify-between px-4'
-        style={{ paddingTop: insets.top, paddingBottom: 12 }}
+        style={{ paddingTop: insets.top+4, paddingBottom: 4 }}
       >
         {/* Left side - Profile */}
         <View className='flex-row items-center flex-1'>

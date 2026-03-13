@@ -1,9 +1,11 @@
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert } from 'react-native'
+import { StyleSheet, Text, View, TextInput, TouchableOpacity } from 'react-native'
 import React, { useState } from 'react'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import DialogBox from '../../components/DilaogBox'; // Make sure path is correct
 
 const Login = ({ navigation }) => {
     const [email, setEmail] = useState('');
@@ -11,6 +13,15 @@ const Login = ({ navigation }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     
+    // Dialog states
+    const [dialogVisible, setDialogVisible] = useState(false);
+    const [dialogConfig, setDialogConfig] = useState({
+        type: 'error',
+        title: '',
+        message: '',
+        onConfirm: null
+    });
+
     const { login } = useAuth();
 
     // Demo account credentials
@@ -19,14 +30,32 @@ const Login = ({ navigation }) => {
         password: 'emilyspass'
     };
 
+    const showDialog = (type, title, message, onConfirm = null) => {
+        setDialogConfig({
+            type,
+            title,
+            message,
+            onConfirm
+        });
+        setDialogVisible(true);
+    };
+
     const handleLogin = async () => {
         if (!email.trim() || !password.trim()) {
-            Alert.alert('Error', 'Please fill in all fields');
+            showDialog(
+                'error',
+                'Validation Error',
+                'Please fill in all fields'
+            );
             return;
         }
 
         if (password.length < 6) {
-            Alert.alert('Error', 'Password must be at least 6 characters');
+            showDialog(
+                'error',
+                'Validation Error',
+                'Password must be at least 6 characters'
+            );
             return;
         }
 
@@ -65,10 +94,22 @@ const Login = ({ navigation }) => {
             // Store tokens and user data using auth context
             await login(userData, data.accessToken, data.refreshToken);
             
-            Alert.alert('Success', 'Logged in successfully!');
+            showDialog(
+                'success',
+                'Success!',
+                'Logged in successfully!',
+                () => {
+                    // Navigate to home screen or whatever after success
+                    // navigation.navigate('Home');
+                }
+            );
             
         } catch (error) {
-            Alert.alert('Error', error.message || 'Login failed. Please try again.');
+            showDialog(
+                'error',
+                'Login Failed',
+                error.message || 'Login failed. Please try again.'
+            );
         } finally {
             setIsLoading(false);
         }
@@ -77,6 +118,86 @@ const Login = ({ navigation }) => {
     const fillDemoAccount = () => {
         setEmail(demoAccount.username);
         setPassword(demoAccount.password);
+        showDialog(
+            'info',
+            'Demo Account Filled',
+            'Demo credentials have been filled. Click Sign In to continue.'
+        );
+    };
+
+    // Footer for success dialog
+    const successFooter = (
+        <TouchableOpacity 
+            className="bg-teal-500 py-3 rounded-lg"
+            onPress={() => {
+                setDialogVisible(false);
+                if (dialogConfig.onConfirm) {
+                    dialogConfig.onConfirm();
+                }
+            }}
+        >
+            <Text className="text-white text-center font-semibold">Continue</Text>
+        </TouchableOpacity>
+    );
+
+    // Footer for error/info dialogs
+    const defaultFooter = (
+        <TouchableOpacity 
+            className="bg-teal-500 py-3 rounded-lg"
+            onPress={() => setDialogVisible(false)}
+        >
+            <Text className="text-white text-center font-semibold">OK</Text>
+        </TouchableOpacity>
+    );
+
+    // Footer for validation errors (single button)
+    const errorFooter = (
+        <TouchableOpacity 
+            className="bg-red-500 py-3 rounded-lg"
+            onPress={() => setDialogVisible(false)}
+        >
+            <Text className="text-white text-center font-semibold">Got It</Text>
+        </TouchableOpacity>
+    );
+
+    // Get appropriate footer based on dialog type
+    const getFooter = () => {
+        switch (dialogConfig.type) {
+            case 'success':
+                return successFooter;
+            case 'error':
+                return dialogConfig.title === 'Validation Error' ? errorFooter : defaultFooter;
+            default:
+                return defaultFooter;
+        }
+    };
+
+    // Get icon color based on type
+    const getIconColor = () => {
+        switch (dialogConfig.type) {
+            case 'success':
+                return '#4CAF50';
+            case 'error':
+                return '#F44336';
+            case 'info':
+                return '#2196F3';
+            default:
+                return '#9E9E9E';
+        }
+    };
+
+    // Get icon name based on type
+    const getIconName = () => {
+        switch (dialogConfig.type) {
+            case 'success':
+                return 'check-circle';
+            case 'error':
+                return 'error';
+            case 'info':
+                return 'info';
+            default:
+                return 'help';
+        }
     };
 
     return (
@@ -153,6 +274,48 @@ const Login = ({ navigation }) => {
                     <Text className='font-normal text-xs text-gray-500'>Password: emilyspass</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Dialog Box for messages */}
+            <DialogBox
+                visible={dialogVisible}
+                onClose={() => setDialogVisible(false)}
+                title={dialogConfig.title}
+                size="sm"
+                titleStyle={
+                    dialogConfig.type === 'error' && dialogConfig.title === 'Validation Error' 
+                        ? 'text-red-600 text-lg font-bold' 
+                        : dialogConfig.type === 'success' 
+                        ? 'text-green-600 text-lg font-bold'
+                        : dialogConfig.type === 'info'
+                        ? 'text-blue-600 text-lg font-bold'
+                        : 'text-gray-800 text-lg font-bold'
+                }
+                showCloseButton={dialogConfig.type !== 'success'} // Don't show close button for success
+                closeIconColor={getIconColor()}
+                closeOnBackdropPress={dialogConfig.type !== 'success'} // Prevent backdrop close for success
+                footer={getFooter()}
+                footerStyle={
+                    dialogConfig.type === 'error' && dialogConfig.title === 'Validation Error'
+                        ? 'border-t border-red-100'
+                        : 'border-t border-gray-100'
+                }
+                headerStyle={
+                    dialogConfig.type === 'error' && dialogConfig.title === 'Validation Error'
+                        ? 'border-b border-red-100'
+                        : 'border-b border-gray-100'
+                }
+            >
+                <View className="py-4 items-center">
+                    <Icon 
+                        name={getIconName()} 
+                        size={50} 
+                        color={getIconColor()} 
+                    />
+                    <Text className="text-gray-600 text-center mt-4 text-base">
+                        {dialogConfig.message}
+                    </Text>
+                </View>
+            </DialogBox>
         </View>
     )
 }

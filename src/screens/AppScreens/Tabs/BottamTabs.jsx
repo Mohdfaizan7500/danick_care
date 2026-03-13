@@ -24,7 +24,7 @@ const BottomTabs = () => {
           borderTopColor: Colors.ui.border,
           paddingBottom: 5,
           paddingTop: 5,
-          height: 100,
+          height: 80,
         },
         tabBarLabelStyle: {
           fontSize: 12,

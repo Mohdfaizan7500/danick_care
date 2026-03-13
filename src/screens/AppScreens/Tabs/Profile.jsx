@@ -1,4 +1,4 @@
-import { Text, View, TouchableOpacity, Alert, ActivityIndicator, Image, ScrollView } from 'react-native';
+import { Text, View, TouchableOpacity, ActivityIndicator, Image, ScrollView, Alert } from 'react-native';
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
@@ -6,49 +6,52 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Mail, Phone } from 'lucide-react-native';
 import { ComplaintsIcon, FileIcon, ReplaceIcon, TermsIcon, UserIcon } from '../../../assets/svgIcons/SVGIcons';
 import { useNavigation } from '@react-navigation/native';
+import DialogBox from '../../../components/DilaogBox';
 
 const Profile = () => {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // For main button
+  const [isDialogLoggingOut, setIsDialogLoggingOut] = useState(false); // For dialog button only
+  const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
 
   const menuItems = [
-    { 
+    {
       id: 'profile',
       icon: <UserIcon width={22} height={22} stroke={'black'} />,
       title: 'My Profile',
       subtitle: 'View and edit your profile',
       route: 'ProfileEdit'
     },
-    { 
+    {
       id: 'complaints',
       icon: <ComplaintsIcon width={22} height={22} fill={'black'} />,
       title: 'My Complaints',
       subtitle: 'View your complaint history',
-      route: 'Complaints'
+      route: 'MyComplaints'
     },
-    { 
+    {
       id: 'amc',
       icon: <FileIcon width={22} height={22} stroke={'black'} />,
       title: 'My AMC',
       subtitle: 'View your Annual Maintenance Contracts',
       route: 'AMC'
     },
-    { 
+    {
       id: 'replace',
       icon: <ReplaceIcon width={22} height={22} fill={'black'} />,
       title: 'Replace Parts',
       subtitle: 'Order replacement parts',
       route: 'ReplaceParts'
     },
-    { 
+    {
       id: 'terms',
       icon: <TermsIcon width={22} height={22} fill={'black'} />,
       title: 'Terms & Conditions',
       subtitle: 'Read our terms and conditions',
       route: 'TermsConditions'
     },
-    { 
+    {
       id: 'support',
       icon: <Icon name="support-agent" size={22} color="black" />,
       title: 'Support',
@@ -57,28 +60,20 @@ const Profile = () => {
     }
   ];
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          onPress: async () => {
-            setIsLoggingOut(true);
-            try {
-              await logout();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to logout. Please try again.');
-            } finally {
-              setIsLoggingOut(false);
-            }
-          },
-          style: 'destructive',
-        },
-      ]
-    );
+  const handleLogout = async () => {
+    setIsDialogLoggingOut(true); // Only set loading for dialog button
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      await logout();
+      setLogoutDialogVisible(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+      setLogoutDialogVisible(false);
+    } finally {
+      setIsDialogLoggingOut(false);
+      setIsLoggingOut(false);
+    }
   };
 
   const handleNavigation = (route) => {
@@ -86,7 +81,7 @@ const Profile = () => {
   };
 
   const MenuItem = ({ item, isLast }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       className={`flex-row items-center py-4 ${!isLast ? 'border-b border-gray-100' : ''}`}
       onPress={() => handleNavigation(item.route)}
     >
@@ -101,6 +96,35 @@ const Profile = () => {
     </TouchableOpacity>
   );
 
+  // Footer for logout dialog with loading state only on logout button
+  const logoutFooter = (
+    <View className="flex-row gap-3">
+      <TouchableOpacity 
+        className={`flex-1 py-3 rounded-lg ${isDialogLoggingOut ? 'bg-gray-200' : 'bg-gray-100'}`}
+        onPress={() => setLogoutDialogVisible(false)}
+        disabled={isDialogLoggingOut}
+      >
+        <Text className={`text-center font-medium ${isDialogLoggingOut ? 'text-gray-400' : 'text-gray-700'}`}>
+          Cancel
+        </Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        className={`flex-1 py-3 rounded-lg flex-row items-center justify-center ${isDialogLoggingOut ? 'bg-red-400' : 'bg-red-500'}`}
+        onPress={handleLogout}
+        disabled={isDialogLoggingOut}
+      >
+        {isDialogLoggingOut ? (
+          <>
+            <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
+          </>
+        ) : (
+          <Text className="text-white text-center font-medium">Logout</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
@@ -112,16 +136,16 @@ const Profile = () => {
           />
 
           <Text className="text-2xl font-bold text-gray-800">
-            {user?.firstName && user?.lastName 
-              ? `${user.firstName} ${user.lastName}` 
+            {user?.firstName && user?.lastName
+              ? `${user.firstName} ${user.lastName}`
               : user?.username || 'User Name'}
           </Text>
-          
+
           <View className="flex-row items-center mt-1 gap-2">
             <Phone size={14} color="gray" />
             <Text className="text-xs text-gray-500 font-medium">{user?.phone || '+91 98765 43210'}</Text>
           </View>
-          
+
           <View className="flex-row items-center gap-2">
             <Mail size={14} color="gray" />
             <Text className="text-xs text-gray-500 font-medium">{user?.email || 'No email provided'}</Text>
@@ -136,36 +160,72 @@ const Profile = () => {
         <View className="mt-6">
           <View className="bg-white mx-5 rounded-xl px-4 shadow-md">
             {menuItems.map((item, index) => (
-              <MenuItem 
-                key={item.id} 
-                item={item} 
-                isLast={index === menuItems.length - 1} 
+              <MenuItem
+                key={item.id}
+                item={item}
+                isLast={index === menuItems.length - 1}
               />
             ))}
           </View>
         </View>
 
-        {/* Logout Button */}
+        {/* Logout Button - NO LOADER HERE */}
         <View className="mt-8 mx-5 mb-5">
           <TouchableOpacity
-            className={`bg-red-500 p-4 rounded-xl flex-row items-center justify-center shadow-md ${isLoggingOut ? 'opacity-70' : ''}`}
-            onPress={handleLogout}
-            disabled={isLoggingOut}
+            className="bg-red-500 p-4 rounded-xl flex-row items-center justify-center shadow-md"
+            onPress={() => setLogoutDialogVisible(true)}
+            disabled={isDialogLoggingOut} // Disable when dialog logout is in progress
           >
-            {isLoggingOut ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Icon name="logout" size={20} color="#fff" style={{ marginRight: 10 }} />
-                <Text className="text-base font-semibold text-white">Logout</Text>
-              </>
-            )}
+            <Icon name="logout" size={20} color="#fff" style={{ marginRight: 10 }} />
+            <Text className="text-base font-semibold text-white">Logout</Text>
           </TouchableOpacity>
         </View>
 
         {/* App Version */}
         <Text className="text-center mt-2.5 mb-5 text-gray-400 text-xs">Version 1.0.0</Text>
       </ScrollView>
+
+      {/* Logout Confirmation Dialog */}
+      <DialogBox
+        visible={logoutDialogVisible}
+        onClose={() => {
+          if (!isDialogLoggingOut) {
+            setLogoutDialogVisible(false);
+          }
+        }}
+        title={isDialogLoggingOut ? "Logging out..." : "Confirm Logout"}
+        size="sm"
+        titleStyle="text-black text-lg font-bold"
+        showCloseButton={!isDialogLoggingOut}
+        closeIconColor="#000"
+        closeOnBackdropPress={!isDialogLoggingOut}
+        footer={logoutFooter}
+        footerStyle="border-t border-red-100"
+        headerStyle="border-0"
+      >
+        <View className="py-6 items-center">
+          {isDialogLoggingOut ? (
+            // Loading state content - only shows when dialog logout button is clicked
+            <>
+              <Icon name="logout" size={60} color="#EF4444" />
+              <Text className="text-gray-600 text-center mt-4 text-base">
+                Please wait while we log you out...
+              </Text>
+            </>
+          ) : (
+            // Normal state content
+            <>
+              <Icon name="logout" size={60} color="#EF4444" />
+              <Text className="text-gray-600 text-center mt-4 text-base">
+                Are you sure you want to logout?
+              </Text>
+              <Text className="text-gray-500 text-center mt-1 text-sm">
+                You'll need to login again to access your account.
+              </Text>
+            </>
+          )}
+        </View>
+      </DialogBox>
     </SafeAreaView>
   );
 };

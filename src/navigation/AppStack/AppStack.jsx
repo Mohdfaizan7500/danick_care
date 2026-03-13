@@ -13,8 +13,7 @@ import ProfileEdit from '../../screens/AppScreens/ProfileEdit';
 import ReplaceParts from '../../screens/AppScreens/ReplaceParts';
 import TermsConditions from '../../screens/AppScreens/TermsConditions';
 import Support from '../../screens/AppScreens/Support';
-
-
+import MyComplaints from '../../screens/AppScreens/MyComplaints';
 
 // import BottomTabs from 
 const Stack = createNativeStackNavigator();
@@ -83,6 +82,10 @@ const AppStack = () => {
        <Stack.Screen
         name="Support"
         component={Support}
+      />
+       <Stack.Screen
+        name="MyComplaints"
+        component={MyComplaints}
       />
     </Stack.Navigator>
   )
