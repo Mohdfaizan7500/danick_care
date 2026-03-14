@@ -154,7 +154,6 @@ const Home = () => {
             <Text className='text-gray-700 text-sm'>Welcome Back</Text>
             <View className='flex-row items-center'>
               <Text className='text-gray-900 font-bold text-lg'>{user.name}</Text>
-              <ChevronRight size={18} color="#666" className='ml-1' />
             </View>
             <Text className={`text-xs font-medium ${user.isActive ? 'text-green-600' : 'text-gray-500'}`}>
               {user.isActive ? '● Active' : '● Inactive'}
