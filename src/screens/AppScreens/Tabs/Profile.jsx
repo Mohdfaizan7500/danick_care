@@ -126,7 +126,7 @@ const Profile = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-white">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
         {/* User Info Section */}
         <View className="bg-white p-5 items-center border-b border-gray-200">

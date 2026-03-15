@@ -1,76 +1,12 @@
-import { Text, View, FlatList, TouchableOpacity } from 'react-native'
-import React, { useState } from 'react'
-import Icon from 'react-native-vector-icons/MaterialIcons'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { Text, View, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Header from '../../components/Header';
 
 const Notification = () => {
-  const [activeTab, setActiveTab] = useState('all')
-
-  // Helper function to get icon based on title/type
-  const getIconForNotification = (title, type) => {
-    const titleLower = title.toLowerCase()
-    
-    if (titleLower.includes('login')) return 'login'
-    if (titleLower.includes('logout')) return 'logout'
-    if (titleLower.includes('session')) return 'timer'
-    if (titleLower.includes('account activated')) return 'check-circle'
-    if (titleLower.includes('account inactive')) return 'pause-circle'
-    if (titleLower.includes('welcome back')) return 'waving-hand'
-    
-    // Service related
-    if (titleLower.includes('ac cleaning')) return 'cleaning-services'
-    if (titleLower.includes('repair')) return 'engineering'
-    if (titleLower.includes('technician assigned')) return 'person'
-    if (titleLower.includes('service request')) return 'assignment-turned-in'
-    if (titleLower.includes('service completed')) return 'check-circle'
-    if (titleLower.includes('service cancelled')) return 'cancel'
-    if (titleLower.includes('service declined')) return 'thumb-down'
-    if (titleLower.includes('payment pending')) return 'pending'
-    if (titleLower.includes('payment successful')) return 'payment'
-    if (titleLower.includes('approval pending')) return 'schedule'
-    if (titleLower.includes('maintenance due')) return 'warning'
-    if (titleLower.includes('reminder')) return 'refresh'
-    if (titleLower.includes('session timeout')) return 'timer-off'
-    
-    // Default icons based on type
-    switch(type) {
-      case 'login': return 'login'
-      case 'logout': return 'logout'
-      case 'active': return 'check-circle'
-      case 'inactive': return 'pause-circle'
-      case 'ac_cleaning': return 'cleaning-services'
-      case 'repair': return 'engineering'
-      case 'service_assign': return 'assignment-turned-in'
-      case 'pending': return 'pending'
-      case 'complete': return 'check-circle'
-      case 'cancel': return 'cancel'
-      default: return 'notifications'
-    }
-  }
-
-  // Helper function to get icon color based on status
-  const getIconColor = (status) => {
-    switch(status) {
-      case 'success':
-      case 'completed':
-      case 'accepted':
-        return '#10B981' // green
-      case 'warning':
-      case 'pending':
-      case 'reminder':
-        return '#F59E0B' // amber
-      case 'cancelled':
-        return '#EF4444' // red
-      case 'inactive':
-        return '#6B7280' // gray
-      case 'assigned':
-        return '#3B82F6' // blue
-      default:
-        return '#6B7280' // gray
-    }
-  }
-
-  const notifications = [
+  const [activeTab, setActiveTab] = useState('all');
+  const [notifications, setNotifications] = useState([
     {
       id: '1',
       type: 'login',
@@ -251,50 +187,120 @@ const Notification = () => {
       status: 'warning',
       isRead: true
     }
-  ]
+  ]);
+
+  // Helper function to get icon based on title/type
+  const getIconForNotification = (title, type) => {
+    const titleLower = title.toLowerCase();
+    
+    if (titleLower.includes('login')) return 'login';
+    if (titleLower.includes('logout')) return 'logout';
+    if (titleLower.includes('session')) return 'timer';
+    if (titleLower.includes('account activated')) return 'check-circle';
+    if (titleLower.includes('account inactive')) return 'pause-circle';
+    if (titleLower.includes('welcome back')) return 'waving-hand';
+    
+    // Service related
+    if (titleLower.includes('ac cleaning')) return 'cleaning-services';
+    if (titleLower.includes('repair')) return 'engineering';
+    if (titleLower.includes('technician assigned')) return 'person';
+    if (titleLower.includes('service request')) return 'assignment-turned-in';
+    if (titleLower.includes('service completed')) return 'check-circle';
+    if (titleLower.includes('service cancelled')) return 'cancel';
+    if (titleLower.includes('service declined')) return 'thumb-down';
+    if (titleLower.includes('payment pending')) return 'pending';
+    if (titleLower.includes('payment successful')) return 'payment';
+    if (titleLower.includes('approval pending')) return 'schedule';
+    if (titleLower.includes('maintenance due')) return 'warning';
+    if (titleLower.includes('reminder')) return 'refresh';
+    if (titleLower.includes('session timeout')) return 'timer-off';
+    
+    // Default icons based on type
+    switch(type) {
+      case 'login': return 'login';
+      case 'logout': return 'logout';
+      case 'active': return 'check-circle';
+      case 'inactive': return 'pause-circle';
+      case 'ac_cleaning': return 'cleaning-services';
+      case 'repair': return 'engineering';
+      case 'service_assign': return 'assignment-turned-in';
+      case 'pending': return 'pending';
+      case 'complete': return 'check-circle';
+      case 'cancel': return 'cancel';
+      default: return 'notifications';
+    }
+  };
+
+  // Helper function to get icon color based on status
+  const getIconColor = (status) => {
+    switch(status) {
+      case 'success':
+      case 'completed':
+      case 'accepted':
+        return '#10B981'; // green
+      case 'warning':
+      case 'pending':
+      case 'reminder':
+        return '#F59E0B'; // amber
+      case 'cancelled':
+        return '#EF4444'; // red
+      case 'inactive':
+        return '#6B7280'; // gray
+      case 'assigned':
+        return '#3B82F6'; // blue
+      default:
+        return '#6B7280'; // gray
+    }
+  };
 
   // Filter notifications based on active tab
   const getFilteredNotifications = () => {
     switch (activeTab) {
       case 'unread':
-        return notifications.filter(n => !n.isRead)
+        return notifications.filter(n => !n.isRead);
       case 'service':
         return notifications.filter(n =>
           ['ac_cleaning', 'repair', 'service_assign', 'complete', 'pending', 'cancel'].includes(n.type)
-        )
+        );
       default:
-        return notifications
+        return notifications;
     }
-  }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'success':
       case 'completed':
       case 'accepted':
-        return 'bg-green-100 text-green-700'
+        return 'bg-green-100 text-green-700';
       case 'warning':
       case 'pending':
       case 'reminder':
-        return 'bg-yellow-100 text-yellow-700'
+        return 'bg-yellow-100 text-yellow-700';
       case 'cancelled':
-        return 'bg-red-100 text-red-700'
+        return 'bg-red-100 text-red-700';
       case 'inactive':
-        return 'bg-gray-100 text-gray-700'
+        return 'bg-gray-100 text-gray-700';
       case 'assigned':
-        return 'bg-blue-100 text-blue-700'
+        return 'bg-blue-100 text-blue-700';
       default:
-        return 'bg-gray-100 text-gray-700'
+        return 'bg-gray-100 text-gray-700';
     }
-  }
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(prev =>
+      prev.map(item => ({ ...item, isRead: true }))
+    );
+  };
 
   const renderNotificationItem = ({ item }) => {
     const unreadClass = !item.isRead
       ? 'bg-teal-50 border border-teal-500'
-      : 'bg-white border border-gray-200'
+      : 'bg-white border border-gray-200';
     
-    const iconName = getIconForNotification(item.title, item.type)
-    const iconColor = getIconColor(item.status)
+    const iconName = getIconForNotification(item.title, item.type);
+    const iconColor = getIconColor(item.status);
 
     return (
       <TouchableOpacity
@@ -334,8 +340,8 @@ const Notification = () => {
           </View>
         </View>
       </TouchableOpacity>
-    )
-  }
+    );
+  };
 
   const TabButton = ({ title, tabName, count }) => (
     <TouchableOpacity
@@ -346,45 +352,28 @@ const Notification = () => {
         }`}
     >
       <View className="flex-row items-center justify-center">
-        <Text className={`text-sm font-medium ${activeTab === tabName ? 'text-white' : 'text-gray-600'
-          }`}>
+        <Text className={`text-sm font-medium ${activeTab === tabName ? 'text-white' : 'text-gray-600'}`}>
           {title}
         </Text>
         {count > 0 && tabName !== 'all' && (
-          <View className={`ml-2 px-1.5 py-0.5 rounded-full ${activeTab === tabName ? 'bg-white' : 'bg-gray-300'
-            }`}>
-            <Text className={`text-xs ${activeTab === tabName ? 'text-teal-500' : 'text-gray-700'
-              }`}>
+          <View className={`ml-2 px-1.5 py-0.5 rounded-full ${activeTab === tabName ? 'bg-white' : 'bg-gray-300'}`}>
+            <Text className={`text-xs ${activeTab === tabName ? 'text-teal-500' : 'text-gray-700'}`}>
               {count}
             </Text>
           </View>
         )}
       </View>
     </TouchableOpacity>
-  )
+  );
 
   const ListHeader = () => {
-    const unreadCount = notifications.filter(n => !n.isRead).length
+    const unreadCount = notifications.filter(n => !n.isRead).length;
     const serviceCount = notifications.filter(n =>
       ['ac_cleaning', 'repair', 'service_assign', 'complete', 'pending', 'cancel'].includes(n.type)
-    ).length
+    ).length;
 
     return (
       <View className="bg-white">
-        <View className="flex-row justify-between items-center px-4 py-4">
-          <View className="flex-row items-center">
-            <Text className="text-2xl font-bold text-gray-800">Notifications</Text>
-            {unreadCount > 0 && activeTab === 'all' && (
-              <View className="ml-2 bg-teal-500 px-2 py-1 rounded-full">
-                <Text className="text-xs text-white font-bold">{unreadCount} new</Text>
-              </View>
-            )}
-          </View>
-          <TouchableOpacity>
-            <Text className="text-sm text-teal-600 font-medium">Mark all as read</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Tabs */}
         <View className="flex-row px-4 pb-4">
           <TabButton title="All" tabName="all" />
@@ -399,8 +388,8 @@ const Notification = () => {
           </Text>
         </View>
       </View>
-    )
-  }
+    );
+  };
 
   const EmptyComponent = () => (
     <View className="flex-1 items-center justify-center py-20">
@@ -427,10 +416,19 @@ const Notification = () => {
         </TouchableOpacity>
       )}
     </View>
-  )
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
+      {/* Custom Header with back button, title, and mark all action */}
+      <Header
+        title="Notifications"
+        titlePosition='left'
+        showBackButton={true}
+         titleStyle="font-bold text-2xl ml-5"
+        
+      />
+
       <FlatList
         data={getFilteredNotifications()}
         keyExtractor={(item) => item.id}
@@ -441,7 +439,7 @@ const Notification = () => {
         contentContainerClassName="pb-4"
       />
     </SafeAreaView>
-  )
-}
+  );
+};
 
-export default Notification
+export default Notification;

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import LinearGradient from 'react-native-linear-gradient';
+import Header from '../../components/Header';
 
 // Mock data for transactions
 const mockTransactions = [
@@ -11,7 +13,7 @@ const mockTransactions = [
 ];
 
 const Wallet = () => {
-  const [balance, setBalance] = useState(2436.76); // example balance
+  const [balance, setBalance] = useState(2436.76);
   const [showBalance, setShowBalance] = useState(true);
   const [transactions] = useState(mockTransactions);
 
@@ -27,42 +29,56 @@ const Wallet = () => {
         <Icon
           name={item.amount > 0 ? 'arrow-downward' : 'arrow-upward'}
           size={20}
-          color={item.amount > 0 ? '#10b981' : '#ef4444'}
-          className="mr-3"
+          color={item.amount > 0 ? '#58A890' : '#E86F6F'} // ui.success / ui.error
+          style={{ marginRight: 12 }}
         />
         <View>
-          <Text className="text-base font-medium text-gray-800">{item.description}</Text>
-          <Text className="text-xs text-gray-500">{item.date}</Text>
+          <Text className="text-base font-medium text-text-primary">{item.description}</Text>
+          <Text className="text-xs text-text-tertiary">{item.date}</Text>
         </View>
       </View>
       <Text
         className={`text-base font-semibold ${
-          item.amount > 0 ? 'text-green-600' : 'text-red-600'
+          item.amount > 0 ? 'text-ui-success' : 'text-ui-error'
         }`}
       >
-        {item.amount > 0 ? '+' : ''}${Math.abs(item.amount).toFixed(2)}
+        {item.amount > 0 ? '+' : ''}₹{Math.abs(item.amount).toFixed(2)}
       </Text>
     </View>
   );
 
   return (
-    <View className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className="bg-blue-600 pt-12 pb-6 px-4 rounded-b-3xl">
-        <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-white text-2xl font-bold">Wallet</Text>
-          <TouchableOpacity onPress={toggleBalance} className="p-2">
-            <Icon
-              name={showBalance ? 'visibility' : 'visibility-off'}
-              size={24}
-              color="white"
-            />
-          </TouchableOpacity>
-        </View>
+    <LinearGradient
+      colors={['#88D8C0', '#FFFFFF', '#FFFFFF']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      className="flex-1"
+    >
+      {/* Header with visibility toggle */}
+      <Header
+        title="Wallet"
+        
+        titleStyle="text-2xl font-bold text-text-primary"
+        titlePosition="left"
+        showBackButton={true}
+        showRightIcon={true}
+        onRightIconPress={toggleBalance}
+        customRightIconComponent={
+          <Icon
+            name={showBalance ? 'visibility' : 'visibility-off'}
+            size={24}
+            color="#333333" // text-primary
+          />
+        }
+        containerStyle="flex-row items-center justify-between px-4 pt-12 pb-2 border-gray-100"
+        // Remove default background and shadow
+      />
 
-        <Text className="text-white text-sm opacity-80">Total Balance</Text>
-        <Text className="text-white text-4xl font-bold mt-1">
-          {showBalance ? `$${balance.toFixed(2)}` : '••••••'}
+      {/* Balance Section */}
+      <View className="px-4 pb-6">
+        <Text className="text-text-secondary text-sm">Total Balance</Text>
+        <Text className="text-text-primary text-4xl font-bold mt-1">
+          {showBalance ? `₹${balance.toFixed(2)}` : '••••••'}
         </Text>
       </View>
 
@@ -70,32 +86,32 @@ const Wallet = () => {
       <View className="flex-row justify-around mx-4 -mt-6">
         <TouchableOpacity
           onPress={handleTopUp}
-          className="bg-white shadow-md rounded-xl p-4 items-center flex-1 mx-1"
+          className="bg-ui-card shadow-md rounded-xl p-4 items-center flex-1 mx-1"
         >
-          <Icon name="add-circle" size={28} color="#3b82f6" />
-          <Text className="text-gray-700 font-medium mt-1">Top Up</Text>
+          <Icon name="add-circle" size={28} color="#88D8C0" />
+          <Text className="text-text-secondary font-medium mt-1">Top Up</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={handleSend}
-          className="bg-white shadow-md rounded-xl p-4 items-center flex-1 mx-1"
+          className="bg-ui-card shadow-md rounded-xl p-4 items-center flex-1 mx-1"
         >
-          <Icon name="send" size={28} color="#3b82f6" />
-          <Text className="text-gray-700 font-medium mt-1">Send</Text>
+          <Icon name="send" size={28} color="#88D8C0" />
+          <Text className="text-text-secondary font-medium mt-1">Send</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={handleReceive}
-          className="bg-white shadow-md rounded-xl p-4 items-center flex-1 mx-1"
+          className="bg-ui-card shadow-md rounded-xl p-4 items-center flex-1 mx-1"
         >
-          <Icon name="download" size={28} color="#3b82f6" />
-          <Text className="text-gray-700 font-medium mt-1">Receive</Text>
+          <Icon name="download" size={28} color="#88D8C0" />
+          <Text className="text-text-secondary font-medium mt-1">Receive</Text>
         </TouchableOpacity>
       </View>
 
       {/* Transactions List */}
       <View className="flex-1 mt-6 px-4">
-        <Text className="text-lg font-bold text-gray-800 mb-2">Recent Transactions</Text>
+        <Text className="text-lg font-bold text-text-primary mb-2">Recent Transactions</Text>
         <FlatList
           data={transactions}
           keyExtractor={(item) => item.id}
@@ -104,7 +120,7 @@ const Wallet = () => {
           contentContainerStyle={{ paddingBottom: 20 }}
         />
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 

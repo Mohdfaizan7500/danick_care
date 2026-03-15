@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,13 @@ import {
   Image,
   Modal,
   ScrollView,
+  LayoutAnimation,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons';      
+import Icon from 'react-native-vector-icons/Ionicons';
+
 // Extended sample data – each category now has at least 5 products
 const PRODUCTS = [
   // Partner (existing working URLs)
@@ -42,6 +44,7 @@ const PRODUCTS = [
   { id: '19', name: 'Laptop Keyboard', parentName: 'TechRepair', price: 2200, imageUrl: 'https://picsum.photos/id/113/100/100', parentType: 'Replace' },
   { id: '20', name: 'Water Purifier Filter', parentName: 'AquaPure', price: 800, imageUrl: 'https://picsum.photos/id/114/100/100', parentType: 'Replace' },
 ];
+
 const TABS = ['All', 'Partner', 'Market', 'Service Center', 'Replace'];
 
 const Bucket = () => {
@@ -49,6 +52,8 @@ const Bucket = () => {
   const [selectedTab, setSelectedTab] = useState('All');
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [tabPositions, setTabPositions] = useState([]); // store x offsets of tabs
+  const scrollViewRef = useRef(null);
 
   const filteredProducts =
     selectedTab === 'All'
@@ -58,6 +63,19 @@ const Bucket = () => {
   const openImageModal = (imageUrl) => {
     setSelectedImage(imageUrl);
     setModalVisible(true);
+  };
+
+  const handleTabPress = (tab, index) => {
+    setSelectedTab(tab);
+    // Animate the tab bar scroll to bring the clicked tab into view
+    if (scrollViewRef.current && tabPositions[index] !== undefined) {
+      scrollViewRef.current.scrollTo({
+        x: tabPositions[index] - 20, // slight offset for better visibility
+        animated: true,
+      });
+    }
+    // Optional: Add a subtle content transition
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
   };
 
   const renderItem = ({ item }) => (
@@ -92,31 +110,42 @@ const Bucket = () => {
         title="Bucket"
         titlePosition="left"
         titleStyle="font-bold text-2xl ml-5"
-        showRightIcon={true}                                        // <-- Enable right icon
+        showRightIcon={true}
         customRightIconComponent={
-          <Icon name="bag-add-outline" size={24} color="#333" />      // <-- Part icon
+          <Icon name="bag-add-outline" size={24} color="#333" />
         }
-        onRightIconPress={() => navigation.navigate('AddPart')}      // <-- Navigate to 'Parts' screen
+        onRightIconPress={() => navigation.navigate('AddPart')}
       />
 
-      {/* Filter Tabs */}
+      {/* Filter Tabs with scroll on click */}
       <View className="py-2 border-b border-gray-200">
         <ScrollView
+          ref={scrollViewRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           className="px-2"
         >
-          {TABS.map((tab) => (
+          {TABS.map((tab, index) => (
             <TouchableOpacity
               key={tab}
-              onPress={() => setSelectedTab(tab)}
+              onPress={() => handleTabPress(tab, index)}
+              onLayout={(event) => {
+                // Store the x position of each tab when it renders
+                const layout = event.nativeEvent.layout;
+                setTabPositions((prev) => {
+                  const newPositions = [...prev];
+                  newPositions[index] = layout.x;
+                  return newPositions;
+                });
+              }}
               className="mr-2"
             >
               <Text
-                className={`text-base px-4 py-1 rounded-full font-semibold ${selectedTab === tab
-                  ? 'bg-blue-700 text-white'
-                  : 'text-gray-600'
-                  }`}
+                className={`text-base px-4 py-1 rounded-full font-semibold ${
+                  selectedTab === tab
+                    ? 'bg-black text-white'
+                    : 'text-gray-600'
+                }`}
               >
                 {tab}
               </Text>

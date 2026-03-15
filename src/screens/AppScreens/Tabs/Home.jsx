@@ -7,6 +7,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 import { Colors } from '../../../constants/Color'
 import { AMCIcon, BucketIcon, CalanderIcon, ComplaintsIcon, CompleteIcon } from '../../../assets/svgIcons/SVGIcons'
 import { useNavigation } from '@react-navigation/native'
+import NoInternet from '../../NoInternet';
 
 // Dummy carousel images
 const carouselImages = [

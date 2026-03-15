@@ -15,6 +15,7 @@ import TermsConditions from '../../screens/AppScreens/TermsConditions';
 import Support from '../../screens/AppScreens/Support';
 import MyComplaints from '../../screens/AppScreens/MyComplaints';
 import AddPart from '../../screens/AppScreens/AddPart';
+import ComplaintDetail from '../../screens/AppScreens/ComplaintDetail';
 // import BottomTabs from 
 const Stack = createNativeStackNavigator();
 
@@ -91,6 +92,7 @@ const AppStack = () => {
         name="AddPart"
         component={AddPart}
       />
+      <Stack.Screen name="ComplaintDetail" component={ComplaintDetail} />
     </Stack.Navigator>
   )
 }
