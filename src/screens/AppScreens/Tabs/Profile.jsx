@@ -7,6 +7,8 @@ import { Mail, Phone } from 'lucide-react-native';
 import { ComplaintsIcon, FileIcon, ReplaceIcon, TermsIcon, UserIcon } from '../../../assets/svgIcons/SVGIcons';
 import { useNavigation } from '@react-navigation/native';
 import DialogBox from '../../../components/DilaogBox';
+import { toast, Toaster } from 'sonner-native';
+import StatusMessage from '../../../components/StatusMessage';
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -62,7 +64,7 @@ const Profile = () => {
 
   const handleLogout = async () => {
     setIsDialogLoggingOut(true); // Only set loading for dialog button
-    
+
     try {
       await new Promise(resolve => setTimeout(resolve, 3000));
       await logout();
@@ -77,7 +79,20 @@ const Profile = () => {
   };
 
   const handleNavigation = (route) => {
-    navigation.navigate(route);
+    if (route === 'ProfileEdit') {
+
+      navigation.navigate(route);
+
+    }
+    else {
+      toast.custom(
+        <StatusMessage
+          type='info'
+          title={'In Developmenet mode'}
+
+        />, { duration: 500 }
+      )
+    }
   };
 
   const MenuItem = ({ item, isLast }) => (
@@ -99,7 +114,7 @@ const Profile = () => {
   // Footer for logout dialog with loading state only on logout button
   const logoutFooter = (
     <View className="flex-row gap-3">
-      <TouchableOpacity 
+      <TouchableOpacity
         className={`flex-1 py-3 rounded-lg ${isDialogLoggingOut ? 'bg-gray-200' : 'bg-gray-100'}`}
         onPress={() => setLogoutDialogVisible(false)}
         disabled={isDialogLoggingOut}
@@ -108,8 +123,8 @@ const Profile = () => {
           Cancel
         </Text>
       </TouchableOpacity>
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         className={`flex-1 py-3 rounded-lg flex-row items-center justify-center ${isDialogLoggingOut ? 'bg-red-400' : 'bg-red-500'}`}
         onPress={handleLogout}
         disabled={isDialogLoggingOut}
@@ -127,8 +142,12 @@ const Profile = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
+      
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
         {/* User Info Section */}
+        <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+        <Toaster />
+      </View>
         <View className="bg-white p-5 items-center border-b border-gray-200">
           <Image
             source={user?.image ? { uri: user.image } : require('../../../assets/images/profileImage.jpg')}

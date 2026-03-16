@@ -8,6 +8,8 @@ import { Colors } from '../../../constants/Color'
 import { AMCIcon, BucketIcon, CalanderIcon, ComplaintsIcon, CompleteIcon } from '../../../assets/svgIcons/SVGIcons'
 import { useNavigation } from '@react-navigation/native'
 import NoInternet from '../../NoInternet';
+import { toast, Toaster } from 'sonner-native'
+import StatusMessage from '../../../components/StatusMessage'
 
 // Dummy carousel images
 const carouselImages = [
@@ -72,26 +74,40 @@ const Home = () => {
 
   const handleWalletPress = () => {
     console.log('Wallet icon clicked');
-    navigation.navigate('Wallet');
+    toast.custom(
+      <StatusMessage
+        type='info'
+        title={'In Developmenet mode'}
+        
+      />,{duration:500}
+    )
+    // navigation.navigate('Wallet');
   };
 
   const handleCardPress = (cardName) => {
     console.log(`${cardName} card clicked`);
-    if (cardName === 'Complaints') {
-      navigation.navigate('Complaints')
-    }
-    else if (cardName === 'Bucket') {
-      navigation.navigate('Bucket')
-    }
-    else if (cardName === 'AMC') {
-      navigation.navigate('AMC')
-    }
-    else if (cardName === 'Pre-Booking') {
-      navigation.navigate('PreBooking')
-    }
-    else if (cardName === 'Payout') {
-      navigation.navigate('PayOut')
-    }
+    toast.custom(
+      <StatusMessage
+        type='info'
+        title={'In Developmenet mode'}
+        
+      />,{duration:500}
+    )
+    // if (cardName === 'Complaints') {
+    //   navigation.navigate('Complaints')
+    // }
+    // else if (cardName === 'Bucket') {
+    //   navigation.navigate('Bucket')
+    // }
+    // else if (cardName === 'AMC') {
+    //   navigation.navigate('AMC')
+    // }
+    // else if (cardName === 'Pre-Booking') {
+    //   navigation.navigate('PreBooking')
+    // }
+    // else if (cardName === 'Payout') {
+    //   navigation.navigate('PayOut')
+    // }
   };
 
   const renderCarouselItem = ({ item }) => (
@@ -133,13 +149,18 @@ const Home = () => {
       end={{ x: 0, y: 1 }}
       className='flex-1'
     >
+       <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+          <Toaster />
+        </View>
+
       <StatusBar backgroundColor={'transparent'} barStyle={'dark-content'} translucent={true} />
 
       {/* Header with Profile and Icons - Fixed at top */}
       <View
         className='w-full bg-transparent flex-row items-center justify-between px-4'
-        style={{ paddingTop: insets.top+4, paddingBottom: 4 }}
+        style={{ paddingTop: insets.top + 4, paddingBottom: 4 }}
       >
+       
         {/* Left side - Profile */}
         <View className='flex-row items-center flex-1'>
           <View className='relative'>

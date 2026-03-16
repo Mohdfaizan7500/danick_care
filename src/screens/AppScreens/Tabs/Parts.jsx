@@ -3,6 +3,8 @@ import React from 'react'
 import Header from '../../../components/Header'
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import StatusMessage from '../../../components/StatusMessage';
+import { toast, Toaster } from 'sonner-native';
 
 // Category data with images
 const categoryData = [
@@ -253,7 +255,14 @@ const Parts = () => {
   const navigation = useNavigation();
 
   const handleSelectProduct = (product) => {
-    navigation.navigate('SparePartScreen', { product })
+    toast.custom(
+      <StatusMessage
+        type='info'
+        title={'In Developmenet mode'}
+
+      />, { duration: 500 }
+    )
+    // navigation.navigate('SparePartScreen', { product })
   }
   const renderCategoryItem = ({ item }) => (
     <TouchableOpacity
@@ -276,14 +285,18 @@ const Parts = () => {
     </TouchableOpacity>
   );
 
-    const insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
 
   return (
     <View className='flex-1 bg-white '
-        style={{ paddingTop: insets.top, paddingBottom: 12 }}
+      style={{ paddingTop: insets.top, paddingBottom: 12 }}
 
     >
-       <StatusBar backgroundColor={'transparent'} barStyle={'dark-content'} translucent={true} />
+         <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+          <Toaster />
+        </View>
+
+      <StatusBar backgroundColor={'transparent'} barStyle={'dark-content'} translucent={true} />
       <Header
         title="Spare Parts"
         titleStyle={'text-2xl font-bold'}
@@ -293,6 +306,7 @@ const Parts = () => {
       />
 
       <View className="flex-1 bg-gray-50">
+     
         {/* Header Stats */}
 
 
