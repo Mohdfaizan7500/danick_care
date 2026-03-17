@@ -16,6 +16,9 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useState(null);
   const [refreshToken, setRefreshToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // --- NEW: importedPart state (can be any data type) ---
+  const [importedPart, setImportedPart] = useState(null);
 
   // Check for stored tokens on app start
   useEffect(() => {
@@ -111,6 +114,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setAccessToken(null);
       setRefreshToken(null);
+      setImportedPart(null); // Optionally clear importedPart on logout
       
       // Remove from AsyncStorage
       await AsyncStorage.removeItem('accessToken');
@@ -157,11 +161,18 @@ export const AuthProvider = ({ children }) => {
     return null;
   };
 
+  // --- NEW: Update function for importedPart ---
+  const updateImportedPart = (newPart) => {
+    setImportedPart(newPart);
+  };
+
   const value = {
     user,
     accessToken,
     refreshToken,
     isLoading,
+    importedPart,          // <-- New state
+    updateImportedPart,    // <-- New setter
     login,
     logout,
     updateUser,

@@ -57,17 +57,7 @@ const PartDetails = () => {
                         resizeMode="contain"
                     />
 
-                    {/* Favorite Button */}
-                    <TouchableOpacity
-                        onPress={() => setIsFavorite(!isFavorite)}
-                        className='absolute top-12 right-4 bg-white p-3 rounded-full shadow-lg'
-                    >
-                        <Heart
-                            size={24}
-                            color={isFavorite ? '#ef4444' : '#6b7280'}
-                            fill={isFavorite ? '#ef4444' : 'transparent'}
-                        />
-                    </TouchableOpacity>
+                  
                 </View>
 
                 {/* Product Details Section */}
@@ -138,16 +128,9 @@ const PartDetails = () => {
                             className='flex-1 bg-primary-sage500 py-4 rounded-xl flex-row items-center justify-center'
                         >
                             <ShoppingCart size={20} color="white" />
-                            <Text className='text-white font-bold text-lg ml-2'>Add to Cart</Text>
+                            <Text className='text-white font-bold text-lg ml-2'>Add to Bucket</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            onPress={() => console.log('Buy Now')}
-                            className='flex-1 bg-gray-900 py-4 rounded-xl flex-row items-center justify-center'
-                        >
-                            <Tag size={20} color="white" />
-                            <Text className='text-white font-bold text-lg ml-2'>Buy Now</Text>
-                        </TouchableOpacity>
                     </View>
                 </View>
             </ScrollView>

@@ -79,20 +79,7 @@ const Profile = () => {
   };
 
   const handleNavigation = (route) => {
-    if (route === 'ProfileEdit') {
-
-      navigation.navigate(route);
-
-    }
-    else {
-      toast.custom(
-        <StatusMessage
-          type='info'
-          title={'In Developmenet mode'}
-
-        />, { duration: 500 }
-      )
-    }
+    navigation.navigate(route);
   };
 
   const MenuItem = ({ item, isLast }) => (

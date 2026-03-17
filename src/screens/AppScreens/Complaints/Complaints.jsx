@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import Header from '../../components/Header';
+import Header from '../../../components/Header';
 
 // Mock data for complaints – extended with customer info and priority
 const MOCK_COMPLAINTS = [
@@ -89,7 +89,8 @@ const MOCK_COMPLAINTS = [
   },
 ];
 
-const TABS = ['Bucket', 'Assigned', 'In Progress', 'Pending', 'Complete', 'Cancel'];
+// Updated tabs: removed "Cancel" and "Pending", changed "Bucket" to "All"
+const TABS = ['All', 'Assigned', 'In Progress', 'Complete'];
 
 // Skeleton component for loading state
 const SkeletonCard = () => (
@@ -115,15 +116,15 @@ const SkeletonCard = () => (
 const Complaints = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTab, setSelectedTab] = useState('Bucket');
+  const [selectedTab, setSelectedTab] = useState('All'); // Changed from 'Bucket' to 'All'
   const [tabPositions, setTabPositions] = useState([]);
   const [loading, setLoading] = useState(false);
   const scrollViewRef = useRef(null);
   const timeoutRef = useRef(null);
 
-  // Compute counts for each tab
+  // Compute counts for each tab (only for tabs that are still present)
   const counts = TABS.reduce((acc, tab) => {
-    if (tab === 'Bucket') {
+    if (tab === 'All') {
       acc[tab] = MOCK_COMPLAINTS.length;
     } else {
       acc[tab] = MOCK_COMPLAINTS.filter((c) => c.status === tab).length;
@@ -133,7 +134,7 @@ const Complaints = () => {
 
   // Filter complaints based on selected tab and search query
   const filteredComplaints = MOCK_COMPLAINTS.filter((complaint) => {
-    const matchesTab = selectedTab === 'Bucket' || complaint.status === selectedTab;
+    const matchesTab = selectedTab === 'All' || complaint.status === selectedTab;
     const matchesSearch =
       complaint.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       complaint.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||

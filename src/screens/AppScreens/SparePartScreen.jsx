@@ -1,9 +1,11 @@
-import { StyleSheet, Text, View, FlatList, Image, TextInput, TouchableOpacity, Pressable } from 'react-native'
+import { StyleSheet, Text, View, FlatList, Image, TextInput, TouchableOpacity, Pressable, Dimensions } from 'react-native'
 import React, { useState } from 'react'
 import Header from '../../components/Header'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { Search } from 'lucide-react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+
+const { width: screenWidth } = Dimensions.get('window')
 
 const SparePartScreen = () => {
     const route = useRoute();
@@ -11,8 +13,6 @@ const SparePartScreen = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredParts, setFilteredParts] = useState(product.spareParts);
     const navigation = useNavigation();
-
-    console.log('route:', route.params.product)
 
     const handleSearch = (text) => {
         setSearchQuery(text);
@@ -30,6 +30,13 @@ const SparePartScreen = () => {
         navigation.navigate('PartDetails',{part})
     }
 
+    // Grid configuration
+    const numColumns = 3;
+    const margin = 8; // m-2 = 8
+    const containerPadding = 8; // contentContainerStyle padding
+    // Calculate item width: screen width minus horizontal padding and margins
+    const itemWidth = (screenWidth - (containerPadding * 2) - (margin * 2 * numColumns)) / numColumns;
+
     return (
         <SafeAreaView className='flex-1 bg-white'>
             
@@ -42,7 +49,7 @@ const SparePartScreen = () => {
             />
 
             {/* Search Bar */}
-            <View className="bg-white px-4 py-2  border-gray-200">
+            <View className="bg-white px-4 py-2 border-gray-200">
                 <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-0">
                     <Search size={20} color="#666" />
                     <TextInput
@@ -64,9 +71,11 @@ const SparePartScreen = () => {
                 data={filteredParts}
                 renderItem={({ item }) => (
                     <Pressable
-                    onPress={()=>handleClickedProduct(item)}
-                      className="flex-1 m-2 p-2 bg-white rounded-3xl border border-gray-200 overflow-hidden">
-                        <View className='bg-white w-full h-[180] rounded-3xl'>
+                        onPress={() => handleClickedProduct(item)}
+                        style={{ width: itemWidth, margin }}
+                        className="p-2 bg-white flex justify-between rounded-3xl border border-gray-200 overflow-hidden"
+                    >
+                        <View className='bg-white w-full h-[70] rounded-3xl'>
                             <Image
                                 source={{ uri: item.image }}
                                 className="w-full h-full"
@@ -74,19 +83,18 @@ const SparePartScreen = () => {
                             />
                         </View>
                         <View className='px-4 py-3'>
-                            <Text className='font-bold text-xl text-black'>{item.name}</Text>
+                            <Text className='font-bold text-xs text-black'>{item.name}</Text>
                             <Text className='font-semibold text-blue-800 text-lg'>{item.price}</Text>
                         </View>
                     </Pressable>
                 )}
                 keyExtractor={item => item.id.toString()}
-                numColumns={2}
+                numColumns={numColumns}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ padding: 8 }}
-                columnWrapperStyle={{ justifyContent: 'space-between' }}
+                contentContainerStyle={{ padding: containerPadding }}
                 ListEmptyComponent={
                     <View className="flex-1 items-center justify-center py-10">
-                        <Text className="text-gray-500 text-lg">No spare parts found</Text>
+                        <Text className="text-gray-500 text-sm">No spare parts found</Text>
                     </View>
                 }
             />

@@ -255,14 +255,14 @@ const Parts = () => {
   const navigation = useNavigation();
 
   const handleSelectProduct = (product) => {
-    toast.custom(
-      <StatusMessage
-        type='info'
-        title={'In Developmenet mode'}
+    // toast.custom(
+    //   <StatusMessage
+    //     type='info'
+    //     title={'In Developmenet mode'}
 
-      />, { duration: 500 }
-    )
-    // navigation.navigate('SparePartScreen', { product })
+    //   />, { duration: 500 }
+    // )
+    navigation.navigate('SparePartScreen', { product })
   }
   const renderCategoryItem = ({ item }) => (
     <TouchableOpacity

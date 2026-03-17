@@ -2,8 +2,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import BottomTabs from '../../screens/AppScreens/Tabs/BottamTabs'; // Fix typo in import
 import SparePartScreen from '../../screens/AppScreens/SparePartScreen';
 import PartDetails from '../../screens/AppScreens/PartDetails';
-import Complaints from '../../screens/AppScreens/Complaints';
-import Bucket from '../../screens/AppScreens/Bucket';
+import Complaints from '../../screens/AppScreens/Complaints/Complaints';
+import Bucket from '../../screens/AppScreens/Bucket/Bucket';
 import AMC from '../../screens/AppScreens/AMC';
 import PreBooking from '../../screens/AppScreens/PreBooking';
 import PayOut from '../../screens/AppScreens/Payout/PayOut';
@@ -15,7 +15,11 @@ import TermsConditions from '../../screens/AppScreens/TermsConditions';
 import Support from '../../screens/AppScreens/Support';
 import MyComplaints from '../../screens/AppScreens/MyComplaints';
 import AddPart from '../../screens/AppScreens/AddPart';
-import ComplaintDetail from '../../screens/AppScreens/ComplaintDetail';
+import ComplaintDetail from '../../screens/AppScreens/Complaints/ComplaintDetail';
+import BuckePartDetails from '../../screens/AppScreens/Bucket/BucketpartDetails';
+import Billing from '../../screens/AppScreens/Complaints/Billing';
+import AddPartBilling from '../../screens/AppScreens/Complaints/AddPartBilling';
+import Remarkscreen from '../../screens/AppScreens/Complaints/Remarkscreen';
 // import BottomTabs from 
 const Stack = createNativeStackNavigator();
 
@@ -47,6 +51,10 @@ const AppStack = () => {
       <Stack.Screen
         name="Bucket"
         component={Bucket}
+      />
+       <Stack.Screen
+        name="BucketpartDetails"
+        component={BuckePartDetails}
       />
       <Stack.Screen
         name="AMC"
@@ -93,6 +101,11 @@ const AppStack = () => {
         component={AddPart}
       />
       <Stack.Screen name="ComplaintDetail" component={ComplaintDetail} />
+       <Stack.Screen name="Billing" component={Billing} />
+       <Stack.Screen name="AddPartBilling" component={AddPartBilling} />
+       <Stack.Screen name="Remarkscreen" component={Remarkscreen} />
+
+
     </Stack.Navigator>
   )
 }

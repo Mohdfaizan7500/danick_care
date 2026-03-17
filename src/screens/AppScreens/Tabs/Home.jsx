@@ -74,40 +74,44 @@ const Home = () => {
 
   const handleWalletPress = () => {
     console.log('Wallet icon clicked');
-    toast.custom(
-      <StatusMessage
-        type='info'
-        title={'In Developmenet mode'}
+    // toast.custom(
+    //   <StatusMessage
+    //     type='info'
+    //     title={'In Developmenet mode'}
         
-      />,{duration:500}
-    )
-    // navigation.navigate('Wallet');
+    //   />,{duration:500}
+    // )
+    navigation.navigate('Wallet');
   };
 
   const handleCardPress = (cardName) => {
     console.log(`${cardName} card clicked`);
-    toast.custom(
-      <StatusMessage
-        type='info'
-        title={'In Developmenet mode'}
+    // toast.custom(
+    //   <StatusMessage
+    //     type='info'
+    //     title={'In Developmenet mode'}
         
-      />,{duration:500}
-    )
-    // if (cardName === 'Complaints') {
-    //   navigation.navigate('Complaints')
-    // }
-    // else if (cardName === 'Bucket') {
-    //   navigation.navigate('Bucket')
-    // }
-    // else if (cardName === 'AMC') {
-    //   navigation.navigate('AMC')
-    // }
-    // else if (cardName === 'Pre-Booking') {
-    //   navigation.navigate('PreBooking')
-    // }
-    // else if (cardName === 'Payout') {
-    //   navigation.navigate('PayOut')
-    // }
+    //   />,{duration:500}
+    // )
+    if (cardName === 'Complaints') {
+      navigation.navigate('Complaints')
+      // navigation.navigate('Billing')
+
+      // navigation.navigate('AddPartBilling')
+
+    }
+    else if (cardName === 'Bucket') {
+      navigation.navigate('Bucket')
+    }
+    else if (cardName === 'AMC') {
+      navigation.navigate('AMC')
+    }
+    else if (cardName === 'Pre-Booking') {
+      navigation.navigate('PreBooking')
+    }
+    else if (cardName === 'Payout') {
+      navigation.navigate('PayOut')
+    }
   };
 
   const renderCarouselItem = ({ item }) => (
