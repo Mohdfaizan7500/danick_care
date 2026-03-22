@@ -12,9 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { toast } from 'sonner-native';
+import { toast, Toaster } from 'sonner-native';
 import Header from '../../../components/Header';
 import DialogBox from '../../../components/DilaogBox';
+import StatusMessage from '../../../components/StatusMessage';
 
 // Generate 40 dummy partners
 const generateDummyPartners = (count) => {
@@ -88,12 +89,15 @@ const BucketpartDetails = () => {
     setTimeout(() => {
       setTransferLoading(false);
       setSelectedTransferPartner(null);
-      toast.success(`Part transferred to ${selectedTransferPartner.name}`);
+      toast.custom(<StatusMessage type='success' title={`Part transferred to ${selectedTransferPartner.name}`}/>,{duration:1000});
     }, 2000);
   };
 
   return (
     <SafeAreaView className="flex-1 bg-background-primary">
+      <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+        <Toaster />
+      </View>
       <Header
         title="Part Details"
         titlePosition="left"
@@ -167,11 +171,10 @@ const BucketpartDetails = () => {
           <TouchableOpacity
             onPress={handleTransfer}
             disabled={!selectedTransferPartner || transferLoading}
-            className={`py-4 rounded-xl flex-row items-center justify-center ${
-              !selectedTransferPartner || transferLoading
+            className={`py-4 rounded-xl flex-row items-center justify-center ${!selectedTransferPartner || transferLoading
                 ? 'bg-primary-sage300'
                 : 'bg-primary-sage600'
-            }`}
+              }`}
           >
             {transferLoading ? (
               <ActivityIndicator color="white" />
@@ -204,9 +207,8 @@ const BucketpartDetails = () => {
             <TouchableOpacity
               onPress={confirmPartnerSelection}
               disabled={!tempSelectedPartner}
-              className={`py-4 rounded-xl flex-row items-center justify-center ${
-                !tempSelectedPartner ? 'bg-primary-sage300' : 'bg-primary-sage600'
-              }`}
+              className={`py-4 rounded-xl flex-row items-center justify-center ${!tempSelectedPartner ? 'bg-primary-sage300' : 'bg-primary-sage600'
+                }`}
             >
               <Icon name="checkmark" size={20} color="white" />
               <Text className="text-text-inverse font-semibold text-lg ml-2">
@@ -257,11 +259,10 @@ const BucketpartDetails = () => {
           renderItem={({ item: partner }) => (
             <TouchableOpacity
               onPress={() => setTempSelectedPartner(partner)}
-              className={`p-4 rounded-xl mb-2 border ${
-                tempSelectedPartner?.id === partner.id
+              className={`p-4 rounded-xl mb-2 border ${tempSelectedPartner?.id === partner.id
                   ? 'border-primary-sage400 bg-primary-sage50'
                   : 'border-ui-border bg-background-secondary'
-              }`}
+                }`}
             >
               <Text className="text-base font-medium text-text-primary">
                 {partner.name}
