@@ -227,17 +227,17 @@ const Bucket = () => {
     const isDestructive = confirmAction?.includes('cancel');
 
     return (
-      <View className="flex-row justify-end space-x-2">
+      <View className="flex-row justify-end space-x-2 gap-4">
         <TouchableOpacity
           onPress={() => setConfirmVisible(false)}
-          className="px-4 py-2 rounded-full bg-background-tertiary flex-row items-center"
+          className="px-4 py-2 rounded-lg bg-background-tertiary flex-row items-center"
         >
           <Icon name="close-outline" size={18} color="#666" />
           <Text className="text-text-secondary font-medium ml-1">Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleConfirmed}
-          className={`px-4 py-2 rounded-full flex-row items-center ${
+          className={`px-4 py-2 rounded-lg flex-row items-center ${
             isDestructive ? 'bg-ui-error' : 
             confirmAction === 'acceptReceived' ? 'bg-ui-success' : 
             'bg-primary-sage600'
@@ -293,7 +293,7 @@ const Bucket = () => {
             <TouchableOpacity
               onPress={() => openConfirmation('cancelTransfer', item)}
               disabled={isLoading}
-              className={`px-4 py-2 rounded-full flex-row items-center ${isLoading ? 'bg-ui-disabled' : 'bg-ui-error'}`}
+              className={`px-4 py-2 rounded-lg flex-row items-center ${isLoading ? 'bg-ui-disabled' : 'bg-ui-error'}`}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#fff" />
@@ -308,27 +308,12 @@ const Bucket = () => {
         )}
 
         {isReceivedTab && (
-          <View className="mt-3 flex-row justify-end space-x-2">
-            {/* Accept button */}
-            <TouchableOpacity
-              onPress={() => openConfirmation('acceptReceived', item)}
-              disabled={isLoading}
-              className={`px-4 py-2 rounded-full flex-row items-center mr-2 ${isLoading ? 'bg-ui-disabled' : 'bg-ui-success'}`}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Icon name="checkmark-circle-outline" size={18} color="#fff" />
-                  <Text className="text-white font-medium ml-1">Accept</Text>
-                </>
-              )}
-            </TouchableOpacity>
-            {/* Cancel button */}
+          <View className="mt-3 flex-row justify-end space-x-2 gap-4">
+             {/* Cancel button */}
             <TouchableOpacity
               onPress={() => openConfirmation('cancelReceived', item)}
               disabled={isLoading}
-              className={`px-4 py-2 rounded-full flex-row items-center ${isLoading ? 'bg-ui-disabled' : 'bg-ui-error'}`}
+              className={`px-4 py-2 rounded-lg flex-row items-center ${isLoading ? 'bg-ui-disabled' : 'bg-red-500'}`}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#fff" />
@@ -339,6 +324,22 @@ const Bucket = () => {
                 </>
               )}
             </TouchableOpacity>
+            {/* Accept button */}
+            <TouchableOpacity
+              onPress={() => openConfirmation('acceptReceived', item)}
+              disabled={isLoading}
+              className={`px-4 py-2 rounded-lg flex-row items-center  ${isLoading ? 'bg-ui-disabled' : 'bg-ui-success'}`}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Icon name="checkmark-circle-outline" size={18} color="#fff" />
+                  <Text className="text-white font-medium ml-1">Accept</Text>
+                </>
+              )}
+            </TouchableOpacity>
+           
           </View>
         )}
       </View>

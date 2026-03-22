@@ -13,7 +13,7 @@ const AppNavigation = () => {
     if (isLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Loading...</Text>
+                <Text style={styles.loadingText}>Loading...ewuirwui</Text>
             </View>
         );
     }

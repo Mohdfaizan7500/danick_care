@@ -1,12 +1,14 @@
-import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity, StatusBar } from 'react-native'
-import React from 'react'
-import Header from '../../../components/Header'
+import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import Header from '../../../components/Header';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StatusMessage from '../../../components/StatusMessage';
 import { toast, Toaster } from 'sonner-native';
+import NetInfo from '@react-native-community/netinfo';
+import NoInternet from '../../NoInternet';
 
-// Category data with images
+// Category data with images (unchanged)
 const categoryData = [
   {
     id: 1,
@@ -251,26 +253,38 @@ const categoryData = [
 ];
 
 const Parts = () => {
-
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
+  // ---------- Network state ----------
+  const [isConnected, setIsConnected] = useState(true);
+
+  // ---------- Network listener ----------
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ---------- Navigation handlers (optional: block if offline) ----------
   const handleSelectProduct = (product) => {
+    if (!isConnected) return; // optionally prevent navigation
     // toast.custom(
-    //   <StatusMessage
-    //     type='info'
-    //     title={'In Developmenet mode'}
-
-    //   />, { duration: 500 }
+    //   <StatusMessage type='info' title={'In Development mode'} />,
+    //   { duration: 500 }
     // )
-    navigation.navigate('SparePartScreen', { product })
-  }
+    navigation.navigate('SparePartScreen', { product });
+  };
+
   const renderCategoryItem = ({ item }) => (
     <TouchableOpacity
-      className="flex-1 m-1.5 "
+      className="flex-1 m-1.5"
       onPress={() => handleSelectProduct(item)}
+      disabled={!isConnected} // disable when offline
     >
-      <View className={`bg-white rounded-2xl p-3 items-center  border-gray-300 border  `}>
-        <View className="w-full h-20  bg-white overflow-hidden mb-2 ">
+      <View className={`bg-white rounded-2xl p-3 items-center border-gray-300 border`}>
+        <View className="w-full h-20 bg-white overflow-hidden mb-2">
           <Image
             source={{ uri: item.imageUrl }}
             className="w-full h-full"
@@ -280,51 +294,51 @@ const Parts = () => {
         <Text className="text-sm font-semibold text-gray-800 text-center" numberOfLines={1}>
           {item.name}
         </Text>
-
       </View>
     </TouchableOpacity>
   );
 
-  const insets = useSafeAreaInsets();
-
   return (
-    <View className='flex-1 bg-white '
-      style={{ paddingTop: insets.top, paddingBottom: 12 }}
+    <View className="flex-1 bg-white" style={{ paddingTop: insets.top, paddingBottom: 12 }}>
+      {/* Toaster for notifications */}
+      <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+        <Toaster />
+      </View>
 
-    >
-         <View className="absolute inset-0 z-50 w-90% pointer-events-none">
-          <Toaster />
-        </View>
+      <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent />
 
-      <StatusBar backgroundColor={'transparent'} barStyle={'dark-content'} translucent={true} />
+      {/* Header is always visible */}
       <Header
         title="Spare Parts"
-        titleStyle={'text-2xl font-bold'}
+        titleStyle="text-2xl font-bold"
         showBackButton={false}
         titlePosition="left"
         containerStyle="bg-white flex-row items-center justify-between px-4 py-5 border-b border-gray-200"
       />
 
-      <View className="flex-1 bg-gray-50">
-     
-        {/* Header Stats */}
-
-
-        {/* Categories Grid */}
-        <FlatList
-          data={categoryData}
-          renderItem={renderCategoryItem}
-          keyExtractor={item => item.id.toString()}
-          numColumns={3}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 6 }}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
-        />
-      </View>
+      {/* Main content: show only when online */}
+      {isConnected ? (
+        <View className="flex-1 bg-gray-50">
+          <FlatList
+            data={categoryData}
+            renderItem={renderCategoryItem}
+            keyExtractor={item => item.id.toString()}
+            numColumns={3}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ padding: 6 }}
+            columnWrapperStyle={{ justifyContent: 'space-between' }}
+          />
+        </View>
+      ) : (
+        /* No Internet Overlay – full screen, covering everything except header */
+        <View style={{ flex: 1 }}>
+          <NoInternet />
+        </View>
+      )}
     </View>
-  )
-}
+  );
+};
 
-export default Parts
+export default Parts;
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({});

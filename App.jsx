@@ -28,17 +28,20 @@ export default function App() {
     //   // }}
     // // You can pass custom styles here if you want a default look
     // >
-      <AuthProvider>
+    <AuthProvider>
 
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <SafeAreaProvider>
-            <Toaster position="top"/>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          {/* <Toaster position="top"/> */}
+          <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+            <Toaster />
+          </View>
 
 
-            <AppNavigation />
-          </SafeAreaProvider>
-        </GestureHandlerRootView>
-      </AuthProvider>
+          <AppNavigation />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </AuthProvider>
     // </ToastProvider>
 
   );

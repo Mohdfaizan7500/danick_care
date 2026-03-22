@@ -1,15 +1,13 @@
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   Modal,
-  Button,
   FlatList,
   Animated,
   Easing,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const months = [
@@ -18,7 +16,7 @@ const months = [
 ];
 
 const SkeletonSalaryCard = () => {
-   const opacity = useRef(new Animated.Value(0.3)).current;
+  const opacity = useRef(new Animated.Value(0.3)).current;
   Animated.loop(
     Animated.sequence([
       Animated.timing(opacity, {
@@ -64,6 +62,38 @@ const SalaryTab = ({
   handleMonthYearConfirm,
   formatCurrency,
 }) => {
+  // Local state for month/year selection in modal
+  const [tempMonth, setTempMonth] = useState(selectedMonth);
+  const [tempYear, setTempYear] = useState(selectedYear);
+
+  // When modal opens, reset temp to current selections
+  React.useEffect(() => {
+    if (showMonthYearModal) {
+      setTempMonth(selectedMonth);
+      setTempYear(selectedYear);
+    }
+  }, [showMonthYearModal]);
+
+  const handleYearChange = (direction) => {
+    const currentYear = parseInt(tempYear, 10);
+    if (direction === 'prev') {
+      setTempYear((currentYear - 1).toString());
+    } else {
+      setTempYear((currentYear + 1).toString());
+    }
+  };
+
+  const handleMonthSelect = (month) => {
+    setTempMonth(month);
+  };
+
+  const handleConfirm = () => {
+    setSelectedMonth(tempMonth);
+    setSelectedYear(tempYear);
+    handleMonthYearConfirm(); // call the parent's confirm handler
+    setShowMonthYearModal(false);
+  };
+
   const renderSalaryItem = ({ item }) => (
     <View className="bg-white border border-gray-200 rounded-xl p-4 mb-3 shadow-sm">
       <View className="flex-row items-center justify-between">
@@ -132,32 +162,59 @@ const SalaryTab = ({
         <View className="flex-1 justify-center bg-black/50">
           <View className="bg-white mx-6 rounded-xl p-5">
             <Text className="text-lg font-bold text-gray-800 mb-3">Select Month & Year</Text>
-            <View className="flex-row">
-              <View className="flex-1 border border-gray-300 rounded-lg mr-2">
-                <Picker
-                  selectedValue={selectedMonth}
-                  onValueChange={(itemValue) => setSelectedMonth(itemValue)}
-                >
-                  {months.map((month) => (
-                    <Picker.Item key={month} label={month} value={month} />
-                  ))}
-                </Picker>
-              </View>
-              <View className="flex-1 border border-gray-300 rounded-lg ml-2">
-                <Picker
-                  selectedValue={selectedYear}
-                  onValueChange={(itemValue) => setSelectedYear(itemValue)}
-                >
-                  {['2023', '2024', '2025', '2026'].map((year) => (
-                    <Picker.Item key={year} label={year} value={year} />
-                  ))}
-                </Picker>
-              </View>
+            
+            {/* Year selector with arrows */}
+            <View className="flex-row items-center justify-between mb-4">
+              <TouchableOpacity
+                onPress={() => handleYearChange('prev')}
+                className="p-2 bg-gray-100 rounded-full"
+              >
+                <Icon name="chevron-back" size={24} color="#4b5563" />
+              </TouchableOpacity>
+              <Text className="text-xl font-semibold text-gray-800">{tempYear}</Text>
+              <TouchableOpacity
+                onPress={() => handleYearChange('next')}
+                className="p-2 bg-gray-100 rounded-full"
+              >
+                <Icon name="chevron-forward" size={24} color="#4b5563" />
+              </TouchableOpacity>
             </View>
+
+            {/* Month grid */}
+            <View className="flex-row flex-wrap justify-between">
+              {months.map((month) => (
+                <TouchableOpacity
+                  key={month}
+                  className={`w-[30%] py-3 mb-3 rounded-lg ${
+                    tempMonth === month ? 'bg-primary-sage500' : 'bg-gray-100'
+                  }`}
+                  onPress={() => handleMonthSelect(month)}
+                >
+                  <Text
+                    className={`text-center font-medium ${
+                      tempMonth === month ? 'text-white' : 'text-gray-700'
+                    }`}
+                  >
+                    {month.slice(0, 3)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Action buttons */}
             <View className="flex-row justify-end mt-4">
-              <Button title="Cancel" onPress={() => setShowMonthYearModal(false)} />
-              <View className="w-3" />
-              <Button title="Confirm" onPress={handleMonthYearConfirm} />
+              <TouchableOpacity
+                className="px-4 py-2 rounded-lg bg-gray-200 mr-2"
+                onPress={() => setShowMonthYearModal(false)}
+              >
+                <Text className="text-gray-700 font-medium">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="px-4 py-2 rounded-lg bg-primary-sage500"
+                onPress={handleConfirm}
+              >
+                <Text className="text-white font-medium">Confirm</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>

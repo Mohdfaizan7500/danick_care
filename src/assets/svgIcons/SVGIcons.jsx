@@ -385,3 +385,49 @@ export const TermsIcon = (props) => (
     <Path d="M240-80q-50 0-85-35t-35-85v-120h120v-560h600v680q0 50-35 85t-85 35H240Zm480-80q17 0 28.5-11.5T760-200v-600H320v480h360v120q0 17 11.5 28.5T720-160ZM360-600v-80h360v80H360Zm0 120v-80h360v80H360ZM240-160h360v-80H200v40q0 17 11.5 28.5T240-160Zm0 0h-40 400-360Z" />
   </Svg>
 );
+
+export const CalenderIcon = (props) => (
+  <Svg
+    width={20}
+    height={20}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <Path
+      d="M6.66992 1.66992L6.66992 4.98992"
+      stroke="#251D18"
+      strokeWidth={1.66}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    {...props}
+
+    />
+    <Path
+      d="M13.3301 1.66992V4.98992"
+      stroke="#251D18"
+      strokeWidth={1.66}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M15.8103 3.35938L4.19027 3.35938C3.27348 3.35938 2.53027 4.10258 2.53027 5.01937L2.53027 16.6394C2.53027 17.5562 3.27348 18.2994 4.19027 18.2994L15.8103 18.2994C16.7271 18.2994 17.4703 17.5562 17.4703 16.6394L17.4703 5.01937C17.4703 4.10258 16.7271 3.35938 15.8103 3.35938Z"
+      stroke="#251D18"
+      strokeWidth={1.66}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    {...props}
+
+    />
+    <Path
+      d="M2.53027 8.33008L17.4703 8.33008"
+      stroke="#251D18"
+      strokeWidth={1.66}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    {...props}
+
+    />
+  </Svg>
+);

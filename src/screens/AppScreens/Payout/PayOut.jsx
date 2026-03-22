@@ -84,17 +84,17 @@ const PayOut = () => {
       <View className="flex-row border-b border-gray-200">
         <TouchableOpacity
           onPress={() => setActiveTab('salary')}
-          className={`flex-1 py-3 items-center ${activeTab === 'salary' ? 'border-b-2 border-blue-500' : ''}`}
+          className={`flex-1 py-3 items-center ${activeTab === 'salary' ? 'border-b-2 border-primary-sage500' : ''}`}
         >
-          <Text className={`text-base ${activeTab === 'salary' ? 'text-blue-500 font-semibold' : 'text-gray-600'}`}>
+          <Text className={`text-base ${activeTab === 'salary' ? 'text-primary-sage500 font-semibold' : 'text-gray-600'}`}>
             Salary
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setActiveTab('commission')}
-          className={`flex-1 py-3 items-center ${activeTab === 'commission' ? 'border-b-2 border-blue-500' : ''}`}
+          className={`flex-1 py-3 items-center ${activeTab === 'commission' ? 'border-b-2 border-primary-sage500 ' : ''}`}
         >
-          <Text className={`text-base ${activeTab === 'commission' ? 'text-blue-500 font-semibold' : 'text-gray-600'}`}>
+          <Text className={`text-base ${activeTab === 'commission' ? 'text-primary-sage500 font-semibold' : 'text-gray-600'}`}>
             Commission
           </Text>
         </TouchableOpacity>

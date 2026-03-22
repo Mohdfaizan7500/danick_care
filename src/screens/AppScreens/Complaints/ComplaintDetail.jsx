@@ -47,10 +47,24 @@ const ComplaintDetail = () => {
         const phoneNumber = complaint.phone;
         if (phoneNumber) {
             Linking.openURL(`tel:${phoneNumber}`).catch(() => {
-                toast.error('Could not open dialer');
+                toast.custom(
+                    <StatusMessage
+                        type="error"
+                        title="Could not open dialer"
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
             });
         } else {
-            toast.error('No phone number available');
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title="No phone number available"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
         }
     };
 
@@ -59,10 +73,24 @@ const ComplaintDetail = () => {
         if (address) {
             const encodedAddress = encodeURIComponent(address);
             Linking.openURL(`https://maps.google.com/?q=${encodedAddress}`).catch(() => {
-                toast.error('Could not open maps');
+                toast.custom(
+                    <StatusMessage
+                        type="error"
+                        title="Could not open maps"
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
             });
         } else {
-            toast.error('No address available');
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title="No address available"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
         }
     };
 
@@ -73,7 +101,14 @@ const ComplaintDetail = () => {
         setVerified(false);
         setJobStarted(false);
         setPhotoUri(null);
-        toast.info('Action cancelled');
+        toast.custom(
+            <StatusMessage
+                type="info"
+                title="Action cancelled"
+                className="mx-4 mb-6"
+            />,
+            { duration: 3000 }
+        );
     };
 
     const handleStartJob = () => {
@@ -89,18 +124,43 @@ const ComplaintDetail = () => {
         );
     };
 
-    const handleOtpChange = (text, index) => {
-        const newOtp = [...otp];
-        newOtp[index] = text;
-        setOtp(newOtp);
-        if (text && index < 3) {
-            inputRefs.current[index + 1]?.focus();
-        }
-    };
+const handleOtpChange = (text, index) => {
+    const newOtp = [...otp];
 
-    const handleKeyPress = (e, index) => {
-        if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+    // If user cleared the input (backspace case)
+    if (text === '') {
+        newOtp[index] = '';
+        setOtp(newOtp);
+
+        // Move to previous input
+        if (index > 0) {
             inputRefs.current[index - 1]?.focus();
+        }
+        return;
+    }
+
+    // Normal input
+    newOtp[index] = text;
+    setOtp(newOtp);
+
+    // Move to next input
+    if (index < 3) {
+        inputRefs.current[index + 1]?.focus();
+    }
+};
+
+    // Improved backspace handling: on empty field, clear previous digit and move focus
+    const handleKeyPress = (e, index) => {
+        if (e.nativeEvent.key === 'Backspace') {
+            // If current field is empty and it's not the first field
+            if (otp[index] === '' && index > 0) {
+                // Clear the previous field
+                const newOtp = [...otp];
+                newOtp[index - 1] = '';
+                setOtp(newOtp);
+                // Move focus to previous field
+                inputRefs.current[index - 1]?.focus();
+            }
         }
     };
 
@@ -133,7 +193,14 @@ const ComplaintDetail = () => {
                 );
             } else {
                 setVerifying(false);
-                toast.error('Invalid OTP');
+                toast.custom(
+                    <StatusMessage
+                        type="error"
+                        title="Invalid OTP"
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
             }
         }, 1500);
     };
@@ -164,7 +231,14 @@ const ComplaintDetail = () => {
     const handleTakePhoto = async () => {
         const hasPermission = await checkCameraPermission();
         if (!hasPermission) {
-            toast.error('Camera permission denied');
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title="Camera permission denied"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
             return;
         }
 
@@ -181,7 +255,14 @@ const ComplaintDetail = () => {
                 console.log('User cancelled camera');
             } else if (response.error) {
                 console.log('Camera error: ', response.error);
-                toast.error('Camera error: ' + response.error);
+                toast.custom(
+                    <StatusMessage
+                        type="error"
+                        title={`Camera error: ${response.error}`}
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
             } else if (response.assets && response.assets[0]) {
                 setPhotoUri(response.assets[0].uri);
             }
@@ -190,7 +271,14 @@ const ComplaintDetail = () => {
 
     const handleSendPhoto = () => {
         if (!photoUri) {
-            toast.error('Please take a photo first');
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title="Please take a photo first"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
             return;
         }
 
@@ -199,7 +287,14 @@ const ComplaintDetail = () => {
         // Simulate 2-second upload
         setTimeout(() => {
             setSendingPhoto(false);
-            toast.success('Photo sent successfully!');
+            toast.custom(
+                <StatusMessage
+                    type="success"
+                    title="Photo sent successfully!"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
             // Navigate to next screen – replace 'Home' with your actual screen
             navigation.replace('Remarkscreen'); // use replace to prevent going back to this screen
         }, 2000);
@@ -219,7 +314,7 @@ const ComplaintDetail = () => {
                 containerStyle="bg-background-primary flex-row items-center justify-between px-4 py-4 border-gray-200"
             />
 
-            <ScrollView className="flex-1 px-4 pt-4 " contentContainerStyle={{paddingBottom:30}}>
+            <ScrollView className="flex-1 px-4 pt-4 " contentContainerStyle={{ paddingBottom: 30 }}>
                 {/* Title and Priority */}
                 <View className="flex-row items-center justify-between">
                     <Text className="text-text-primary text-2xl font-bold mb-2">
@@ -227,22 +322,20 @@ const ComplaintDetail = () => {
                     </Text>
                     <View className="mb-2">
                         <View
-                            className={`px-3 py-1 rounded-full ${
-                                complaint.priority === 'High'
+                            className={`px-3 py-1 rounded-full ${complaint.priority === 'High'
                                     ? 'bg-ui-error/20'
                                     : complaint.priority === 'Medium'
-                                    ? 'bg-ui-warning/20'
-                                    : 'bg-ui-success/20'
-                            }`}
+                                        ? 'bg-ui-warning/20'
+                                        : 'bg-ui-success/20'
+                                }`}
                         >
                             <Text
-                                className={`text-xs font-medium ${
-                                    complaint.priority === 'High'
+                                className={`text-xs font-medium ${complaint.priority === 'High'
                                         ? 'text-ui-error'
                                         : complaint.priority === 'Medium'
-                                        ? 'text-ui-warning'
-                                        : 'text-ui-success'
-                                }`}
+                                            ? 'text-ui-warning'
+                                            : 'text-ui-success'
+                                    }`}
                             >
                                 {complaint.priority} Priority
                             </Text>
@@ -252,34 +345,32 @@ const ComplaintDetail = () => {
 
                 {/* Status Badge */}
                 <View
-                    className={`self-start px-4 py-2 rounded-full mb-4 ${
-                        complaint.status === 'Assigned'
+                    className={`self-start px-4 py-2 rounded-full mb-4 ${complaint.status === 'Assigned'
                             ? 'bg-primary-sage100'
                             : complaint.status === 'In Progress'
-                            ? 'bg-ui-warning/20'
-                            : complaint.status === 'Pending'
-                            ? 'bg-ui-secondary/20'
-                            : complaint.status === 'Complete'
-                            ? 'bg-ui-success/20'
-                            : complaint.status === 'Cancel'
-                            ? 'bg-ui-error/20'
-                            : 'bg-gray-100'
-                    }`}
+                                ? 'bg-ui-warning/20'
+                                : complaint.status === 'Pending'
+                                    ? 'bg-ui-secondary/20'
+                                    : complaint.status === 'Complete'
+                                        ? 'bg-ui-success/20'
+                                        : complaint.status === 'Cancel'
+                                            ? 'bg-ui-error/20'
+                                            : 'bg-gray-100'
+                        }`}
                 >
                     <Text
-                        className={`text-sm font-medium ${
-                            complaint.status === 'Assigned'
+                        className={`text-sm font-medium ${complaint.status === 'Assigned'
                                 ? 'text-primary-sage700'
                                 : complaint.status === 'In Progress'
-                                ? 'text-ui-warning'
-                                : complaint.status === 'Pending'
-                                ? 'text-text-secondary'
-                                : complaint.status === 'Complete'
-                                ? 'text-ui-success'
-                                : complaint.status === 'Cancel'
-                                ? 'text-ui-error'
-                                : 'text-text-tertiary'
-                        }`}
+                                    ? 'text-ui-warning'
+                                    : complaint.status === 'Pending'
+                                        ? 'text-text-secondary'
+                                        : complaint.status === 'Complete'
+                                            ? 'text-ui-success'
+                                            : complaint.status === 'Cancel'
+                                                ? 'text-ui-error'
+                                                : 'text-text-tertiary'
+                            }`}
                     >
                         {complaint.status}
                     </Text>
@@ -301,7 +392,7 @@ const ComplaintDetail = () => {
                                     maxLength={1}
                                     value={digit}
                                     onChangeText={(text) => handleOtpChange(text, index)}
-                                    onKeyPress={(e) => handleKeyPress(e, index)}
+                                    selectTextOnFocus
                                     editable={!verifying && !verified}
                                 />
                             ))}
@@ -310,9 +401,8 @@ const ComplaintDetail = () => {
                         <TouchableOpacity
                             onPress={handleVerifyOtp}
                             disabled={verifying || verified}
-                            className={`mt-4 py-3 rounded-xl items-center ${
-                                verifying ? 'bg-ui-secondary' : 'bg-primary-sage600'
-                            }`}
+                            className={`mt-4 py-3 rounded-xl items-center ${verifying ? 'bg-ui-secondary' : 'bg-primary-sage600'
+                                }`}
                         >
                             {verifying ? (
                                 <ActivityIndicator color="#fff" />
@@ -323,7 +413,7 @@ const ComplaintDetail = () => {
                     </View>
                 )}
 
-                 {/* Camera Section – appears after verification */}
+                {/* Camera Section – appears after verification */}
                 {verified && (
                     <View className="mb-6">
                         {/* Dropbox-style "Take Photo" button */}
@@ -358,9 +448,8 @@ const ComplaintDetail = () => {
                         <TouchableOpacity
                             onPress={handleSendPhoto}
                             disabled={sendingPhoto || !photoUri}
-                            className={`py-4 rounded-xl items-center ${
-                                sendingPhoto || !photoUri ? 'bg-ui-disabled' : 'bg-ui-success'
-                            }`}
+                            className={`py-4 rounded-xl items-center ${sendingPhoto || !photoUri ? 'bg-ui-disabled' : 'bg-ui-success'
+                                }`}
                         >
                             {sendingPhoto ? (
                                 <ActivityIndicator color="#fff" />
@@ -432,14 +521,12 @@ const ComplaintDetail = () => {
                         <TouchableOpacity
                             onPress={handleReverse}
                             disabled={verifying}
-                            className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${
-                                verifying ? 'bg-ui-disabled' : 'bg-ui-secondary/20'
-                            }`}
+                            className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${verifying ? 'bg-ui-disabled' : 'bg-ui-secondary/20'
+                                }`}
                         >
                             <Text
-                                className={`font-semibold ${
-                                    verifying ? 'text-text-disabled' : 'text-text-secondary'
-                                }`}
+                                className={`font-semibold ${verifying ? 'text-text-disabled' : 'text-text-secondary'
+                                    }`}
                             >
                                 Reverse
                             </Text>
@@ -449,14 +536,12 @@ const ComplaintDetail = () => {
                             <TouchableOpacity
                                 onPress={handleStartJob}
                                 disabled={verifying}
-                                className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${
-                                    verifying ? 'bg-ui-disabled' : 'bg-primary-sage600'
-                                }`}
+                                className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${verifying ? 'bg-ui-disabled' : 'bg-primary-sage600'
+                                    }`}
                             >
                                 <Text
-                                    className={`font-semibold ${
-                                        verifying ? 'text-text-disabled' : 'text-text-inverse'
-                                    }`}
+                                    className={`font-semibold ${verifying ? 'text-text-disabled' : 'text-text-inverse'
+                                        }`}
                                 >
                                     Start Job
                                 </Text>
@@ -479,8 +564,6 @@ const ComplaintDetail = () => {
                         </View>
                     </View>
                 )}
-
-               
             </ScrollView>
         </SafeAreaView>
     );

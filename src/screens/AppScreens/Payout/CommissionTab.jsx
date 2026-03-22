@@ -1,4 +1,4 @@
-import React, { useRef,useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,22 +14,24 @@ import Icon from 'react-native-vector-icons/Ionicons';
 
 const SkeletonCommissionCard = () => {
   const opacity = useRef(new Animated.Value(0.3)).current;
-  Animated.loop(
-    Animated.sequence([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 800,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0.3,
-        duration: 800,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    ])
-  ).start();
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.3,
+          duration: 800,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   return (
     <Animated.View style={{ opacity }} className="bg-white border border-gray-200 rounded-xl p-4 mb-3 shadow-sm">
@@ -38,22 +40,12 @@ const SkeletonCommissionCard = () => {
         <View className="w-16 h-6 bg-gray-200 rounded-full" />
       </View>
       <View className="flex-row justify-between mt-2">
-        <View className="items-center">
-          <View className="w-10 h-3 bg-gray-200 rounded mb-1" />
-          <View className="w-12 h-4 bg-gray-200 rounded" />
-        </View>
-        <View className="items-center">
-          <View className="w-10 h-3 bg-gray-200 rounded mb-1" />
-          <View className="w-12 h-4 bg-gray-200 rounded" />
-        </View>
-        <View className="items-center">
-          <View className="w-10 h-3 bg-gray-200 rounded mb-1" />
-          <View className="w-12 h-4 bg-gray-200 rounded" />
-        </View>
-        <View className="items-center">
-          <View className="w-10 h-3 bg-gray-200 rounded mb-1" />
-          <View className="w-12 h-4 bg-gray-200 rounded" />
-        </View>
+        {[1, 2, 3, 4].map((_, i) => (
+          <View key={i} className="items-center">
+            <View className="w-10 h-3 bg-gray-200 rounded mb-1" />
+            <View className="w-12 h-4 bg-gray-200 rounded" />
+          </View>
+        ))}
       </View>
     </Animated.View>
   );
@@ -110,9 +102,12 @@ const CommissionTab = ({
     </View>
   );
 
+  // Teal color constant
+  const teal = '#3FD298';
+
   return (
     <View className="flex-1">
-      {/* Summary Cards */}
+      {/* Summary Cards (unchanged) */}
       <View className="flex-row flex-wrap justify-between px-4 py-3">
         <View className="bg-green-50 rounded-xl p-2 w-[18%] items-center border border-green-200">
           <Icon name="stats-chart-outline" size={20} color="#10b981" />
@@ -141,7 +136,7 @@ const CommissionTab = ({
         </View>
       </View>
 
-      {/* Date Pickers + Submit Button */}
+      {/* Date Pickers + Submit Button (Submit button now teal) */}
       <View className="flex-row justify-between px-4 py-2">
         <TouchableOpacity
           className="flex-1 flex-row items-center bg-gray-100 rounded-full px-3 py-2 mr-1 border border-gray-300"
@@ -162,55 +157,78 @@ const CommissionTab = ({
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          className="flex-1 flex-row items-center bg-blue-500 rounded-full px-3 py-2 ml-1 justify-center"
+          className="flex flex-row items-center bg-primary-sage500 rounded-full px-3 py-2 ml-1 justify-center"
+          // style={{ backgroundColor: teal }}
           onPress={handleCommissionSubmit}
         >
-          <Icon name="checkmark-outline" size={16} color="#ffffff" />
-          <Text className="text-white ml-1 text-xs font-semibold">Submit</Text>
+          <Icon name="search" size={16} color="#ffffff" />
+          {/* <Text className="text-white ml-1 text-xs font-semibold">Submit</Text> */}
         </TouchableOpacity>
       </View>
 
-      {/* Start Date Calendar Modal */}
+      {/* Start Date Calendar Modal with teal theme and enhanced design */}
       <Modal visible={showStartCalendar} transparent animationType="slide">
         <View className="flex-1 justify-center bg-black/50">
-          <View className="bg-white mx-4 rounded-xl p-4">
-            <Text className="text-lg font-bold mb-3">Select Start Date</Text>
+          <View className="bg-white mx-4 rounded-2xl p-5 shadow-xl">
+            <Text className="text-lg font-bold mb-3 text-gray-800">Select Start Date</Text>
             <Calendar
               onDayPress={handleStartDateSelect}
               markedDates={{
-                [startDate]: { selected: true, selectedColor: '#3b82f6' },
+                [startDate]: { selected: true, selectedColor: teal },
               }}
               theme={{
-                selectedDayBackgroundColor: '#3b82f6',
-                todayTextColor: '#3b82f6',
+                selectedDayBackgroundColor: teal,
+                todayTextColor: teal,
+                arrowColor: teal,
+                monthTextColor: teal,
+                textMonthFontWeight: 'bold',
+                textDayHeaderFontWeight: '600',
+                textDayFontSize: 15,
+              }}
+              style={{
+                borderRadius: 12,
+                overflow: 'hidden',
               }}
             />
-            <Button title="Close" onPress={() => setShowStartCalendar(false)} />
+            <View className="mt-4">
+              <Button title="Close" onPress={() => setShowStartCalendar(false)} color={teal} />
+            </View>
           </View>
         </View>
       </Modal>
 
-      {/* End Date Calendar Modal */}
+      {/* End Date Calendar Modal with same teal theme */}
       <Modal visible={showEndCalendar} transparent animationType="slide">
         <View className="flex-1 justify-center bg-black/50">
-          <View className="bg-white mx-4 rounded-xl p-4">
-            <Text className="text-lg font-bold mb-3">Select End Date</Text>
+          <View className="bg-white mx-4 rounded-2xl p-5 shadow-xl">
+            <Text className="text-lg font-bold mb-3 text-gray-800">Select End Date</Text>
             <Calendar
               onDayPress={handleEndDateSelect}
               markedDates={{
-                [endDate]: { selected: true, selectedColor: '#3b82f6' },
+                [endDate]: { selected: true, selectedColor: teal },
               }}
               theme={{
-                selectedDayBackgroundColor: '#3b82f6',
-                todayTextColor: '#3b82f6',
+                selectedDayBackgroundColor: teal,
+                todayTextColor: teal,
+                arrowColor: teal,
+                monthTextColor: teal,
+                textMonthFontWeight: 'bold',
+                textDayHeaderFontWeight: '600',
+                textDayFontSize: 15,
+              }}
+              style={{
+                borderRadius: 12,
+                overflow: 'hidden',
               }}
             />
-            <Button title="Close" onPress={() => setShowEndCalendar(false)} />
+            <View className="mt-4">
+              <Button title="Close" onPress={() => setShowEndCalendar(false)} color={teal} />
+            </View>
           </View>
         </View>
       </Modal>
 
-      {/* List or Skeletons */}
+      {/* List or Skeletons (unchanged) */}
       {isCommissionLoading ? (
         <FlatList
           data={[1, 2, 3, 4, 5]}
@@ -231,6 +249,5 @@ const CommissionTab = ({
     </View>
   );
 };
-
 
 export default CommissionTab;

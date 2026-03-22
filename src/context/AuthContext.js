@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useState(null);
   const [refreshToken, setRefreshToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [IsOnline, setIsOnline] = useState(true);
   
   // --- NEW: importedPart state (can be any data type) ---
   const [importedPart, setImportedPart] = useState(null);
@@ -23,7 +24,8 @@ export const AuthProvider = ({ children }) => {
   // Check for stored tokens on app start
   useEffect(() => {
     checkStoredTokens();
-  }, []);
+  }, [IsOnline]);
+
 
   const checkStoredTokens = async () => {
     try {
@@ -177,6 +179,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     refreshUserFromToken,
+    IsOnline,
     isAuthenticated: !!accessToken
   };
 

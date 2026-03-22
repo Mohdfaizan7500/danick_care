@@ -3,9 +3,11 @@ import React, { useState } from 'react';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
+import { useAuth } from '../../context/AuthContext';
 
 const Notification = () => {
   const [activeTab, setActiveTab] = useState('all');
+
   const [notifications, setNotifications] = useState([
     {
       id: '1',
@@ -192,14 +194,14 @@ const Notification = () => {
   // Helper function to get icon based on title/type
   const getIconForNotification = (title, type) => {
     const titleLower = title.toLowerCase();
-    
+
     if (titleLower.includes('login')) return 'login';
     if (titleLower.includes('logout')) return 'logout';
     if (titleLower.includes('session')) return 'timer';
     if (titleLower.includes('account activated')) return 'check-circle';
     if (titleLower.includes('account inactive')) return 'pause-circle';
     if (titleLower.includes('welcome back')) return 'waving-hand';
-    
+
     // Service related
     if (titleLower.includes('ac cleaning')) return 'cleaning-services';
     if (titleLower.includes('repair')) return 'engineering';
@@ -214,9 +216,9 @@ const Notification = () => {
     if (titleLower.includes('maintenance due')) return 'warning';
     if (titleLower.includes('reminder')) return 'refresh';
     if (titleLower.includes('session timeout')) return 'timer-off';
-    
+
     // Default icons based on type
-    switch(type) {
+    switch (type) {
       case 'login': return 'login';
       case 'logout': return 'logout';
       case 'active': return 'check-circle';
@@ -233,7 +235,7 @@ const Notification = () => {
 
   // Helper function to get icon color based on status
   const getIconColor = (status) => {
-    switch(status) {
+    switch (status) {
       case 'success':
       case 'completed':
       case 'accepted':
@@ -298,7 +300,7 @@ const Notification = () => {
     const unreadClass = !item.isRead
       ? 'bg-teal-50 border border-teal-500'
       : 'bg-white border border-gray-200';
-    
+
     const iconName = getIconForNotification(item.title, item.type);
     const iconColor = getIconColor(item.status);
 
@@ -347,8 +349,8 @@ const Notification = () => {
     <TouchableOpacity
       onPress={() => setActiveTab(tabName)}
       className={`flex-1 py-2 px-4 rounded-full mx-1 ${activeTab === tabName
-          ? 'bg-teal-500'
-          : 'bg-gray-100'
+        ? 'bg-teal-500'
+        : 'bg-gray-100'
         }`}
     >
       <View className="flex-row items-center justify-center">
@@ -425,8 +427,8 @@ const Notification = () => {
         title="Notifications"
         titlePosition='left'
         showBackButton={true}
-         titleStyle="font-bold text-2xl ml-5"
-        
+        titleStyle="font-bold text-2xl ml-5"
+
       />
 
       <FlatList

@@ -14,7 +14,7 @@ import ReplaceParts from '../../screens/AppScreens/ReplaceParts';
 import TermsConditions from '../../screens/AppScreens/TermsConditions';
 import Support from '../../screens/AppScreens/Support';
 import MyComplaints from '../../screens/AppScreens/MyComplaints';
-import AddPart from '../../screens/AppScreens/AddPart';
+import AddPart from '../../screens/AppScreens/Bucket/AddPart';
 import ComplaintDetail from '../../screens/AppScreens/Complaints/ComplaintDetail';
 import BuckePartDetails from '../../screens/AppScreens/Bucket/BucketpartDetails';
 import Billing from '../../screens/AppScreens/Complaints/Billing';
@@ -25,6 +25,7 @@ const Stack = createNativeStackNavigator();
 
 // App Stack (for authenticated users)
 const AppStack = () => {
+
   return (
     <Stack.Navigator
       initialRouteName="BottomTabs"
@@ -44,7 +45,7 @@ const AppStack = () => {
         name="PartDetails"
         component={PartDetails}
       />
-       <Stack.Screen
+      <Stack.Screen
         name="Complaints"
         component={Complaints}
       />
@@ -52,7 +53,7 @@ const AppStack = () => {
         name="Bucket"
         component={Bucket}
       />
-       <Stack.Screen
+      <Stack.Screen
         name="BucketpartDetails"
         component={BuckePartDetails}
       />
@@ -68,42 +69,42 @@ const AppStack = () => {
         name="PayOut"
         component={PayOut}
       />
-       <Stack.Screen
+      <Stack.Screen
         name="Notification"
         component={Notification}
       />
-       <Stack.Screen
+      <Stack.Screen
         name="Wallet"
         component={Wallet}
       />
-       <Stack.Screen
+      <Stack.Screen
         name="ProfileEdit"
         component={ProfileEdit}
       />
-       <Stack.Screen
+      <Stack.Screen
         name="ReplaceParts"
         component={ReplaceParts}
       />
-       <Stack.Screen
+      <Stack.Screen
         name="TermsConditions"
         component={TermsConditions}
       />
-       <Stack.Screen
+      <Stack.Screen
         name="Support"
         component={Support}
       />
-       <Stack.Screen
+      <Stack.Screen
         name="MyComplaints"
         component={MyComplaints}
       />
-       <Stack.Screen
+      <Stack.Screen
         name="AddPart"
         component={AddPart}
       />
       <Stack.Screen name="ComplaintDetail" component={ComplaintDetail} />
-       <Stack.Screen name="Billing" component={Billing} />
-       <Stack.Screen name="AddPartBilling" component={AddPartBilling} />
-       <Stack.Screen name="Remarkscreen" component={Remarkscreen} />
+      <Stack.Screen name="Billing" component={Billing} />
+      <Stack.Screen name="AddPartBilling" component={AddPartBilling} />
+      <Stack.Screen name="Remarkscreen" component={Remarkscreen} />
 
 
     </Stack.Navigator>

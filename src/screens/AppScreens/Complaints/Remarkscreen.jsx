@@ -83,7 +83,7 @@ const Remarkscreen = () => {
     // Handle next button
     const handleNext = () => {
         // Since button is disabled unless form is complete, we can safely navigate
-        navigation.navigate('Billing', {
+        navigation.replace('Billing', {
             selectedAMC,
             remark,
             image1: image1Uri,

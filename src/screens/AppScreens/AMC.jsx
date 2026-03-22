@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Header from '../../components/Header'
 import { Search } from 'lucide-react-native'
+import NoInternet from '../NoInternet'
 
 // Mock data for AMC services with working Google image URLs
 const mockAMCServices = [
@@ -166,6 +167,7 @@ const AMC = () => {
         {/* Bottom Spacing */}
         <View className="h-4" />
       </ScrollView>
+      <NoInternet/>
     </SafeAreaView>
   )
 }

@@ -1,5 +1,5 @@
 import { Text, View, TouchableOpacity, ActivityIndicator, Image, ScrollView, Alert } from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -9,13 +9,23 @@ import { useNavigation } from '@react-navigation/native';
 import DialogBox from '../../../components/DilaogBox';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
+import NetInfo from '@react-native-community/netinfo'; // Import NetInfo
 
 const Profile = () => {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
-  const [isLoggingOut, setIsLoggingOut] = useState(false); // For main button
-  const [isDialogLoggingOut, setIsDialogLoggingOut] = useState(false); // For dialog button only
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isDialogLoggingOut, setIsDialogLoggingOut] = useState(false);
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+  const [isConnected, setIsConnected] = useState(true); // Internet connectivity state
+
+  // Monitor internet connection
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected ?? false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const menuItems = [
     {
@@ -62,15 +72,37 @@ const Profile = () => {
     }
   ];
 
+  // Check internet before showing logout dialog
+  const handleLogoutPress = () => {
+    if (!isConnected) {
+      // toast.error('You are offline. Please check your internet connection.');
+      toast.custom(<StatusMessage type='error' title={'You are offline. Please check your internet connection.'}/>,{duration:300})
+      return;
+    }
+    setLogoutDialogVisible(true);
+  };
+
   const handleLogout = async () => {
-    setIsDialogLoggingOut(true); // Only set loading for dialog button
+    // Extra safety: if offline, don't proceed
+    if (!isConnected) {
+      // toast.error('Cannot logout while offline.');
+      toast.custom(<StatusMessage type='error' title={'Cannot logout while offline.'}/>,{duration:300})
+
+
+      setLogoutDialogVisible(false);
+      return;
+    }
+
+    setIsDialogLoggingOut(true);
 
     try {
       await new Promise(resolve => setTimeout(resolve, 3000));
       await logout();
       setLogoutDialogVisible(false);
     } catch (error) {
-      Alert.alert('Error', 'Failed to logout. Please try again.');
+      toast.custom(<StatusMessage type='error' title={'CFailed to logout. Please try again.'}/>,{duration:300})
+
+      // Alert.alert('Error', 'Failed to logout. Please try again.');
       setLogoutDialogVisible(false);
     } finally {
       setIsDialogLoggingOut(false);
@@ -79,7 +111,15 @@ const Profile = () => {
   };
 
   const handleNavigation = (route) => {
-    navigation.navigate(route);
+    if (!isConnected) {
+      // toast.error('You are offline. Please check your internet connection.');
+      toast.custom(<StatusMessage type='error' title={'You are offline. Please check your internet connection.'}/>,{duration:300})
+      return;
+    }
+    else {
+      navigation.navigate(route);
+
+    }
   };
 
   const MenuItem = ({ item, isLast }) => (
@@ -98,7 +138,6 @@ const Profile = () => {
     </TouchableOpacity>
   );
 
-  // Footer for logout dialog with loading state only on logout button
   const logoutFooter = (
     <View className="flex-row gap-3">
       <TouchableOpacity
@@ -117,9 +156,7 @@ const Profile = () => {
         disabled={isDialogLoggingOut}
       >
         {isDialogLoggingOut ? (
-          <>
-            <ActivityIndicator color="#fff" size="small" style={{ marginRight: 8 }} />
-          </>
+          <ActivityIndicator color="#fff" size="small" />
         ) : (
           <Text className="text-white text-center font-medium">Logout</Text>
         )}
@@ -129,12 +166,11 @@ const Profile = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
-        {/* User Info Section */}
         <View className="absolute inset-0 z-50 w-90% pointer-events-none">
-        <Toaster />
-      </View>
+          <Toaster />
+        </View>
+
         <View className="bg-white p-5 items-center border-b border-gray-200">
           <Image
             source={user?.image ? { uri: user.image } : require('../../../assets/images/profileImage.jpg')}
@@ -162,7 +198,6 @@ const Profile = () => {
           )}
         </View>
 
-        {/* Menu Items Section */}
         <View className="mt-6">
           <View className="bg-white mx-5 rounded-xl px-4 shadow-md">
             {menuItems.map((item, index) => (
@@ -175,23 +210,21 @@ const Profile = () => {
           </View>
         </View>
 
-        {/* Logout Button - NO LOADER HERE */}
+        {/* Logout Button - Now checks connectivity before showing dialog */}
         <View className="mt-8 mx-5 mb-5">
           <TouchableOpacity
             className="bg-red-500 p-4 rounded-xl flex-row items-center justify-center shadow-md"
-            onPress={() => setLogoutDialogVisible(true)}
-            disabled={isDialogLoggingOut} // Disable when dialog logout is in progress
+            onPress={handleLogoutPress}
+            disabled={isDialogLoggingOut}
           >
             <Icon name="logout" size={20} color="#fff" style={{ marginRight: 10 }} />
             <Text className="text-base font-semibold text-white">Logout</Text>
           </TouchableOpacity>
         </View>
 
-        {/* App Version */}
         <Text className="text-center mt-2.5 mb-5 text-gray-400 text-xs">Version 1.0.0</Text>
       </ScrollView>
 
-      {/* Logout Confirmation Dialog */}
       <DialogBox
         visible={logoutDialogVisible}
         onClose={() => {
@@ -211,7 +244,6 @@ const Profile = () => {
       >
         <View className="py-6 items-center">
           {isDialogLoggingOut ? (
-            // Loading state content - only shows when dialog logout button is clicked
             <>
               <Icon name="logout" size={60} color="#EF4444" />
               <Text className="text-gray-600 text-center mt-4 text-base">
@@ -219,7 +251,6 @@ const Profile = () => {
               </Text>
             </>
           ) : (
-            // Normal state content
             <>
               <Icon name="logout" size={60} color="#EF4444" />
               <Text className="text-gray-600 text-center mt-4 text-base">

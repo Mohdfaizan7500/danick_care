@@ -62,7 +62,7 @@ const StatusMessage = ({
 
     return (
         <View
-          className={`flex-row items-start gap-2 p-4 rounded-xl border  ${config.bg} ${config.border} ${className}`}
+          className={`flex-row items-start gap-2 p-4 mx-5 rounded-xl border  ${config.bg} ${config.border} ${className}`}
         >
           <Icon name={icon || config.icon} size={iconSize} color={config.iconColor} />
           <View className="flex-1">

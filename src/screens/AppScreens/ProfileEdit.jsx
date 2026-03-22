@@ -8,121 +8,130 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  Pressable
-} from 'react-native'
-import React, { useState, useRef, useEffect } from 'react'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import Icon from 'react-native-vector-icons/MaterialIcons'
-import Header from '../../components/Header'
-import { launchImageLibrary, launchCamera } from 'react-native-image-picker'
-import { PERMISSIONS, request, check, RESULTS } from 'react-native-permissions'
-import DialogBox from '../../components/DilaogBox'
-import { useNavigation } from '@react-navigation/native'
+  Pressable,
+  ActivityIndicator,
+} from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import Header from '../../components/Header';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import { PERMISSIONS, request, check, RESULTS } from 'react-native-permissions';
+import DialogBox from '../../components/DilaogBox';
+import { useNavigation } from '@react-navigation/native';
+import NetInfo from '@react-native-community/netinfo';
+import NoInternet from '../NoInternet'; // custom component defined below
 
 const ProfileEdit = () => {
-  const navigation = useNavigation()
-  
-  // Mock user data - replace with actual user data from your context/redux
-  const userData = {
-    name: "John Doe",
-    phone: "+91 9876543210",
-    email: "john.doe@example.com",
-    profileImage: null // Initial profile image
-  }
+  const navigation = useNavigation();
 
-  const [image, setImage] = useState(userData.profileImage)
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [showImageOptions, setShowImageOptions] = useState(false)
-  const [keyboardVisible, setKeyboardVisible] = useState(false)
-  
-  // Track if any changes were made
-  const [hasChanges, setHasChanges] = useState(false)
-  
+  // Mock user data – replace with actual data from your store/context
+  const userData = {
+    name: 'John Doe',
+    phone: '+91 9876543210',
+    email: 'john.doe@example.com',
+    profileImage: null,
+  };
+
+  const [image, setImage] = useState(userData.profileImage);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showImageOptions, setShowImageOptions] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  // Track changes
+  const [hasChanges, setHasChanges] = useState(false);
+
   // Dialog states
-  const [dialogVisible, setDialogVisible] = useState(false)
+  const [dialogVisible, setDialogVisible] = useState(false);
   const [dialogConfig, setDialogConfig] = useState({
     type: 'success',
     title: '',
     message: '',
-    size: 'sm'
-  })
+    size: 'sm',
+  });
 
-  const scrollViewRef = useRef(null)
+  // Internet connection state
+  const [isConnected, setIsConnected] = useState(true);
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
 
-  // Handle keyboard visibility
+  const scrollViewRef = useRef(null);
+
+  // ------------------- Internet Monitoring -------------------
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      'keyboardDidShow',
-      () => {
-        setKeyboardVisible(true)
-      }
-    )
-    const keyboardDidHideListener = Keyboard.addListener(
-      'keyboardDidHide',
-      () => {
-        setKeyboardVisible(false)
-      }
-    )
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected ?? true);
+    });
+    return () => unsubscribe();
+  }, []);
 
+  // Manually retry connection check
+  const retryConnection = async () => {
+    setIsCheckingConnection(true);
+    const state = await NetInfo.fetch();
+    setIsConnected(state.isConnected ?? true);
+    setIsCheckingConnection(false);
+  };
+
+  // ------------------- Keyboard Visibility -------------------
+  useEffect(() => {
+    const keyboardDidShow = Keyboard.addListener('keyboardDidShow', () =>
+      setKeyboardVisible(true)
+    );
+    const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () =>
+      setKeyboardVisible(false)
+    );
     return () => {
-      keyboardDidHideListener.remove()
-      keyboardDidShowListener.remove()
-    }
-  }, [])
+      keyboardDidShow.remove();
+      keyboardDidHide.remove();
+    };
+  }, []);
 
-  // Check for changes
+  // Detect changes
   useEffect(() => {
-    const imageChanged = image !== userData.profileImage
-    const passwordChanged = currentPassword !== '' || newPassword !== '' || confirmPassword !== ''
-    
-    setHasChanges(imageChanged || passwordChanged)
-  }, [image, currentPassword, newPassword, confirmPassword])
+    const imageChanged = image !== userData.profileImage;
+    const passwordChanged =
+      currentPassword !== '' || newPassword !== '' || confirmPassword !== '';
+    setHasChanges(imageChanged || passwordChanged);
+  }, [image, currentPassword, newPassword, confirmPassword]);
 
-  // Show dialog helper function
+  // ------------------- Helper Functions -------------------
   const showDialog = (type, title, message, size = 'sm') => {
-    setDialogConfig({ type, title, message, size })
-    setDialogVisible(true)
-  }
+    setDialogConfig({ type, title, message, size });
+    setDialogVisible(true);
+  };
 
-  // Handle dialog close
   const handleDialogClose = () => {
-    setDialogVisible(false)
-    
+    setDialogVisible(false);
     if (dialogConfig.type === 'success') {
-      // Clear all input fields
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
-      // Navigate back
-      navigation.goBack()
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      navigation.goBack();
     }
-  }
+  };
 
-  // Check and request camera permission
+  // ------------------- Image Picker & Camera -------------------
   const checkCameraPermission = async () => {
     if (Platform.OS === 'ios') {
-      const status = await check(PERMISSIONS.IOS.CAMERA)
-      return status
+      return await check(PERMISSIONS.IOS.CAMERA);
     } else {
-      const status = await check(PERMISSIONS.ANDROID.CAMERA)
-      return status
+      return await check(PERMISSIONS.ANDROID.CAMERA);
     }
-  }
+  };
 
   const requestCameraPermission = async () => {
     if (Platform.OS === 'ios') {
-      return await request(PERMISSIONS.IOS.CAMERA)
+      return await request(PERMISSIONS.IOS.CAMERA);
     } else {
-      return await request(PERMISSIONS.ANDROID.CAMERA)
+      return await request(PERMISSIONS.ANDROID.CAMERA);
     }
-  }
+  };
 
-  // Handle image picker
   const handleChooseImage = () => {
     const options = {
       mediaType: 'photo',
@@ -131,44 +140,40 @@ const ProfileEdit = () => {
       maxWidth: 1000,
       quality: 0.8,
       selectionLimit: 1,
-    }
-
-    launchImageLibrary(options, (response) => {
+    };
+    launchImageLibrary(options, response => {
       if (response.didCancel) {
-        console.log('User cancelled image picker')
+        console.log('User cancelled image picker');
       } else if (response.error) {
-        console.log('ImagePicker Error: ', response.error)
-        showDialog('error', 'Error', 'Error selecting image: ' + response.error)
+        console.log('ImagePicker Error: ', response.error);
+        showDialog('error', 'Error', 'Error selecting image: ' + response.error);
       } else if (response.assets && response.assets[0]) {
-        const source = { uri: response.assets[0].uri }
-        setImage(source)
-        setShowImageOptions(false)
+        setImage({ uri: response.assets[0].uri });
+        setShowImageOptions(false);
       }
-    })
-  }
+    });
+  };
 
-  // Handle take photo with permission check
   const handleTakePhoto = async () => {
     try {
-      const permissionStatus = await checkCameraPermission()
-
+      const permissionStatus = await checkCameraPermission();
       if (permissionStatus === RESULTS.GRANTED) {
-        openCamera()
+        openCamera();
       } else if (permissionStatus === RESULTS.DENIED) {
-        const requestStatus = await requestCameraPermission()
+        const requestStatus = await requestCameraPermission();
         if (requestStatus === RESULTS.GRANTED) {
-          openCamera()
+          openCamera();
         } else {
-          showDialog('error', 'Permission Denied', 'Camera permission is required to take photos')
+          showDialog('error', 'Permission Denied', 'Camera permission is required to take photos');
         }
       } else if (permissionStatus === RESULTS.BLOCKED) {
-        showDialog('error', 'Permission Blocked', 'Camera permission is blocked. Please enable it in settings')
+        showDialog('error', 'Permission Blocked', 'Camera permission is blocked. Please enable it in settings');
       }
     } catch (error) {
-      console.log('Permission error:', error)
-      showDialog('error', 'Error', 'Error accessing camera')
+      console.log('Permission error:', error);
+      showDialog('error', 'Error', 'Error accessing camera');
     }
-  }
+  };
 
   const openCamera = () => {
     const options = {
@@ -178,119 +183,112 @@ const ProfileEdit = () => {
       maxWidth: 1000,
       quality: 0.8,
       saveToPhotos: true,
-    }
-
-    launchCamera(options, (response) => {
+    };
+    launchCamera(options, response => {
       if (response.didCancel) {
-        console.log('User cancelled camera')
+        console.log('User cancelled camera');
       } else if (response.error) {
-        console.log('Camera Error: ', response.error)
-        showDialog('error', 'Error', 'Error taking photo: ' + response.error)
+        console.log('Camera Error: ', response.error);
+        showDialog('error', 'Error', 'Error taking photo: ' + response.error);
       } else if (response.assets && response.assets[0]) {
-        const source = { uri: response.assets[0].uri }
-        setImage(source)
-        setShowImageOptions(false)
+        setImage({ uri: response.assets[0].uri });
+        setShowImageOptions(false);
       }
-    })
-  }
+    });
+  };
 
-  // Handle save changes
+  // ------------------- Save Changes -------------------
   const handleSave = () => {
-    // Validate password
+    // Validate password fields
     if (newPassword || confirmPassword || currentPassword) {
       if (!currentPassword) {
-        showDialog('warning', 'Validation Error', 'Please enter current password')
-        return
+        showDialog('warning', 'Validation Error', 'Please enter current password');
+        return;
       }
       if (!newPassword) {
-        showDialog('warning', 'Validation Error', 'Please enter new password')
-        return
+        showDialog('warning', 'Validation Error', 'Please enter new password');
+        return;
       }
       if (!confirmPassword) {
-        showDialog('warning', 'Validation Error', 'Please confirm new password')
-        return
+        showDialog('warning', 'Validation Error', 'Please confirm new password');
+        return;
       }
       if (newPassword !== confirmPassword) {
-        showDialog('error', 'Password Mismatch', 'New password and confirm password do not match')
-        return
+        showDialog('error', 'Password Mismatch', 'New password and confirm password do not match');
+        return;
       }
       if (newPassword.length < 6) {
-        showDialog('error', 'Invalid Password', 'Password must be at least 6 characters long')
-        return
+        showDialog('error', 'Invalid Password', 'Password must be at least 6 characters long');
+        return;
       }
     }
 
-    // Here you would implement the actual save logic
-    console.log('Saving changes...')
-    console.log('Image:', image)
-    console.log('Password changed:', !!newPassword)
+    // Here you would call your API to update profile and password
+    console.log('Saving changes...');
+    console.log('Image:', image);
+    console.log('Password changed:', !!newPassword);
 
-    showDialog('success', 'Success', 'Profile updated successfully', 'sm')
-  }
+    showDialog('success', 'Success', 'Profile updated successfully', 'sm');
+  };
 
-  // Get icon based on dialog type
-  const getDialogIcon = (type) => {
-    switch(type) {
+  // ------------------- Dialog Rendering -------------------
+  const getDialogIcon = type => {
+    switch (type) {
       case 'success':
-        return <Icon name="check-circle" size={40} color="#58A890" />
+        return <Icon name="check-circle" size={40} color="#58A890" />;
       case 'error':
-        return <Icon name="error" size={40} color="#E86F6F" />
+        return <Icon name="error" size={40} color="#E86F6F" />;
       case 'warning':
-        return <Icon name="warning" size={40} color="#F0B27A" />
-      case 'info':
-        return <Icon name="info" size={40} color="#88D8C0" />
+        return <Icon name="warning" size={40} color="#F0B27A" />;
       default:
-        return <Icon name="info" size={40} color="#88D8C0" />
+        return <Icon name="info" size={40} color="#88D8C0" />;
     }
-  }
+  };
 
-  // Custom dialog content
   const renderDialogContent = () => (
     <View className="items-center py-4">
-      <View className="mb-4">
-        {getDialogIcon(dialogConfig.type)}
-      </View>
-      <Text className="text-gray-800 text-center mb-2">
-        {dialogConfig.message}
-      </Text>
+      <View className="mb-4">{getDialogIcon(dialogConfig.type)}</View>
+      <Text className="text-gray-800 text-center mb-2">{dialogConfig.message}</Text>
     </View>
-  )
+  );
 
-  // Custom dialog footer with OK button
   const renderDialogFooter = () => (
     <TouchableOpacity
       onPress={handleDialogClose}
       className={`py-3 px-6 rounded-xl ${
-        dialogConfig.type === 'success' ? 'bg-primary-sage500' :
-        dialogConfig.type === 'error' ? 'bg-red-500' :
-        dialogConfig.type === 'warning' ? 'bg-yellow-500' :
-        'bg-primary-sage500'
+        dialogConfig.type === 'success'
+          ? 'bg-primary-sage500'
+          : dialogConfig.type === 'error'
+          ? 'bg-red-500'
+          : dialogConfig.type === 'warning'
+          ? 'bg-yellow-500'
+          : 'bg-primary-sage500'
       }`}
     >
       <Text className="text-white font-semibold text-center">OK</Text>
     </TouchableOpacity>
-  )
+  );
 
-  // Image picker options modal
+  // ------------------- Image Picker Modal -------------------
   const ImagePickerModal = () => (
     <TouchableOpacity
       className="absolute inset-0 bg-black/50"
       activeOpacity={1}
       onPress={() => setShowImageOptions(false)}
     >
-      <View className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-5 shadow-lg"
+      <View
+        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-5 shadow-lg"
         style={{
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.1,
           shadowRadius: 4,
-          elevation: 10
+          elevation: 10,
         }}
       >
         <View className="items-center mb-4">
           <View className="w-12 h-1 bg-gray-300 rounded-full" />
         </View>
-
         <Text className="text-gray-800 text-lg font-semibold mb-4">Change Profile Photo</Text>
 
         <TouchableOpacity
@@ -319,8 +317,8 @@ const ProfileEdit = () => {
           <TouchableOpacity
             className="flex-row items-center py-3"
             onPress={() => {
-              setImage(userData.profileImage)
-              setShowImageOptions(false)
+              setImage(userData.profileImage);
+              setShowImageOptions(false);
             }}
           >
             <View className="w-10 h-10 bg-red-50 rounded-full items-center justify-center mr-3">
@@ -339,18 +337,26 @@ const ProfileEdit = () => {
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
-  )
+  );
+
+  // ------------------- Render -------------------
+  if (!isConnected) {
+    return (
+      <NoInternet
+        onRetry={retryConnection}
+        isChecking={isCheckingConnection}
+      />
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      
-
-       <Header 
+      <Header
         showBackButton={true}
-        title={'Edit Profile'}
-        titlePosition='center'
-        containerStyle='bg-transaprent text-red-100 px-4 py-4 flex-row items-center justify-between'
-        titleStyle='font-bold text-xl text-black'
+        title="Edit Profile"
+        titlePosition="center"
+        containerStyle="bg-transparent px-4 py-4 flex-row items-center justify-between"
+        titleStyle="font-bold text-xl text-black"
       />
 
       <KeyboardAvoidingView
@@ -368,7 +374,6 @@ const ProfileEdit = () => {
           {/* Profile Image Section */}
           <View className="items-center mt-6 mb-6">
             <View className="relative">
-              {/* Profile Image */}
               <Pressable
                 onPress={() => setShowImageOptions(true)}
                 className="w-28 h-28 rounded-full bg-gray-200 items-center justify-center border-4 border-white shadow-sm"
@@ -377,7 +382,7 @@ const ProfileEdit = () => {
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.2,
                   shadowRadius: 4,
-                  elevation: 3
+                  elevation: 3,
                 }}
               >
                 {image ? (
@@ -390,8 +395,6 @@ const ProfileEdit = () => {
                   <Icon name="person" size={50} color="#999999" />
                 )}
               </Pressable>
-
-              {/* Edit Button */}
               <TouchableOpacity
                 className="absolute bottom-0 right-0 w-8 h-8 bg-primary-sage500 rounded-full items-center justify-center border-2 border-white"
                 onPress={() => setShowImageOptions(true)}
@@ -400,12 +403,10 @@ const ProfileEdit = () => {
               </TouchableOpacity>
             </View>
 
-            {/* User Name and Phone - Same font size as "Tap edit icon" text */}
             <View className="items-center mt-3">
               <Text className="text-gray-800 text-sm font-medium">{userData.name}</Text>
               <Text className="text-gray-500 text-sm mt-1">{userData.phone}</Text>
             </View>
-
             <Text className="text-gray-500 text-sm mt-3">Tap edit icon to change photo</Text>
           </View>
 
@@ -432,7 +433,11 @@ const ProfileEdit = () => {
                   onChangeText={setCurrentPassword}
                 />
                 <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
-                  <Icon name={showCurrentPassword ? "visibility" : "visibility-off"} size={20} color="#BBBBBB" />
+                  <Icon
+                    name={showCurrentPassword ? 'visibility' : 'visibility-off'}
+                    size={20}
+                    color="#BBBBBB"
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -451,7 +456,11 @@ const ProfileEdit = () => {
                   onChangeText={setNewPassword}
                 />
                 <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
-                  <Icon name={showNewPassword ? "visibility" : "visibility-off"} size={20} color="#BBBBBB" />
+                  <Icon
+                    name={showNewPassword ? 'visibility' : 'visibility-off'}
+                    size={20}
+                    color="#BBBBBB"
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -472,7 +481,11 @@ const ProfileEdit = () => {
                   onSubmitEditing={handleSave}
                 />
                 <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                  <Icon name={showConfirmPassword ? "visibility" : "visibility-off"} size={20} color="#BBBBBB" />
+                  <Icon
+                    name={showConfirmPassword ? 'visibility' : 'visibility-off'}
+                    size={20}
+                    color="#BBBBBB"
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -486,20 +499,24 @@ const ProfileEdit = () => {
             </View>
           </View>
 
-          {/* Save Button - Enabled only when changes are made */}
+          {/* Save Button */}
           <TouchableOpacity
             className={`py-4 rounded-xl items-center shadow-sm mb-6 ${
               hasChanges ? 'bg-primary-sage500' : 'bg-gray-300'
             }`}
             onPress={handleSave}
             disabled={!hasChanges}
-            style={hasChanges ? {
-              shadowColor: '#88D8C0',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-              elevation: 3
-            } : {}}
+            style={
+              hasChanges
+                ? {
+                    shadowColor: '#88D8C0',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }
+                : {}
+            }
           >
             <Text className="text-white font-semibold text-base">
               {hasChanges ? 'Save Changes' : 'No Changes to Save'}
@@ -511,7 +528,7 @@ const ProfileEdit = () => {
       {/* Image Picker Modal */}
       {showImageOptions && <ImagePickerModal />}
 
-      {/* Dialog Box for messages */}
+      {/* Dialog Box */}
       <DialogBox
         visible={dialogVisible}
         onClose={handleDialogClose}
@@ -522,22 +539,28 @@ const ProfileEdit = () => {
         contentContainerStyle="px-4"
         footer={renderDialogFooter()}
         headerStyle={
-          dialogConfig.type === 'success' ? 'bg-green-50 rounded-t-xl' :
-          dialogConfig.type === 'error' ? 'bg-red-50 rounded-t-xl' :
-          dialogConfig.type === 'warning' ? 'bg-yellow-50 rounded-t-xl' :
-          'bg-primary-sage50 rounded-t-xl'
+          dialogConfig.type === 'success'
+            ? 'bg-green-50 rounded-t-xl'
+            : dialogConfig.type === 'error'
+            ? 'bg-red-50 rounded-t-xl'
+            : dialogConfig.type === 'warning'
+            ? 'bg-yellow-50 rounded-t-xl'
+            : 'bg-primary-sage50 rounded-t-xl'
         }
         titleStyle={
-          dialogConfig.type === 'success' ? 'text-green-700' :
-          dialogConfig.type === 'error' ? 'text-red-700' :
-          dialogConfig.type === 'warning' ? 'text-yellow-700' :
-          'text-primary-sage700'
+          dialogConfig.type === 'success'
+            ? 'text-green-700'
+            : dialogConfig.type === 'error'
+            ? 'text-red-700'
+            : dialogConfig.type === 'warning'
+            ? 'text-yellow-700'
+            : 'text-primary-sage700'
         }
       >
         {renderDialogContent()}
       </DialogBox>
     </SafeAreaView>
-  )
-}
+  );
+};
 
-export default ProfileEdit
+export default ProfileEdit;

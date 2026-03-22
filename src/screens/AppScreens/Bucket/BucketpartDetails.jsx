@@ -1,76 +1,110 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
-  Modal,
   FlatList,
   ActivityIndicator,
   ScrollView,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Header from '../../../components/Header';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { toast } from 'sonner-native';
+import Header from '../../../components/Header';
+import DialogBox from '../../../components/DilaogBox';
 
-// Dummy list of partners for transfer
-const DUMMY_PARTNERS = [
-  { id: 'p1', name: 'ElectroMart' },
-  { id: 'p2', name: 'LightHouse' },
-  { id: 'p3', name: 'CleanTech' },
-  { id: 'p4', name: 'PhoneFix' },
-  { id: 'p5', name: 'CoolTech' },
-  { id: 'p6', name: 'FreshMart' },
-  { id: 'p7', name: 'DairyFarm' },
-];
+// Generate 40 dummy partners
+const generateDummyPartners = (count) => {
+  const firstNames = [
+    'Amit', 'Priya', 'Ravi', 'Sneha', 'Vikram', 'Anjali', 'Rajesh', 'Deepa',
+    'Suresh', 'Kavita', 'Arjun', 'Pooja', 'Manoj', 'Neha', 'Sanjay', 'Divya',
+    'Vinod', 'Meena', 'Sunil', 'Rekha', 'Anil', 'Shilpa', 'Gaurav', 'Jyoti',
+    'Nitin', 'Sarita', 'Deepak', 'Kiran', 'Pankaj', 'Anita', 'Rahul', 'Swati',
+    'Ashok', 'Neeta', 'Vijay', 'Geeta', 'Sanjeev', 'Komal', 'Rajiv', 'Nidhi'
+  ];
+  const lastNames = [
+    'Sharma', 'Patel', 'Kumar', 'Reddy', 'Singh', 'Desai', 'Gupta', 'Nair',
+    'Iyer', 'Joshi', 'Verma', 'Malhotra', 'Mehta', 'Choudhary', 'Yadav', 'Rao',
+    'Saxena', 'Mishra', 'Trivedi', 'Bhat', 'Menon', 'Pillai', 'Kaur', 'Thakur'
+  ];
+
+  return Array.from({ length: count }, (_, i) => ({
+    id: `p${i + 1}`,
+    name: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`,
+  }));
+};
+
+const DUMMY_PARTNERS = generateDummyPartners(40);
 
 const BucketpartDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { item } = route.params; // item passed from Bucket screen
+  const { item } = route.params;
 
-  // State for transfer modal
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedPartner, setSelectedPartner] = useState(null);
-  const [loading, setLoading] = useState(false);
+  // State for partner selection modal
+  const [partnerModalVisible, setPartnerModalVisible] = useState(false);
+  const [selectedTransferPartner, setSelectedTransferPartner] = useState(null);
+  const [tempSelectedPartner, setTempSelectedPartner] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Part number fallback (if not present, use id)
+  // State for transfer loading
+  const [transferLoading, setTransferLoading] = useState(false);
+
+  // Filter partners based on search
+  const filteredPartners = useMemo(() => {
+    return DUMMY_PARTNERS.filter(partner =>
+      partner.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery]);
+
   const partNumber = item.partNumber || item.id;
-
-  // Date added – if not present, use current date
   const addedDate = item.addedDate || new Date().toLocaleDateString('en-GB');
 
-  // Handle transfer button press
+  // Open modal for partner selection
+  const openPartnerModal = () => {
+    setTempSelectedPartner(selectedTransferPartner); // pre-select current if any
+    setSearchQuery('');
+    setPartnerModalVisible(true);
+  };
+
+  // Confirm selection in modal
+  const confirmPartnerSelection = () => {
+    if (tempSelectedPartner) {
+      setSelectedTransferPartner(tempSelectedPartner);
+    }
+    setPartnerModalVisible(false);
+  };
+
+  // Actual transfer
   const handleTransfer = () => {
-    if (!selectedPartner) {
-      toast.error('Please select a partner');
+    if (!selectedTransferPartner) {
+      toast.error('Please select a partner first');
       return;
     }
-    setLoading(true);
-    // Simulate API call
+    setTransferLoading(true);
     setTimeout(() => {
-      setLoading(false);
-      setModalVisible(false);
-      setSelectedPartner(null);
-      toast.success(`Part transferred to ${selectedPartner.name}`);
+      setTransferLoading(false);
+      setSelectedTransferPartner(null);
+      toast.success(`Part transferred to ${selectedTransferPartner.name}`);
     }, 2000);
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-background-primary">
       <Header
         title="Part Details"
         titlePosition="left"
-        titleStyle="font-bold text-2xl ml-5"
+        titleStyle="font-bold text-2xl ml-5 text-text-primary"
         showBackButton={true}
-        containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
+        containerStyle="bg-background-primary flex-row items-center justify-between px-4 py-4 border-b border-ui-border"
       />
 
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-        {/* Big Image */}
-        <View className="w-full h-64 bg-gray-100">
+        {/* Image */}
+        <View className="w-full h-100 bg-background-secondary">
           <Image
             source={{ uri: item.imageUrl }}
             className="w-full h-full"
@@ -78,118 +112,173 @@ const BucketpartDetails = () => {
           />
         </View>
 
-        {/* Details Container */}
+        {/* Details */}
         <View className="p-5">
-          {/* Name */}
-          <Text className="text-2xl font-bold text-gray-900 mb-2">
+          <Text className="text-2xl font-bold text-text-primary mb-2">
             {item.name}
           </Text>
 
-          {/* Part Number */}
           <View className="flex-row items-center mb-2">
-            <Icon name="barcode-outline" size={18} color="#666" />
-            <Text className="text-gray-600 ml-2">Part No: {partNumber}</Text>
+            <Icon name="barcode-outline" size={18} color="#666666" />
+            <Text className="text-text-secondary ml-2">Part No: {partNumber}</Text>
           </View>
 
-          {/* Parent Type */}
           <View className="flex-row items-center mb-2">
-            <Icon name="folder-outline" size={18} color="#666" />
-            <Text className="text-gray-600 ml-2">Type: {item.parentType}</Text>
+            <Icon name="folder-outline" size={18} color="#666666" />
+            <Text className="text-text-secondary ml-2">Type: {item.parentType}</Text>
           </View>
 
-          {/* Date Added */}
           <View className="flex-row items-center mb-4">
-            <Icon name="calendar-outline" size={18} color="#666" />
-            <Text className="text-gray-600 ml-2">Added on: {addedDate}</Text>
+            <Icon name="calendar-outline" size={18} color="#666666" />
+            <Text className="text-text-secondary ml-2">Added on: {addedDate}</Text>
           </View>
 
-          {/* Partner Info (only if type is Partner) */}
           {item.parentType === 'Partner' && (
-            <View className="bg-blue-50 p-4 rounded-xl mb-6">
-              <Text className="text-blue-800 font-semibold mb-1">
-                Partner Details
+            <View className="bg-primary-sage50 p-4 rounded-xl mb-6 border border-primary-sage200">
+              <Text className="text-primary-sage800 font-semibold mb-1">
+                Current Partner
               </Text>
               <View className="flex-row items-center">
-                <Icon name="business-outline" size={16} color="#1e40af" />
-                <Text className="text-blue-700 ml-2">
+                <Icon name="business-outline" size={16} color="#287860" />
+                <Text className="text-primary-sage700 ml-2">
                   {item.parentName} (ID: {item.partnerId || 'P12345'})
                 </Text>
               </View>
             </View>
           )}
 
-          {/* Transfer Button */}
+          {/* Dropdown Button for Partner Selection */}
           <TouchableOpacity
-            onPress={() => setModalVisible(true)}
-            className="bg-blue-600 py-4 rounded-xl flex-row items-center justify-center"
+            onPress={openPartnerModal}
+            className="flex-row items-center justify-between bg-background-secondary border border-ui-border rounded-xl p-4 mb-4"
           >
-            <Icon name="swap-horizontal" size={20} color="white" />
-            <Text className="text-white font-semibold text-lg ml-2">
-              Transfer to Another Partner
-            </Text>
+            <View className="flex-row items-center">
+              <Icon name="people-outline" size={20} color="#666666" />
+              <Text className="text-text-primary ml-2 font-medium">
+                {selectedTransferPartner
+                  ? `Selected: ${selectedTransferPartner.name}`
+                  : 'Select Partner for Transfer'}
+              </Text>
+            </View>
+            <Icon name="chevron-down" size={20} color="#666666" />
+          </TouchableOpacity>
+
+          {/* Transfer Button (enabled only when partner selected) */}
+          <TouchableOpacity
+            onPress={handleTransfer}
+            disabled={!selectedTransferPartner || transferLoading}
+            className={`py-4 rounded-xl flex-row items-center justify-center ${
+              !selectedTransferPartner || transferLoading
+                ? 'bg-primary-sage300'
+                : 'bg-primary-sage600'
+            }`}
+          >
+            {transferLoading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <>
+                <Icon name="swap-horizontal" size={20} color="white" />
+                <Text className="text-text-inverse font-semibold text-lg ml-2">
+                  {selectedTransferPartner
+                    ? `Transfer to ${selectedTransferPartner.name}`
+                    : 'Confirm Transfer'}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* Transfer Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-xl font-bold">Select Partner</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Icon name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Partner List */}
-            <FlatList
-              data={DUMMY_PARTNERS}
-              keyExtractor={(p) => p.id}
-              renderItem={({ item: partner }) => (
-                <TouchableOpacity
-                  onPress={() => setSelectedPartner(partner)}
-                  className={`p-4 rounded-xl mb-2 border ${
-                    selectedPartner?.id === partner.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200'
-                  }`}
-                >
-                  <Text className="text-base font-medium">{partner.name}</Text>
-                  <Text className="text-xs text-gray-500">ID: {partner.id}</Text>
-                </TouchableOpacity>
-              )}
-              showsVerticalScrollIndicator={false}
-              className="max-h-96"
-            />
-
-            {/* Transfer Button with Loading */}
+      {/* Partner Selection Modal */}
+      <DialogBox
+        visible={partnerModalVisible}
+        onClose={() => setPartnerModalVisible(false)}
+        title="Select Partner"
+        size="lg"
+        showCloseButton={true}
+        closeIconName="close"
+        closeIconColor="#777777"
+        footer={
+          <View className="w-full">
+            {/* Confirm Button */}
             <TouchableOpacity
-              onPress={handleTransfer}
-              disabled={loading}
-              className={`mt-4 py-4 rounded-xl flex-row items-center justify-center ${
-                loading ? 'bg-blue-300' : 'bg-blue-600'
+              onPress={confirmPartnerSelection}
+              disabled={!tempSelectedPartner}
+              className={`py-4 rounded-xl flex-row items-center justify-center ${
+                !tempSelectedPartner ? 'bg-primary-sage300' : 'bg-primary-sage600'
               }`}
             >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <>
-                  <Icon name="send" size={20} color="white" />
-                  <Text className="text-white font-semibold text-lg ml-2">
-                    Transfer
-                  </Text>
-                </>
-              )}
+              <Icon name="checkmark" size={20} color="white" />
+              <Text className="text-text-inverse font-semibold text-lg ml-2">
+                Confirm Selection
+              </Text>
             </TouchableOpacity>
           </View>
+        }
+        footerStyle="border-t border-ui-border pt-3"
+        closeOnBackdropPress={true}
+      >
+        {/* Selected partner indicator inside modal */}
+        {tempSelectedPartner && (
+          <View className="flex-row items-center justify-between bg-primary-sage50 p-3 rounded-xl mb-3 border border-primary-sage200">
+            <View className="flex-row items-center">
+              <Icon name="person" size={18} color="#287860" />
+              <Text className="text-primary-sage800 font-medium ml-2">
+                {tempSelectedPartner.name}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setTempSelectedPartner(null)}>
+              <Icon name="close-circle" size={20} color="#777777" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Search Bar */}
+        <View className="flex-row items-center bg-background-secondary rounded-xl px-3 py-2 mb-3 border border-ui-border">
+          <Icon name="search" size={20} color="#999999" />
+          <TextInput
+            className="flex-1 ml-2 text-base text-text-primary"
+            placeholder="Search partners..."
+            placeholderTextColor="#999999"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Icon name="close-circle" size={20} color="#999999" />
+            </TouchableOpacity>
+          )}
         </View>
-      </Modal>
+
+        {/* Partner List */}
+        <FlatList
+          data={filteredPartners}
+          keyExtractor={(p) => p.id}
+          renderItem={({ item: partner }) => (
+            <TouchableOpacity
+              onPress={() => setTempSelectedPartner(partner)}
+              className={`p-4 rounded-xl mb-2 border ${
+                tempSelectedPartner?.id === partner.id
+                  ? 'border-primary-sage400 bg-primary-sage50'
+                  : 'border-ui-border bg-background-secondary'
+              }`}
+            >
+              <Text className="text-base font-medium text-text-primary">
+                {partner.name}
+              </Text>
+              <Text className="text-xs text-text-tertiary">ID: {partner.id}</Text>
+            </TouchableOpacity>
+          )}
+          showsVerticalScrollIndicator={false}
+          className="max-h-[400px]"
+          ListEmptyComponent={
+            <View className="py-10 items-center">
+              <Icon name="people-outline" size={40} color="#DDDDDD" />
+              <Text className="text-text-tertiary mt-2">No partners found</Text>
+            </View>
+          }
+        />
+      </DialogBox>
     </SafeAreaView>
   );
 };
