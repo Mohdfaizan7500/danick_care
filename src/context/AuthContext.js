@@ -2,30 +2,22 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
 
-// Create the context
 const AuthContext = createContext({});
 
-// Custom hook to use the auth context
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);
 
-// Auth provider component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
   const [refreshToken, setRefreshToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [IsOnline, setIsOnline] = useState(true);
-  
-  // --- NEW: importedPart state (can be any data type) ---
+  const [IsOnline] = useState(true);
   const [importedPart, setImportedPart] = useState(null);
 
-  // Check for stored tokens on app start
+  // Initialize from stored tokens
   useEffect(() => {
     checkStoredTokens();
   }, [IsOnline]);
-
 
   const checkStoredTokens = async () => {
     try {
@@ -33,24 +25,18 @@ export const AuthProvider = ({ children }) => {
       const storedRefreshToken = await AsyncStorage.getItem('refreshToken');
       
       if (storedAccessToken && storedAccessToken !== 'undefined') {
-        // Decode token to get user data
         try {
           const decodedToken = jwtDecode(storedAccessToken);
-          
-          // Extract user data from token (adjust based on your token structure)
           const userData = {
             id: decodedToken.id || decodedToken.sub,
             username: decodedToken.username || decodedToken.preferred_username,
             email: decodedToken.email,
-            // Add other fields as they appear in your token
           };
-          
           setAccessToken(storedAccessToken);
           setRefreshToken(storedRefreshToken);
           setUser(userData);
         } catch (decodeError) {
           console.error('Error decoding token:', decodeError);
-          // If token decoding fails, try to get stored user data
           const storedUser = await AsyncStorage.getItem('userData');
           if (storedUser && storedUser !== 'undefined') {
             setAccessToken(storedAccessToken);
@@ -62,40 +48,22 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Error checking stored tokens:', error);
     } finally {
-      setIsLoading(false);
+      setTimeout(() => setIsLoading(false), 2000);
     }
   };
 
-  // Login function
-  const login = async (userData, userAccessToken, userRefreshToken = null) => {
-    // Validate inputs
-    if (!userAccessToken || userAccessToken === undefined) {
-      console.error('Invalid accessToken: accessToken is undefined');
+  // NEW: Set auth data after successful login (used by login screen)
+  const setAuthData = async (userData, userAccessToken, userRefreshToken = null) => {
+    if (!userAccessToken) {
+      console.error('Invalid accessToken');
       return;
     }
 
     try {
-      // Store tokens
       setAccessToken(userAccessToken);
       if (userRefreshToken) setRefreshToken(userRefreshToken);
-      
-      // If userData is not provided, try to decode from token
-      if (!userData && userAccessToken) {
-        try {
-          const decodedToken = jwtDecode(userAccessToken);
-          userData = {
-            id: decodedToken.id || decodedToken.sub,
-            username: decodedToken.username || decodedToken.preferred_username,
-            email: decodedToken.email,
-          };
-        } catch (decodeError) {
-          console.error('Error decoding token during login:', decodeError);
-        }
-      }
-      
       setUser(userData);
-      
-      // Store in AsyncStorage
+
       await AsyncStorage.setItem('accessToken', String(userAccessToken));
       if (userRefreshToken) {
         await AsyncStorage.setItem('refreshToken', String(userRefreshToken));
@@ -103,39 +71,32 @@ export const AuthProvider = ({ children }) => {
       if (userData) {
         await AsyncStorage.setItem('userData', JSON.stringify(userData));
       }
-      
+
       console.log('Auth data stored successfully');
     } catch (error) {
       console.error('Error storing auth data:', error);
     }
   };
 
-  // Logout function
   const logout = async () => {
     try {
       setUser(null);
       setAccessToken(null);
       setRefreshToken(null);
-      setImportedPart(null); // Optionally clear importedPart on logout
-      
-      // Remove from AsyncStorage
+      setImportedPart(null);
+
       await AsyncStorage.removeItem('accessToken');
       await AsyncStorage.removeItem('refreshToken');
       await AsyncStorage.removeItem('userData');
-      
+
       console.log('Logout successful');
     } catch (error) {
       console.error('Error removing auth data:', error);
     }
   };
 
-  // Update user data
   const updateUser = async (updatedUserData) => {
-    if (!updatedUserData) {
-      console.error('Invalid user data for update');
-      return;
-    }
-
+    if (!updatedUserData) return;
     try {
       setUser(updatedUserData);
       await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
@@ -144,7 +105,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Function to get fresh user data from token
   const refreshUserFromToken = () => {
     if (accessToken) {
       try {
@@ -163,7 +123,6 @@ export const AuthProvider = ({ children }) => {
     return null;
   };
 
-  // --- NEW: Update function for importedPart ---
   const updateImportedPart = (newPart) => {
     setImportedPart(newPart);
   };
@@ -173,9 +132,9 @@ export const AuthProvider = ({ children }) => {
     accessToken,
     refreshToken,
     isLoading,
-    importedPart,          // <-- New state
-    updateImportedPart,    // <-- New setter
-    login,
+    importedPart,
+    updateImportedPart,
+    setAuthData,          // <-- new method to set auth data
     logout,
     updateUser,
     refreshUserFromToken,

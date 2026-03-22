@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import AppStack from './AppStack/AppStack';
 import AuthStack from './AuthStack/AuthStack';
@@ -7,20 +7,25 @@ import { NavigationContainer } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 
 const AppNavigation = () => {
-    // Destructure the values from useAuth() hook
-    const { accessToken, isLoading } = useAuth(); 
+    const { accessToken, isLoading } = useAuth();
 
     if (isLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Loading...ewuirwui</Text>
+                {/* <View style={styles.iconContainer}> */}
+                    <Image
+                        source={require('../assets/images/AppIcon.png')}
+                        style={{ width: 100, height: 100 }}
+                        resizeMode='contain'
+                    />
+                {/* </View> */}
             </View>
         );
     }
 
     return (
         <NavigationContainer>
-            {accessToken ? <AppStack /> : <AuthStack />} 
+            {accessToken ? <AppStack /> : <AuthStack />}
         </NavigationContainer>
     );
 };
@@ -34,8 +39,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#fff',
     },
-    loadingText: {
-        fontSize: 18,
-        color: '#333',
+    iconContainer: {
+        borderWidth: 0,
+        width: 150,
+        height: 150,
+        borderRadius: 80,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        // Android shadow
+        elevation: 5,
+        // iOS shadow
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
     },
 });

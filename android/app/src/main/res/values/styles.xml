@@ -5,11 +5,15 @@
         <!-- Customize your theme here. -->
         <!-- <item name="android:editTextBackground">@drawable/rn_edit_text_material</item> -->
         <!-- Customize your theme here -->
-        <item name="colorPrimary">@color/cyan_500</item>
+        <!-- <item name="colorPrimary">@color/cyan_500</item> -->
+        <item name="colorPrimary">@color/white</item>
+
         <!-- <item name="colorPrimaryDark">@color/cyan_700</item> -->
         <!-- <item name="colorAccent">@color/cyan_500</item> -->
         <!-- Optional: status bar color -->
-        <item name="android:statusBarColor">@color/cyan_700</item>
+        <!-- <item name="android:statusBarColor">@color/cyan_700</item> -->
+        <item name="android:statusBarColor">@color/white</item>
+
 
         
         <!-- Optional: navigation bar color -->

@@ -8,6 +8,7 @@ import {
     Image,
     KeyboardAvoidingView,
     Platform,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -15,7 +16,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { launchCamera } from 'react-native-image-picker';
+import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import DialogBox from '../../../components/DilaogBox';
 
 const Remarkscreen = () => {
@@ -40,20 +42,71 @@ const Remarkscreen = () => {
         image1Uri !== null && 
         image2Uri !== null;
 
-    // Image picker function
-    const pickImage = (imageNumber) => {
+    // ----- Camera permission functions -----
+    const checkCameraPermission = async () => {
+        if (Platform.OS === 'ios') {
+            return await check(PERMISSIONS.IOS.CAMERA);
+        } else {
+            return await check(PERMISSIONS.ANDROID.CAMERA);
+        }
+    };
+
+    const requestCameraPermission = async () => {
+        if (Platform.OS === 'ios') {
+            return await request(PERMISSIONS.IOS.CAMERA);
+        } else {
+            return await request(PERMISSIONS.ANDROID.CAMERA);
+        }
+    };
+
+    // Camera capture function
+    const captureImage = async (imageNumber) => {
+        try {
+            const permissionStatus = await checkCameraPermission();
+
+            if (permissionStatus === RESULTS.GRANTED) {
+                openCamera(imageNumber);
+            } else if (permissionStatus === RESULTS.DENIED) {
+                const requestStatus = await requestCameraPermission();
+                if (requestStatus === RESULTS.GRANTED) {
+                    openCamera(imageNumber);
+                } else {
+                    toast.custom(
+                        <StatusMessage
+                            type="error"
+                            title="Camera permission denied"
+                            className="mx-4 mb-6"
+                        />,
+                        { duration: 2000 }
+                    );
+                }
+            } else if (permissionStatus === RESULTS.BLOCKED) {
+                Alert.alert(
+                    'Permission Blocked',
+                    'Camera permission is blocked. Please enable it in settings to take photos.',
+                    [{ text: 'OK' }]
+                );
+            }
+        } catch (error) {
+            console.log('Camera permission error:', error);
+            toast.error('Error accessing camera');
+        }
+    };
+
+    const openCamera = (imageNumber) => {
         const options = {
             mediaType: 'photo',
             includeBase64: false,
             maxHeight: 2000,
             maxWidth: 2000,
             quality: 0.8,
+            saveToPhotos: false, // or true depending on requirement
         };
 
-        launchImageLibrary(options, (response) => {
+        launchCamera(options, (response) => {
             if (response.didCancel) return;
             if (response.error) {
-                toast.error('Error picking image');
+                toast.error('Error taking photo');
                 return;
             }
             if (response.assets && response.assets[0]) {
@@ -65,7 +118,7 @@ const Remarkscreen = () => {
                 toast.custom(
                     <StatusMessage
                         type="success"
-                        title={`Image ${imageNumber} uploaded successfully`}
+                        title={`Image ${imageNumber} captured successfully`}
                         className="mx-4 mb-6"
                     />,
                     { duration: 2000 }
@@ -154,7 +207,7 @@ const Remarkscreen = () => {
 
                     {/* Image Upload Section */}
                     <Text className="text-text-primary font-semibold text-base mb-2">
-                        Upload Images
+                        Capture Images
                     </Text>
 
                     {/* Image 1 */}
@@ -176,15 +229,15 @@ const Remarkscreen = () => {
                             </View>
                         ) : (
                             <TouchableOpacity
-                                onPress={() => pickImage(1)}
+                                onPress={() => captureImage(1)}
                                 className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary"
                             >
-                                <Icon name="cloud-upload-outline" size={40} color="#666" />
+                                <Icon name="camera-outline" size={40} color="#666" />
                                 <Text className="text-text-primary font-semibold text-base mt-2">
-                                    Upload Image 1
+                                    Capture Image 1
                                 </Text>
                                 <Text className="text-text-tertiary text-sm text-center mt-1">
-                                    Tap to browse
+                                    Tap to open camera
                                 </Text>
                             </TouchableOpacity>
                         )}
@@ -209,15 +262,15 @@ const Remarkscreen = () => {
                             </View>
                         ) : (
                             <TouchableOpacity
-                                onPress={() => pickImage(2)}
+                                onPress={() => captureImage(2)}
                                 className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary"
                             >
-                                <Icon name="cloud-upload-outline" size={40} color="#666" />
+                                <Icon name="camera-outline" size={40} color="#666" />
                                 <Text className="text-text-primary font-semibold text-base mt-2">
-                                    Upload Image 2
+                                    Capture Image 2
                                 </Text>
                                 <Text className="text-text-tertiary text-sm text-center mt-1">
-                                    Tap to browse
+                                    Tap to open camera
                                 </Text>
                             </TouchableOpacity>
                         )}
