@@ -11,8 +11,9 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useState(null);
   const [refreshToken, setRefreshToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [IsOnline] = useState(true);
+  const [IsOnline, setIsOnline] = useState(true);
   const [importedPart, setImportedPart] = useState(null);
+  const[imagUrl,setImageUrl]= useState('https://dainikcare.com/dainik_care_admin/');
 
   // Initialize from stored tokens
   useEffect(() => {
@@ -23,15 +24,29 @@ export const AuthProvider = ({ children }) => {
     try {
       const storedAccessToken = await AsyncStorage.getItem('accessToken');
       const storedRefreshToken = await AsyncStorage.getItem('refreshToken');
-      
+      // let storedUserData = await AsyncStorage.getItem('userData');
+      // let parsedData = null;
+      // if (storedUserData) {
+      //   try {
+      //     parsedData = JSON.parse(storedUserData);
+      //     console.log('parse data :',parsedData)
+      //   } catch (error) {
+      //     console.error('Failed to parse stored user data:', error);
+      //   }
+      // }
+      // Now parsedData contains the object, or null if parsing failed.
+
+
       if (storedAccessToken && storedAccessToken !== 'undefined') {
         try {
           const decodedToken = jwtDecode(storedAccessToken);
+          console.log('decode data:', decodedToken)
           const userData = {
             id: decodedToken.id || decodedToken.sub,
-            username: decodedToken.username || decodedToken.preferred_username,
-            email: decodedToken.email,
+            technician_id: decodedToken.technician_id,
+            city_id: decodedToken?.city_id
           };
+          console.log('userdata from local storage :', userData)
           setAccessToken(storedAccessToken);
           setRefreshToken(storedRefreshToken);
           setUser(userData);
@@ -139,7 +154,10 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     refreshUserFromToken,
     IsOnline,
-    isAuthenticated: !!accessToken
+    setIsOnline,
+    isAuthenticated: !!accessToken,
+    imagUrl,
+    setImageUrl
   };
 
   return (

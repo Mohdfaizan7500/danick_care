@@ -10,6 +10,7 @@ import {
   Modal,
   Alert,
   Platform,
+  PlatformColor,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -43,6 +44,8 @@ const Scan = () => {
   const [isConnected, setIsConnected] = useState(true); // Internet connection state
 
   const device = useCameraDevice('back');
+  const device_os = PlatformColor.OS;
+  console.log('device:', device_os)
 
   // Monitor internet connection
   useEffect(() => {
@@ -155,10 +158,10 @@ const Scan = () => {
 
         {/* Search Input with Inline Button and Clear Icon */}
         <View className="flex-row items-center mb-4">
-          <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-xl bg-white px-3 py-2">
+          <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-xl bg-white px-3 ">
             <Icon name="qr-code-outline" size={20} color="#666" />
             <TextInput
-              className="flex-1 ml-2 text-base text-gray-800"
+              className="flex-1 ml-2 text-base text-gray-800 py-5"
               placeholder="Enter QR code number"
               value={searchText}
               onChangeText={setSearchText}
@@ -197,7 +200,7 @@ const Scan = () => {
 
         {/* Search Result */}
         {searchedProduct && (
-          <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <View className="bg-white border border-gray-200 rounded-xl p-4 ">
             <Text className="text-lg font-bold text-gray-900 mb-3">Item Found</Text>
             <View className="flex-row">
               <Image

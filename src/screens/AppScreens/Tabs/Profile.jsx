@@ -1,4 +1,4 @@
-import { Text, View, TouchableOpacity, ActivityIndicator, Image, ScrollView, Alert } from 'react-native';
+import { Text, View, TouchableOpacity, ActivityIndicator, Image, ScrollView, Alert, Platform } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
@@ -10,7 +10,7 @@ import DialogBox from '../../../components/DilaogBox';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import NetInfo from '@react-native-community/netinfo'; // Import NetInfo
-
+import { MaterialIcons } from '@react-native-vector-icons/material-icons';
 const Profile = () => {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
@@ -18,6 +18,10 @@ const Profile = () => {
   const [isDialogLoggingOut, setIsDialogLoggingOut] = useState(false);
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
   const [isConnected, setIsConnected] = useState(true); // Internet connectivity state
+
+
+  const device = Platform.OS == 'ios';
+  console.log('device:',device)
 
   // Monitor internet connection
   useEffect(() => {
@@ -135,6 +139,7 @@ const Profile = () => {
         <Text className="text-xs text-gray-500 mt-0.5">{item.subtitle}</Text>
       </View>
       <Icon name="chevron-right" size={24} color="#9ca3af" />
+      {/* <MaterialIcons name="house" color="#ff0000" size={20} /> */}
     </TouchableOpacity>
   );
 
@@ -166,7 +171,7 @@ const Profile = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{flex:1, paddingBottom: 0,}}>
         <View className="absolute inset-0 z-50 w-90% pointer-events-none">
           <Toaster />
         </View>
@@ -199,7 +204,7 @@ const Profile = () => {
         </View>
 
         <View className="mt-6">
-          <View className="bg-white mx-5 rounded-xl px-4 shadow-md">
+          <View className={`bg-white mx-5 rounded-xl px-4 shadow-md ${device ? 'shadow-sm':'shadow-md'}`}>
             {menuItems.map((item, index) => (
               <MenuItem
                 key={item.id}

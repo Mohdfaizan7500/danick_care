@@ -6,7 +6,6 @@ import {
     FlatList,
     TouchableOpacity,
     Image,
-    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -14,9 +13,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import { DownloadIcon } from 'lucide-react-native';
-// Import the auth hook
-import { useAuth } from '../../../context/AuthContext'; // Adjust the path as needed
+import { useAuth } from '../../../context/AuthContext';
 
 // Mock parts data (same as before)
 const MOCK_PARTS = [
@@ -59,14 +56,23 @@ const MOCK_PARTS = [
 
 const AddPartBilling = () => {
     const navigation = useNavigation();
-    // Access the importedPart state and its updater from AuthContext
-    const { updateImportedPart } = useAuth();
+    const { importedPart, updateImportedPart } = useAuth();
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [parts, setParts] = useState(MOCK_PARTS);
+    const [parts] = useState(MOCK_PARTS);
     const [filteredParts, setFilteredParts] = useState(MOCK_PARTS);
-    const [selectedParts, setSelectedParts] = useState([]); // array of part ids
-    const [submitting, setSubmitting] = useState(false);
+    const [selectedParts, setSelectedParts] = useState([]);
+
+    // Ensure importedPart is always an array (fallback to empty array)
+    const safeImportedPart = Array.isArray(importedPart) ? importedPart : [];
+
+    // Initialize selected parts from context when component mounts or context updates
+    useEffect(() => {
+        const selectedIds = safeImportedPart
+            .filter(part => parts.some(p => p.id === part.id))
+            .map(part => part.id);
+        setSelectedParts(selectedIds);
+    }, [safeImportedPart, parts]);
 
     // Filter parts based on search query
     useEffect(() => {
@@ -83,56 +89,29 @@ const AddPartBilling = () => {
         }
     }, [searchQuery, parts]);
 
-    const toggleSelection = (partId) => {
-        if (selectedParts.includes(partId)) {
-            setSelectedParts(selectedParts.filter((id) => id !== partId));
-        } else {
-            setSelectedParts([...selectedParts, partId]);
-        }
+    // Sync context with current selection
+    const syncContext = (newSelectedIds) => {
+        // Get the full objects of the newly selected parts
+        const selectedPartObjects = parts.filter(part =>
+            newSelectedIds.includes(part.id)
+        );
+
+        // Keep other parts from context that are NOT in the current parts list
+        const otherParts = safeImportedPart.filter(
+            part => !parts.some(p => p.id === part.id)
+        );
+
+        // Combine and update context
+        updateImportedPart([...otherParts, ...selectedPartObjects]);
     };
 
-    const handleSubmit = () => {
-        if (selectedParts.length === 0) {
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title="Please select at least one part"
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
-            return;
-        }
+    const toggleSelection = (partId) => {
+        const newSelectedIds = selectedParts.includes(partId)
+            ? selectedParts.filter(id => id !== partId)
+            : [...selectedParts, partId];
 
-        setSubmitting(true);
-
-        // Simulate API call (e.g., saving selection)
-        setTimeout(() => {
-            setSubmitting(false);
-
-            // Get full part objects for the selected IDs
-            const selectedPartObjects = parts.filter(part =>
-                selectedParts.includes(part.id)
-            );
-
-            // --- Store the selected parts in AuthContext's importedPart state ---
-            updateImportedPart(selectedPartObjects);
-
-            toast.custom(
-                <StatusMessage
-                    type="success"
-                    title={`${selectedParts.length} part(s) added successfully!`}
-                    className="mx-4 mb-6"
-                />,
-                { duration: 2000 }
-            );
-
-            // Wait a moment for the toast to be visible, then navigate back to Billing with the selected parts
-            setTimeout(() => {
-                // Navigate to Billing screen and pass the selected parts as a parameter
-                navigation.goBack();
-            }, 1500);
-        }, 2000);
+        setSelectedParts(newSelectedIds);
+        syncContext(newSelectedIds);
     };
 
     const renderPartItem = ({ item }) => {
@@ -182,6 +161,15 @@ const AddPartBilling = () => {
                 titleStyle="font-bold text-2xl ml-5"
                 showBackButton={true}
                 containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
+                rightComponent={
+                    selectedParts.length > 0 && (
+                        <View className="bg-primary-sage500 rounded-full px-3 py-1">
+                            <Text className="text-white font-bold text-sm">
+                                {selectedParts.length}
+                            </Text>
+                        </View>
+                    )
+                }
             />
 
             {/* Search Bar */}
@@ -189,7 +177,7 @@ const AddPartBilling = () => {
                 <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-0">
                     <Icon name="search-outline" size={20} color="#666" />
                     <TextInput
-                        className="flex-1 ml-2 text-text-primary text-base"
+                        className="flex-1 ml-2 text-text-primary text-base py-3"
                         placeholder="Search by name or part number"
                         placeholderTextColor="#999"
                         value={searchQuery}
@@ -218,35 +206,6 @@ const AddPartBilling = () => {
                     </View>
                 }
             />
-
-            {/* Selected Count & Submit Button */}
-            {selectedParts.length > 0 && (
-                <View className="px-4 py-3 border-t border-ui-border bg-white">
-                    <View className="flex-row justify-between items-center mb-2">
-                        <Text className="text-text-primary font-semibold">
-                            {selectedParts.length} part(s) selected
-                        </Text>
-                    </View>
-                    <TouchableOpacity
-                        onPress={handleSubmit}
-                        disabled={submitting}
-                        className={`py-3 rounded-xl items-center ${
-                            submitting ? 'bg-ui-disabled' : 'bg-black'
-                        }`}
-                    >
-                        {submitting ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <View className="flex-row items-center gap-4">
-                                <DownloadIcon size={18} color="#fff" />
-                                <Text className="text-text-inverse font-semibold text-base">
-                                    Import
-                                </Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                </View>
-            )}
         </SafeAreaView>
     );
 };

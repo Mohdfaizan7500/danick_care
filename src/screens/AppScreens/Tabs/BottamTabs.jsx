@@ -18,8 +18,7 @@ const Tab = createBottomTabNavigator();
 const CustomTabBarButton = ({ children, onPress, isOnline, style, ...props }) => {
   const handlePress = () => {
     if (!isOnline) {
-      toast.custom(<StatusMessage type='error' title={'You are oofline, Connect to service center.'}/>,{duration:1000})
-      // Alert.alert('No Internet', 'You need an internet connection to access this section.');
+      toast.custom(<StatusMessage type='error' title={'You are offline, Connect to service center.'}/>, { duration: 1000 });
       return;
     }
     onPress();
@@ -39,7 +38,7 @@ const CustomTabBarButton = ({ children, onPress, isOnline, style, ...props }) =>
       ]}
       {...props}
     >
-      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ alignItems: 'center' ,justifyContent: 'center' }}>
         {children}
       </View>
     </Pressable>
@@ -57,21 +56,21 @@ const BottomTabs = () => {
         tabBarActiveTintColor: Colors.brand.primary,
         tabBarInactiveTintColor: Colors.gray[800],
         tabBarStyle: {
-          backgroundColor: Colors.background.primary,
+          backgroundColor:Colors.background.primary,
           borderTopWidth: 1,
-          borderTopColor: Colors.ui.border,
-          paddingBottom: insets.bottom+5,
-          paddingTop: 5,
-          height: 80,
+          borderTopColor:Colors.ui.border,
+          // Fixed base height + bottom safe area inset to avoid clipping on iOS
+          height: 60 + insets.bottom,
+          paddingBottom: 0,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
         },
         tabBarItemStyle: {
-          // This ensures each tab item uses flexbox to center content
           justifyContent: 'center',
           alignItems: 'center',
+          paddingVertical: 0, // remove default padding that might cause misalignment
         },
         headerStyle: {
           backgroundColor: Colors.brand.primary,
@@ -82,7 +81,6 @@ const BottomTabs = () => {
           fontSize: 18,
           color: Colors.text.inverse,
         },
-        // Custom button for each tab
         tabBarButton: (props) => (
           <CustomTabBarButton {...props} isOnline={IsOnline} />
         ),

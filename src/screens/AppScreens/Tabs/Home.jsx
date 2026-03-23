@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Pressable,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -30,6 +31,7 @@ import OffLineScreen from '../OffLineScreen';
 import { toast } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 
+const { width: screenWidth } = Dimensions.get('window');
 
 // Carousel images
 const carouselImages = [
@@ -90,9 +92,7 @@ const Home = () => {
     }, 3000);
 
     return () => clearInterval(interval);
-    // Remove activeIndex from dependencies to avoid re‑creating interval on every change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Now it runs only once on mount
+  }, [activeIndex]);
 
   // ---------- Network listener ----------
   useEffect(() => {
@@ -105,14 +105,13 @@ const Home = () => {
   // ---------- Handlers ----------
   const handleNotificationPress = () => {
     if (!isConnected) return;
-    if (!IsOnline) return toast.custom(<StatusMessage type='error' title={"You Can't access, contect to service cenetr "} />, { duration: 1000 });
+    if (!IsOnline) return toast.custom(<StatusMessage type='error' title={"You Can't access, contact to service center "} />, { duration: 1000 });
     navigation.navigate('Notification');
   };
 
   const handleWalletPress = () => {
     if (!isConnected) return;
-    if (!IsOnline) return toast.custom(<StatusMessage type='error' title={"You Can't access, contect to service cenetr "} />, { duration: 1000 });
-
+    if (!IsOnline) return toast.custom(<StatusMessage type='error' title={"You Can't access, contact to service center "} />, { duration: 1000 });
     navigation.navigate('Wallet');
   };
 
@@ -127,7 +126,7 @@ const Home = () => {
 
   // ---------- Carousel helpers ----------
   const renderCarouselItem = ({ item }) => (
-    <View className="w-[400] px-5">
+    <View style={{ width: screenWidth }} className="px-5">
       <View className="bg-white rounded-2xl overflow-hidden">
         <Image
           source={{ uri: item.image }}
@@ -140,19 +139,13 @@ const Home = () => {
 
   const handleScroll = event => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
-    const index = Math.round(scrollPosition / 400);
+    const index = Math.round(scrollPosition / screenWidth);
     if (index !== activeIndex) setActiveIndex(index);
   };
 
-  const handleMomentumScrollEnd = event => {
-    const scrollPosition = event.nativeEvent.contentOffset.x;
-    const index = Math.round(scrollPosition / 400);
-    setActiveIndex(index);
-  };
-
   const getItemLayout = (data, index) => ({
-    length: 400,
-    offset: 400 * index,
+    length: screenWidth,
+    offset: screenWidth * index,
     index,
   });
 
@@ -161,7 +154,7 @@ const Home = () => {
       colors={[`${Colors.primary.sage400}`, '#fff', '#fff']}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      className="flex-1"
+      style={{flex:1}}
     >
       <StatusBar
         backgroundColor="transparent"
@@ -182,8 +175,9 @@ const Home = () => {
               className="w-12 h-12 rounded-full border-2 border-white"
             />
             <View
-              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${user.isActive ? 'bg-green-500' : 'bg-gray-400'
-                }`}
+              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
+                user.isActive ? 'bg-green-500' : 'bg-gray-400'
+              }`}
             />
           </View>
           <View className="ml-3">
@@ -194,8 +188,9 @@ const Home = () => {
               </Text>
             </View>
             <Text
-              className={`text-xs font-medium ${user.isActive ? 'text-green-600' : 'text-gray-500'
-                }`}
+              className={`text-xs font-medium ${
+                user.isActive ? 'text-green-600' : 'text-gray-500'
+              }`}
             >
               {user.isActive ? '● Active' : '● Inactive'}
             </Text>
@@ -229,7 +224,7 @@ const Home = () => {
         </View>
       </View>
 
-      {/* ---------- CORRECTED CONDITIONAL RENDERING ---------- */}
+      {/* ---------- CONDITIONAL RENDERING ---------- */}
       {isConnected ? (
         IsOnline ? (
           <ScrollView
@@ -247,14 +242,10 @@ const Home = () => {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 pagingEnabled
-                snapToAlignment="center"
-                snapToInterval={400}
-                decelerationRate="fast"
                 onScroll={handleScroll}
-                onMomentumScrollEnd={handleMomentumScrollEnd}
                 scrollEventThrottle={16}
                 getItemLayout={getItemLayout}
-                contentContainerStyle={{ paddingHorizontal: 0 }}
+                initialScrollIndex={activeIndex}
               />
               <View className="flex-row justify-center mt-3">
                 {carouselImages.map((_, index) => (
@@ -269,10 +260,9 @@ const Home = () => {
                     }}
                   >
                     <View
-                      className={`w-2 h-2 rounded-full mx-1 ${index === activeIndex
-                        ? 'bg-blue-500 w-4'
-                        : 'bg-gray-300'
-                        }`}
+                      className={`w-2 h-2 rounded-full mx-1 ${
+                        index === activeIndex ? 'bg-blue-500 w-4' : 'bg-gray-300'
+                      }`}
                     />
                   </TouchableOpacity>
                 ))}

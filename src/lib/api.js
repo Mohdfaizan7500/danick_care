@@ -2,7 +2,11 @@
 import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = 'https://dummyjson.com/';
+// const BASE_URL = 'https://dummyjson.com/';
+const BASE_URL = 'http://192.168.1.3:5001/';
+
+
+
 
 const apiClient = axios.create({
     baseURL: BASE_URL,
@@ -44,12 +48,18 @@ const getErrorMessage = (error) => {
 
 // Login function for React Native
 export const loginApi = async (username, password) => {
+    // console.log('technician id:',username,typeof(username));
+    // console.log('Password:',password,typeof(password));
+
     try {
-        const response = await apiClient.post("/auth/login", {
-            username: username,
+        const response = await apiClient.post("TechnicianAPI/Login", {
+            technician_id: username,
             password: password,
             expiresInMins: 30, // optional
         });
+        console.log('responce:',response)
+        // console.log('data:',response.data)
+
 
         return {
             success: true,
@@ -66,6 +76,24 @@ export const loginApi = async (username, password) => {
         };
     }
 };
+
+
+export const getAllSparePartcategories = async (cityId) => {
+    try {
+        const response = await apiClient.post("TechnicianAPI/Services", {
+            city_id: cityId
+        });
+        console.log('Spare part categories response:', response);
+        // Return the full response (or only data) so the caller can handle it
+        return response; // or response.data depending on what you need
+    } catch (error) {
+        console.error('API error in getAllSparePartcategories:', error);
+        const errorMessage = getErrorMessage(error);
+        // Throw an error so the calling component can catch it
+        throw new Error(errorMessage);
+    }
+};
+
 
 // You can also export the apiClient for other uses if needed
 export { apiClient };

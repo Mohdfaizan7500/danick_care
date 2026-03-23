@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, FlatList, Image, TextInput, TouchableOpacity, Pressable, Dimensions } from 'react-native'
+import { StyleSheet, Text, View, FlatList, Image, TextInput, TouchableOpacity, Pressable, Dimensions, Platform } from 'react-native'
 import React, { useState } from 'react'
 import Header from '../../components/Header'
 import { useNavigation, useRoute } from '@react-navigation/native'
@@ -13,6 +13,9 @@ const SparePartScreen = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredParts, setFilteredParts] = useState(product.spareParts);
     const navigation = useNavigation();
+
+    const device = Platform.OS;
+    console.log('device:',device)
 
     const handleSearch = (text) => {
         setSearchQuery(text);
@@ -53,7 +56,7 @@ const SparePartScreen = () => {
                 <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-0">
                     <Search size={20} color="#666" />
                     <TextInput
-                        className="flex-1 ml-2 text-base text-gray-800"
+                        className="flex-1 ml-2 py-3 text-base text-gray-800"
                         placeholder="Search spare parts..."
                         placeholderTextColor="#999"
                         value={searchQuery}

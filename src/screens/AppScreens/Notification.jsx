@@ -421,7 +421,7 @@ const Notification = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-white">
       {/* Custom Header with back button, title, and mark all action */}
       <Header
         title="Notifications"

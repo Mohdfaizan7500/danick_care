@@ -9,7 +9,6 @@ import {
   Platform,
   Keyboard,
   Pressable,
-  ActivityIndicator,
 } from 'react-native';
 import React, { useState, useRef, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +19,7 @@ import { PERMISSIONS, request, check, RESULTS } from 'react-native-permissions';
 import DialogBox from '../../components/DilaogBox';
 import { useNavigation } from '@react-navigation/native';
 import NetInfo from '@react-native-community/netinfo';
-import NoInternet from '../NoInternet'; // custom component defined below
+import NoInternet from '../NoInternet';
 
 const ProfileEdit = () => {
   const navigation = useNavigation();
@@ -42,11 +41,7 @@ const ProfileEdit = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showImageOptions, setShowImageOptions] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-
-  // Track changes
   const [hasChanges, setHasChanges] = useState(false);
-
-  // Dialog states
   const [dialogVisible, setDialogVisible] = useState(false);
   const [dialogConfig, setDialogConfig] = useState({
     type: 'success',
@@ -54,11 +49,8 @@ const ProfileEdit = () => {
     message: '',
     size: 'sm',
   });
-
-  // Internet connection state
   const [isConnected, setIsConnected] = useState(true);
   const [isCheckingConnection, setIsCheckingConnection] = useState(false);
-
   const scrollViewRef = useRef(null);
 
   // ------------------- Internet Monitoring -------------------
@@ -69,7 +61,6 @@ const ProfileEdit = () => {
     return () => unsubscribe();
   }, []);
 
-  // Manually retry connection check
   const retryConnection = async () => {
     setIsCheckingConnection(true);
     const state = await NetInfo.fetch();
@@ -91,7 +82,7 @@ const ProfileEdit = () => {
     };
   }, []);
 
-  // Detect changes
+  // ------------------- Detect changes -------------------
   useEffect(() => {
     const imageChanged = image !== userData.profileImage;
     const passwordChanged =
@@ -117,19 +108,17 @@ const ProfileEdit = () => {
 
   // ------------------- Image Picker & Camera -------------------
   const checkCameraPermission = async () => {
-    if (Platform.OS === 'ios') {
-      return await check(PERMISSIONS.IOS.CAMERA);
-    } else {
-      return await check(PERMISSIONS.ANDROID.CAMERA);
-    }
+    const permission = Platform.OS === 'ios'
+      ? PERMISSIONS.IOS.CAMERA
+      : PERMISSIONS.ANDROID.CAMERA;
+    return await check(permission);
   };
 
   const requestCameraPermission = async () => {
-    if (Platform.OS === 'ios') {
-      return await request(PERMISSIONS.IOS.CAMERA);
-    } else {
-      return await request(PERMISSIONS.ANDROID.CAMERA);
-    }
+    const permission = Platform.OS === 'ios'
+      ? PERMISSIONS.IOS.CAMERA
+      : PERMISSIONS.ANDROID.CAMERA;
+    return await request(permission);
   };
 
   const handleChooseImage = () => {
@@ -157,6 +146,8 @@ const ProfileEdit = () => {
   const handleTakePhoto = async () => {
     try {
       const permissionStatus = await checkCameraPermission();
+      console.log('Camera permission status:', permissionStatus);
+
       if (permissionStatus === RESULTS.GRANTED) {
         openCamera();
       } else if (permissionStatus === RESULTS.DENIED) {
@@ -167,11 +158,13 @@ const ProfileEdit = () => {
           showDialog('error', 'Permission Denied', 'Camera permission is required to take photos');
         }
       } else if (permissionStatus === RESULTS.BLOCKED) {
-        showDialog('error', 'Permission Blocked', 'Camera permission is blocked. Please enable it in settings');
+        showDialog('error', 'Permission Blocked', 'Camera permission is blocked. Please enable it in Settings');
+      } else if (permissionStatus === RESULTS.UNAVAILABLE) {
+        showDialog('error', 'Camera Unavailable', 'Camera is not available on this device');
       }
     } catch (error) {
-      console.log('Permission error:', error);
-      showDialog('error', 'Error', 'Error accessing camera');
+      console.error('Permission error:', error);
+      showDialog('error', 'Error', 'Error accessing camera: ' + error.message);
     }
   };
 
@@ -182,9 +175,10 @@ const ProfileEdit = () => {
       maxHeight: 1000,
       maxWidth: 1000,
       quality: 0.8,
-      saveToPhotos: true,
+      saveToPhotos: false, // Set to false to avoid requesting photo library permission
     };
     launchCamera(options, response => {
+      console.log('Camera response:', response);
       if (response.didCancel) {
         console.log('User cancelled camera');
       } else if (response.error) {
