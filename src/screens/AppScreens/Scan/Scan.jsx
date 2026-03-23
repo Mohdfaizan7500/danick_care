@@ -9,12 +9,12 @@ import {
   ScrollView,
   Modal,
   Alert,
-  Platform, // Added missing import
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { toast } from 'sonner-native';
-import NetInfo from '@react-native-community/netinfo'; // Add NetInfo
+import NetInfo from '@react-native-community/netinfo';
 import Header from '../../../components/Header';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
@@ -103,9 +103,9 @@ const Scan = () => {
     }, 500);
   };
 
-  const handleAddToBucket = () => {
-    if (!searchedProduct) return;
-    toast.success(`${searchedProduct.name} added to bucket`);
+  const handleClear = () => {
+    setSearchText('');
+    setSearchedProduct(null);
   };
 
   // Retry connection (used by NoInternet component if it accepts onRetry)
@@ -124,8 +124,7 @@ const Scan = () => {
           showBackButton={true}
           containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
         />
-        {/* NoInternet component – pass onRetry if it expects one */}
-        <NoInternet  />
+        <NoInternet />
       </SafeAreaView>
     );
   }
@@ -154,7 +153,7 @@ const Scan = () => {
           </Text>
         </TouchableOpacity>
 
-        {/* Search Input with Inline Button */}
+        {/* Search Input with Inline Button and Clear Icon */}
         <View className="flex-row items-center mb-4">
           <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-xl bg-white px-3 py-2">
             <Icon name="qr-code-outline" size={20} color="#666" />
@@ -166,6 +165,11 @@ const Scan = () => {
               returnKeyType="search"
               onSubmitEditing={handleSearch}
             />
+            {searchText.length > 0 && (
+              <TouchableOpacity onPress={handleClear} className="ml-2">
+                <Icon name="close-circle-outline" size={20} color="#999" />
+              </TouchableOpacity>
+            )}
           </View>
           <TouchableOpacity
             onPress={handleSearch}
@@ -207,15 +211,6 @@ const Scan = () => {
                 <Text className="text-lg font-bold text-primary-sage600 mt-1">₹{searchedProduct.price}</Text>
               </View>
             </View>
-
-            {/* Add to Bucket Button */}
-            <TouchableOpacity
-              onPress={handleAddToBucket}
-              className="bg-primary-sage600 py-3 rounded-xl flex-row items-center justify-center mt-4"
-            >
-              <Icon name="basket-outline" size={20} color="white" />
-              <Text className="text-white font-semibold text-base ml-2">Add to Bucket</Text>
-            </TouchableOpacity>
           </View>
         )}
       </ScrollView>

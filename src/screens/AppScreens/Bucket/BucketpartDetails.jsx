@@ -89,7 +89,10 @@ const BucketpartDetails = () => {
     setTimeout(() => {
       setTransferLoading(false);
       setSelectedTransferPartner(null);
-      toast.custom(<StatusMessage type='success' title={`Part transferred to ${selectedTransferPartner.name}`}/>,{duration:1000});
+      toast.custom(<StatusMessage type='success' title={`Part transferred to ${selectedTransferPartner.name}`} />, { duration: 1000 });
+      navigation.goBack();
+
+
     }, 2000);
   };
 
@@ -172,8 +175,8 @@ const BucketpartDetails = () => {
             onPress={handleTransfer}
             disabled={!selectedTransferPartner || transferLoading}
             className={`py-4 rounded-xl flex-row items-center justify-center ${!selectedTransferPartner || transferLoading
-                ? 'bg-primary-sage300'
-                : 'bg-primary-sage600'
+              ? 'bg-primary-sage300'
+              : 'bg-primary-sage600'
               }`}
           >
             {transferLoading ? (
@@ -260,8 +263,8 @@ const BucketpartDetails = () => {
             <TouchableOpacity
               onPress={() => setTempSelectedPartner(partner)}
               className={`p-4 rounded-xl mb-2 border ${tempSelectedPartner?.id === partner.id
-                  ? 'border-primary-sage400 bg-primary-sage50'
-                  : 'border-ui-border bg-background-secondary'
+                ? 'border-primary-sage400 bg-primary-sage50'
+                : 'border-ui-border bg-background-secondary'
                 }`}
             >
               <Text className="text-base font-medium text-text-primary">

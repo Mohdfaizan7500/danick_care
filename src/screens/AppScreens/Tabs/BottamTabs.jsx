@@ -10,6 +10,7 @@ import { Colors } from '../../../constants/Color';
 import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
 
@@ -47,6 +48,7 @@ const CustomTabBarButton = ({ children, onPress, isOnline, style, ...props }) =>
 
 const BottomTabs = () => {
   const { IsOnline } = useAuth();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -58,9 +60,9 @@ const BottomTabs = () => {
           backgroundColor: Colors.background.primary,
           borderTopWidth: 1,
           borderTopColor: Colors.ui.border,
-          paddingBottom: 5,
+          paddingBottom: insets.bottom+5,
           paddingTop: 5,
-          height: 70,
+          height: 80,
         },
         tabBarLabelStyle: {
           fontSize: 12,

@@ -13,7 +13,6 @@ const PartDetails = () => {
   const part = route.params.part;
   const [modalVisible, setModalVisible] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [quantity, setQuantity] = useState(1);
 
   // Stock status logic
   const getStockStatus = () => {
@@ -23,7 +22,7 @@ const PartDetails = () => {
       bgColor: inStock ? 'bg-primary-sage50' : 'bg-status-busy/10',
       icon: inStock ? CheckCircle : XCircle,
       text: inStock ? 'In Stock' : 'Out of Stock',
-      iconColor: inStock ? '#58A890' : '#E86F6F', // status.online / status.busy
+      iconColor: inStock ? '#58A890' : '#E86F6F',
     };
   };
 
@@ -154,26 +153,7 @@ const PartDetails = () => {
             </Text>
           </View>
 
-          {/* Quantity Selector & Add to Bucket */}
-          <View className="flex-row items-center mb-4">
-            <Text className="text-text-primary font-semibold mr-4">Quantity:</Text>
-            <View className="flex-row items-center border border-ui-border rounded-lg overflow-hidden">
-              <TouchableOpacity
-                onPress={() => setQuantity(Math.max(1, quantity - 1))}
-                className="px-4 py-2 bg-background-tertiary"
-              >
-                <Text className="text-lg font-bold text-text-primary">−</Text>
-              </TouchableOpacity>
-              <Text className="px-6 py-2 text-text-primary font-semibold">{quantity}</Text>
-              <TouchableOpacity
-                onPress={() => setQuantity(quantity + 1)}
-                className="px-4 py-2 bg-background-tertiary"
-              >
-                <Text className="text-lg font-bold text-text-primary">+</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
+          {/* Add to Bucket Button (no quantity) */}
           <TouchableOpacity
             onPress={() => setModalVisible(true)}
             className="bg-primary-sage500 py-4 rounded-xl flex-row items-center justify-center shadow-sm"
@@ -230,8 +210,8 @@ const PartDetails = () => {
             <TouchableOpacity
               onPress={() => {
                 setModalVisible(false);
-                // Add to cart logic with quantity
-                console.log(`Added ${quantity} of ${part.name} to cart`);
+                // Add to cart logic (quantity = 1)
+                console.log(`Added ${part.name} to cart`);
               }}
               className="mt-6 bg-primary-sage500 py-3 rounded-xl"
             >

@@ -10,7 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
-  StyleSheet, // <-- Add this
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -42,10 +42,12 @@ const AddPartByQR = () => {
   const [modelNumber, setModelNumber] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('Partner');
+  const [partnerName, setPartnerName] = useState('');
 
   // UI states
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   // Camera scanner states
   const [showScanner, setShowScanner] = useState(false);
@@ -103,6 +105,7 @@ const AddPartByQR = () => {
       setModelNumber(DUMMY_PRODUCT.partNumber);
       setPrice(DUMMY_PRODUCT.price.toString());
       setCategory(DUMMY_PRODUCT.category);
+      setPartnerName(''); // Reset partner name when new product loaded
       setFetching(false);
       toast.success(`Details fetched for code: ${code}`);
     }, 1000);
@@ -129,6 +132,21 @@ const AddPartByQR = () => {
     });
   };
 
+  // Delete photo
+  const handleDeletePhoto = () => {
+    setImageUri(null);
+  };
+
+  // Handle category selection
+  const selectCategory = (cat) => {
+    setCategory(cat);
+    setShowCategoryDropdown(false);
+    // Reset partner name if category is not Partner
+    if (cat !== 'Partner') {
+      setPartnerName('');
+    }
+  };
+
   // Handle adding to bucket
   const handleAddToBucket = () => {
     // Basic validation
@@ -138,6 +156,10 @@ const AddPartByQR = () => {
     }
     if (!modelNumber.trim()) {
       toast.error('Model number is required');
+      return;
+    }
+    if (category === 'Partner' && !partnerName.trim()) {
+      toast.error('Partner name is required');
       return;
     }
 
@@ -184,7 +206,7 @@ const AddPartByQR = () => {
             QR Code <Text className="text-status-busy">*</Text>
           </Text>
           <View className="flex-row items-center">
-            <View className="flex-1 flex-row items-center border border-ui-border rounded-l-xl bg-background-primary px-3 py-2">
+            <View className="flex-1 flex-row items-center border border-ui-border rounded-l-xl bg-background-primary px-4 py-2">
               <Icon name="qr-code-outline" size={20} color="#777777" />
               <TextInput
                 className="flex-1 ml-2 text-base text-text-primary"
@@ -198,7 +220,7 @@ const AddPartByQR = () => {
             </View>
             <TouchableOpacity
               onPress={() => setShowScanner(true)}
-              className="bg-primary-sage600 rounded-r-xl px-4 py-3 items-center justify-center"
+              className="bg-primary-sage600 rounded-r-xl px-4 py-5 items-center justify-center"
             >
               <Icon name="scan-outline" size={24} color="white" />
             </TouchableOpacity>
@@ -226,13 +248,22 @@ const AddPartByQR = () => {
         <TouchableOpacity
           onPress={takePhoto}
           className="bg-background-secondary rounded-xl border-2 border-dashed border-primary-sage400 p-4 items-center mb-6"
+          activeOpacity={0.7}
         >
           {imageUri ? (
-            <Image
-              source={{ uri: imageUri }}
-              className="w-32 h-32 rounded-lg"
-              resizeMode="cover"
-            />
+            <View className="relative">
+              <Image
+                source={{ uri: imageUri }}
+                className="w-32 h-32 rounded-lg"
+                resizeMode="cover"
+              />
+              <TouchableOpacity
+                onPress={handleDeletePhoto}
+                className="absolute -top-2 -right-2 bg-black/70 rounded-full p-1"
+              >
+                <Icon name="close-outline" size={20} color="white" />
+              </TouchableOpacity>
+            </View>
           ) : (
             <>
               <Icon name="camera-outline" size={40} color="#70C0A8" />
@@ -285,13 +316,33 @@ const AddPartByQR = () => {
           />
         </View>
 
-        {/* Category (can be made editable if needed) */}
-        <View className="mb-6">
+        {/* Category Dropdown */}
+        <View className="mb-4">
           <Text className="text-text-primary font-medium mb-1">Category</Text>
-          <View className="bg-background-secondary border border-ui-border rounded-lg px-4 py-3">
+          <TouchableOpacity
+            onPress={() => setShowCategoryDropdown(true)}
+            className="bg-background-primary border border-ui-border rounded-lg px-4 py-3 flex-row justify-between items-center"
+          >
             <Text className="text-text-primary">{category}</Text>
-          </View>
+            <Icon name="chevron-down-outline" size={20} color="#777" />
+          </TouchableOpacity>
         </View>
+
+        {/* Partner Name Input (only when category is Partner) */}
+        {category === 'Partner' && (
+          <View className="mb-4">
+            <Text className="text-text-primary font-medium mb-1">
+              Partner Name <Text className="text-status-busy">*</Text>
+            </Text>
+            <TextInput
+              className="bg-background-primary border border-ui-border rounded-lg px-4 py-3 text-base text-text-primary"
+              placeholder="Enter partner name"
+              placeholderTextColor="#999999"
+              value={partnerName}
+              onChangeText={setPartnerName}
+            />
+          </View>
+        )}
 
         {/* Add to Bucket Button */}
         <TouchableOpacity
@@ -311,6 +362,35 @@ const AddPartByQR = () => {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Category Dropdown Modal */}
+      <Modal
+        visible={showCategoryDropdown}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCategoryDropdown(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCategoryDropdown(false)}
+        >
+          <View style={styles.dropdownContainer}>
+            {['Partner', 'Market', 'Office'].map((item) => (
+              <TouchableOpacity
+                key={item}
+                style={styles.dropdownItem}
+                onPress={() => selectCategory(item)}
+              >
+                <Text style={styles.dropdownItemText}>{item}</Text>
+                {category === item && (
+                  <Icon name="checkmark-outline" size={20} color="#58A890" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* QR Scanner Modal */}
       <Modal visible={showScanner} animationType="slide" onRequestClose={() => setShowScanner(false)}>
@@ -343,6 +423,37 @@ const AddPartByQR = () => {
   );
 };
 
-export default AddPartByQR;
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dropdownContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    width: '80%',
+    paddingVertical: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#e5e5e5',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+});
 
-const styles = StyleSheet.create({}); // Keep empty style if needed, or remove
+export default AddPartByQR;

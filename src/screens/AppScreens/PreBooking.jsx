@@ -1,10 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Animated,
   Dimensions,
 } from 'react-native';
@@ -21,7 +20,6 @@ const { width: screenWidth } = Dimensions.get('window');
 
 const PreBooking = () => {
   const [selectedDates, setSelectedDates] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentDate = new Date();
   const [displayMonth, setDisplayMonth] = useState(currentDate.getMonth() + 1);
@@ -29,7 +27,44 @@ const PreBooking = () => {
 
   // Animation
   const slideAnim = useRef(new Animated.Value(0)).current;
-  const directionRef = useRef('left');
+
+  // Dummy data generation
+  useEffect(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+
+    // Generate 5 dates in the current month (starting from today)
+    const currentMonthDates = [];
+    for (let i = 0; i < 5; i++) {
+      const date = new Date(currentYear, currentMonth - 1, today.getDate() + i);
+      if (date.getMonth() + 1 === currentMonth) {
+        currentMonthDates.push(date.toISOString().split('T')[0]);
+      }
+    }
+
+    // Previous month
+    let prevMonth = currentMonth - 1;
+    let prevYear = currentYear;
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear -= 1;
+    }
+    // Generate 10 dates in the previous month (any dates, they will be disabled)
+    const prevMonthDates = [];
+    for (let i = 1; i <= 10; i++) {
+      const date = new Date(prevYear, prevMonth - 1, i);
+      // Only add if the date is valid (i <= last day of month)
+      if (date.getMonth() + 1 === prevMonth) {
+        prevMonthDates.push(date.toISOString().split('T')[0]);
+      }
+    }
+
+    const dummySelected = [...currentMonthDates, ...prevMonthDates];
+    setSelectedDates(dummySelected);
+  }, []);
 
   const getMonthName = (month) => {
     const months = [
@@ -40,7 +75,6 @@ const PreBooking = () => {
   };
 
   const animateMonthChange = (direction) => {
-    directionRef.current = direction;
     const toValue = direction === 'left' ? -screenWidth : screenWidth;
 
     Animated.sequence([
@@ -86,7 +120,7 @@ const PreBooking = () => {
   const getDatesInMonth = (year, month) => {
     const dates = [];
     const firstDay = new Date(year, month - 1, 1);
-    const lastDay = new Date(year, month, 0); // last day of month
+    const lastDay = new Date(year, month, 0);
     for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
       dates.push(new Date(d));
     }
@@ -99,15 +133,22 @@ const PreBooking = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 1. Selected dates (cyan background)
-    selectedDates.forEach((date) => {
-      marked[date] = {
+    // 1. Selected dates – differentiate between current month and other months
+    selectedDates.forEach((dateStr) => {
+      const [year, month] = dateStr.split('-').map(Number);
+      const isCurrentMonth = (year === displayYear && month === displayMonth);
+      const selectedDate = new Date(dateStr);
+      const isPast = selectedDate < today;
+
+      const containerStyle = isCurrentMonth
+        ? { backgroundColor: '#68DAAC', borderRadius: 8 }   // cyan for current month
+        : { backgroundColor: '#2e7d32', borderRadius: 8 }; // dark green for other months
+
+      marked[dateStr] = {
         selected: true,
+        disabled: isPast, // Mark as disabled if it's a past date
         customStyles: {
-          container: {
-            backgroundColor: '#68DAAC', // cyan
-            borderRadius: 8,
-          },
+          container: containerStyle,
           text: {
             color: 'white',
             fontWeight: 'bold',
@@ -126,16 +167,16 @@ const PreBooking = () => {
             disabled: true,
             customStyles: {
               container: {
-                backgroundColor: '#f3f4f6', // light gray
+                backgroundColor: '#f3f4f6',
                 borderRadius: 8,
               },
               text: {
-                color: '#9ca3af', // gray text
+                color: '#9ca3af',
               },
             },
           };
-        } else {
-          // If somehow already marked (should not happen), mark as disabled
+        } else if (!marked[dateStr].selected) {
+          // If not selected but disabled, ensure disabled style
           marked[dateStr].disabled = true;
           marked[dateStr].customStyles = {
             container: {
@@ -147,12 +188,12 @@ const PreBooking = () => {
             },
           };
         }
+        // For selected past dates, we keep the selected style but also set disabled=true above
       }
     });
 
     // 3. Highlight today with gray border if not selected/disabled
     const todayStr = today.toISOString().split('T')[0];
-    console.log('todat date:',todayStr)
     if (!marked[todayStr]) {
       marked[todayStr] = {
         customStyles: {
@@ -186,7 +227,7 @@ const PreBooking = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Safety check – disabled days should not trigger onDayPress, but just in case
+    // If the date is disabled (including past or pre‑selected dummy dates), ignore click
     if (selectedDate < today) {
       toast.custom(
         <View className="bg-orange-50 border border-orange-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
@@ -200,35 +241,33 @@ const PreBooking = () => {
       return;
     }
 
-    setSelectedDates((prev) => {
-      if (prev.includes(dateString)) {
-        return prev.filter((d) => d !== dateString);
-      } else {
-        return [...prev, dateString];
-      }
-    });
-  };
-
-  const handleSubmit = () => {
-    if (isSubmitting) return;
-
-    setIsSubmitting(true);
-
-    setTimeout(() => {
+    // Toggle selection and show toast
+    const isSelected = selectedDates.includes(dateString);
+    if (isSelected) {
+      setSelectedDates(prev => prev.filter(d => d !== dateString));
       toast.custom(
-        <View className="bg-green-50 border border-green-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
-          <Icon name="checkmark-circle" size={24} color={Colors.primary.sage500} />
+        <View className="bg-blue-50 border border-blue-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
+          <Icon name="calendar-outline" size={24} color="#3b82f6" />
           <View className="flex-1">
-            <Text className="text-green-800 font-semibold text-base">Success!</Text>
-            <Text className="text-green-700 text-sm">Your availability has been saved.</Text>
+            <Text className="text-blue-800 font-semibold text-base">Date removed</Text>
+            <Text className="text-blue-700 text-sm">{dateString} has been removed.</Text>
           </View>
         </View>,
-        { duration: 3000 }
+        { duration: 2000 }
       );
-
-      setSelectedDates([]);
-      setIsSubmitting(false);
-    }, 2000);
+    } else {
+      setSelectedDates(prev => [...prev, dateString]);
+      toast.custom(
+        <View className="bg-green-50 border border-green-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
+          <Icon name="checkmark-circle" size={24} color="#22c55e" />
+          <View className="flex-1">
+            <Text className="text-green-800 font-semibold text-base">Date added</Text>
+            <Text className="text-green-700 text-sm">{dateString} has been added to your availability.</Text>
+          </View>
+        </View>,
+        { duration: 2000 }
+      );
+    }
   };
 
   return (
@@ -246,19 +285,26 @@ const PreBooking = () => {
       />
 
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="px-4 pt-2 pb-6">
-        <View className="flex-row items-start gap-4 ">
+        <View className="flex-row items-start gap-4 mb-6">
           <View className="bg-green-100 w-14 h-14 flex justify-center items-center rounded-2xl">
             <CalenderIcon width={24} height={24} stroke={'teal'} />
           </View>
-          <View>
+          <View className="flex-1">
             <Text className="font-bold text-xl text-black">Set Your Availability</Text>
             <Text className="text-gray-600 font-normal text-sm">
               Tap the dates you can accept service requests.
             </Text>
+            {selectedDates.length > 0 && (
+              <View className="mt-2 flex-row flex-wrap">
+                <Text className="text-sm text-gray-700">
+                  Selected: {selectedDates.length} date{selectedDates.length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
-        <View className="flex-row px-3 pt-6 items-center justify-between ">
+        <View className="flex-row px-3 pt-2 items-center justify-between mb-4">
           <Text className="font-bold text-black text-2xl">
             {getMonthName(displayMonth)} {displayYear}
           </Text>
@@ -279,64 +325,44 @@ const PreBooking = () => {
         </View>
 
         {/* Animated Calendar */}
-        <Animated.View
-          style={{
-            transform: [{ translateX: slideAnim }],
-            height: 500,
-            marginVertical: 16,
-            width: '100%',
-          }}
-        >
-          <Calendar
-            key={`${displayYear}-${displayMonth}`}
-            current={getCurrentDateString()}
-            onDayPress={handleDayPress}
-            markingType="custom"
-            markedDates={buildMarkedDates()}
-            hideArrows={true}
-            renderHeader={() => null}
-            theme={{
-              todayTextColor: '#3b82f6',
-              textDayFontSize: 16,
-              textMonthFontSize: 0,
-              textDayHeaderFontSize: 14,
-              'stylesheet.calendar.main': {
-                week: {
-                  marginTop: 10,
-                  marginBottom: 30,
-                  marginLeft: 10,
-                  flexDirection: 'row',
-                  justifyContent: 'space-around',
-                },
-              },
-            }}
+        <View style={{ flex: 1 }}>
+          <Animated.View
             style={{
+              transform: [{ translateX: slideAnim }],
+              minHeight: 480,
               width: '100%',
-              height: '100%',
-              borderRadius: 12,
             }}
-          />
-        </Animated.View>
-
-        <TouchableOpacity
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          className={`rounded-2xl py-5 items-center flex-row justify-center ${
-            isSubmitting ? 'bg-primary-sage300' : 'bg-primary-sage600'
-          }`}
-          activeOpacity={0.8}
-        >
-          {isSubmitting ? (
-            <>
-              <ActivityIndicator size="small" color="#ffffff" />
-              <Text className="text-white font-semibold text-base ml-2">Submitting...</Text>
-            </>
-          ) : (
-            <Text className="text-white font-semibold text-lg">
-              Confirm {selectedDates.length} Date{selectedDates.length !== 1 ? 's' : ''}
-            </Text>
-          )}
-        </TouchableOpacity>
+          >
+            <Calendar
+              key={`${displayYear}-${displayMonth}`}
+              current={getCurrentDateString()}
+              onDayPress={handleDayPress}
+              markingType="custom"
+              markedDates={buildMarkedDates()}
+              hideArrows={true}
+              renderHeader={() => null}
+              theme={{
+                todayTextColor: '#3b82f6',
+                textDayFontSize: 20,
+                textMonthFontSize: 0,
+                textDayHeaderFontSize: 14,
+                'stylesheet.calendar.main': {
+                  week: {
+                    marginTop: 10,
+                    marginBottom: 10,
+                    flexDirection: 'row',
+                    justifyContent: 'space-around',
+                  },
+                },
+              }}
+              style={{
+                width: '100%',
+                height: 480,
+                borderRadius: 12,
+              }}
+            />
+          </Animated.View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

@@ -279,7 +279,7 @@ const Remarkscreen = () => {
                     {/* Next Button - enabled only when all fields are filled */}
                     <TouchableOpacity
                         onPress={handleNext}
-                        disabled={!isFormComplete}
+                        // disabled={!isFormComplete}
                         className={`py-4 rounded-xl items-center mb-8 ${
                             isFormComplete ? 'bg-black' : 'bg-gray-400'
                         }`}

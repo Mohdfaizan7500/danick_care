@@ -167,7 +167,6 @@ const AMC = () => {
         {/* Bottom Spacing */}
         <View className="h-4" />
       </ScrollView>
-      <NoInternet/>
     </SafeAreaView>
   )
 }

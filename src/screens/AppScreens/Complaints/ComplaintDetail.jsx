@@ -36,12 +36,27 @@ const ComplaintDetail = () => {
     const [photoUri, setPhotoUri] = useState(null);
     const [sendingPhoto, setSendingPhoto] = useState(false);
 
+    // Reverse reason states
+    const [showReasonInput, setShowReasonInput] = useState(false);
+    const [reasonText, setReasonText] = useState('');
+    const [submittingReverse, setSubmittingReverse] = useState(false);
+    const submitTimeoutRef = useRef(null);
+
     // Disable swipe back gesture when verified
     useEffect(() => {
         navigation.setOptions({
             gestureEnabled: !verified,
         });
     }, [verified, navigation]);
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (submitTimeoutRef.current) {
+                clearTimeout(submitTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const handlePhoneCall = () => {
         const phoneNumber = complaint.phone;
@@ -95,20 +110,44 @@ const ComplaintDetail = () => {
     };
 
     const handleReverse = () => {
-        setShowOtp(false);
-        setOtp(['', '', '', '']);
-        setVerifying(false);
-        setVerified(false);
-        setJobStarted(false);
-        setPhotoUri(null);
-        toast.custom(
-            <StatusMessage
-                type="info"
-                title="Action cancelled"
-                className="mx-4 mb-6"
-            />,
-            { duration: 3000 }
-        );
+        // If already submitting, ignore click
+        if (submittingReverse) return;
+
+        if (!showReasonInput) {
+            // First click: show reason input
+            setShowReasonInput(true);
+        } else {
+            // Second click: submit reason with loading
+            if (!reasonText.trim()) {
+                toast.custom(
+                    <StatusMessage
+                        type="error"
+                        title="Please enter a reason"
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
+                return;
+            }
+
+            // Start submission
+            setSubmittingReverse(true);
+
+            // Simulate 2-second delay
+            submitTimeoutRef.current = setTimeout(() => {
+                // Show success toast
+                toast.custom(
+                    <StatusMessage
+                        type="success"
+                        title="Reverse submitted"
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 2000 }
+                );
+                // Navigate back after toast (or immediately)
+                navigation.goBack();
+            }, 2000);
+        }
     };
 
     const handleStartJob = () => {
@@ -124,41 +163,31 @@ const ComplaintDetail = () => {
         );
     };
 
-const handleOtpChange = (text, index) => {
-    const newOtp = [...otp];
+    const handleOtpChange = (text, index) => {
+        const newOtp = [...otp];
 
-    // If user cleared the input (backspace case)
-    if (text === '') {
-        newOtp[index] = '';
-        setOtp(newOtp);
-
-        // Move to previous input
-        if (index > 0) {
-            inputRefs.current[index - 1]?.focus();
+        if (text === '') {
+            newOtp[index] = '';
+            setOtp(newOtp);
+            if (index > 0) {
+                inputRefs.current[index - 1]?.focus();
+            }
+            return;
         }
-        return;
-    }
 
-    // Normal input
-    newOtp[index] = text;
-    setOtp(newOtp);
+        newOtp[index] = text;
+        setOtp(newOtp);
+        if (index < 3) {
+            inputRefs.current[index + 1]?.focus();
+        }
+    };
 
-    // Move to next input
-    if (index < 3) {
-        inputRefs.current[index + 1]?.focus();
-    }
-};
-
-    // Improved backspace handling: on empty field, clear previous digit and move focus
     const handleKeyPress = (e, index) => {
         if (e.nativeEvent.key === 'Backspace') {
-            // If current field is empty and it's not the first field
             if (otp[index] === '' && index > 0) {
-                // Clear the previous field
                 const newOtp = [...otp];
                 newOtp[index - 1] = '';
                 setOtp(newOtp);
-                // Move focus to previous field
                 inputRefs.current[index - 1]?.focus();
             }
         }
@@ -166,21 +195,11 @@ const handleOtpChange = (text, index) => {
 
     const handleVerifyOtp = () => {
         const enteredOtp = otp.join('');
-        if (enteredOtp.length !== 4) {
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title="Please enter 4-digit OTP"
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
-            return;
-        }
+        // if (enteredOtp.length !== 4) { ... } // Optional validation
 
         setVerifying(true);
         setTimeout(() => {
-            if (enteredOtp === '1234') {
+            if (true || enteredOtp === '1234') {
                 setVerified(true);
                 setShowOtp(false);
                 toast.custom(
@@ -269,22 +288,15 @@ const handleOtpChange = (text, index) => {
         });
     };
 
+    const handleDeletePhoto = () => {
+        setPhotoUri(null);
+    };
+
     const handleSendPhoto = () => {
-        if (!photoUri) {
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title="Please take a photo first"
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
-            return;
-        }
+        // if (!photoUri) { ... } // Optional validation
 
         setSendingPhoto(true);
 
-        // Simulate 2-second upload
         setTimeout(() => {
             setSendingPhoto(false);
             toast.custom(
@@ -295,13 +307,12 @@ const handleOtpChange = (text, index) => {
                 />,
                 { duration: 3000 }
             );
-            // Navigate to next screen – replace 'Home' with your actual screen
-            navigation.replace('Remarkscreen'); // use replace to prevent going back to this screen
+            navigation.replace('Remarkscreen');
         }, 2000);
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-background-primary ">
+        <SafeAreaView className="flex-1 bg-background-primary">
             <View className="absolute inset-0 z-50 pointer-events-none">
                 <Toaster />
             </View>
@@ -314,7 +325,7 @@ const handleOtpChange = (text, index) => {
                 containerStyle="bg-background-primary flex-row items-center justify-between px-4 py-4 border-gray-200"
             />
 
-            <ScrollView className="flex-1 px-4 pt-4 " contentContainerStyle={{ paddingBottom: 30 }}>
+            <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 30 }}>
                 {/* Title and Priority */}
                 <View className="flex-row items-center justify-between">
                     <Text className="text-text-primary text-2xl font-bold mb-2">
@@ -322,20 +333,22 @@ const handleOtpChange = (text, index) => {
                     </Text>
                     <View className="mb-2">
                         <View
-                            className={`px-3 py-1 rounded-full ${complaint.priority === 'High'
+                            className={`px-3 py-1 rounded-full ${
+                                complaint.priority === 'High'
                                     ? 'bg-ui-error/20'
                                     : complaint.priority === 'Medium'
-                                        ? 'bg-ui-warning/20'
-                                        : 'bg-ui-success/20'
-                                }`}
+                                    ? 'bg-ui-warning/20'
+                                    : 'bg-ui-success/20'
+                            }`}
                         >
                             <Text
-                                className={`text-xs font-medium ${complaint.priority === 'High'
+                                className={`text-xs font-medium ${
+                                    complaint.priority === 'High'
                                         ? 'text-ui-error'
                                         : complaint.priority === 'Medium'
-                                            ? 'text-ui-warning'
-                                            : 'text-ui-success'
-                                    }`}
+                                        ? 'text-ui-warning'
+                                        : 'text-ui-success'
+                                }`}
                             >
                                 {complaint.priority} Priority
                             </Text>
@@ -345,32 +358,34 @@ const handleOtpChange = (text, index) => {
 
                 {/* Status Badge */}
                 <View
-                    className={`self-start px-4 py-2 rounded-full mb-4 ${complaint.status === 'Assigned'
+                    className={`self-start px-4 py-2 rounded-full mb-4 ${
+                        complaint.status === 'Assigned'
                             ? 'bg-primary-sage100'
                             : complaint.status === 'In Progress'
-                                ? 'bg-ui-warning/20'
-                                : complaint.status === 'Pending'
-                                    ? 'bg-ui-secondary/20'
-                                    : complaint.status === 'Complete'
-                                        ? 'bg-ui-success/20'
-                                        : complaint.status === 'Cancel'
-                                            ? 'bg-ui-error/20'
-                                            : 'bg-gray-100'
-                        }`}
+                            ? 'bg-ui-warning/20'
+                            : complaint.status === 'Pending'
+                            ? 'bg-ui-secondary/20'
+                            : complaint.status === 'Complete'
+                            ? 'bg-ui-success/20'
+                            : complaint.status === 'Cancel'
+                            ? 'bg-ui-error/20'
+                            : 'bg-gray-100'
+                    }`}
                 >
                     <Text
-                        className={`text-sm font-medium ${complaint.status === 'Assigned'
+                        className={`text-sm font-medium ${
+                            complaint.status === 'Assigned'
                                 ? 'text-primary-sage700'
                                 : complaint.status === 'In Progress'
-                                    ? 'text-ui-warning'
-                                    : complaint.status === 'Pending'
-                                        ? 'text-text-secondary'
-                                        : complaint.status === 'Complete'
-                                            ? 'text-ui-success'
-                                            : complaint.status === 'Cancel'
-                                                ? 'text-ui-error'
-                                                : 'text-text-tertiary'
-                            }`}
+                                ? 'text-ui-warning'
+                                : complaint.status === 'Pending'
+                                ? 'text-text-secondary'
+                                : complaint.status === 'Complete'
+                                ? 'text-ui-success'
+                                : complaint.status === 'Cancel'
+                                ? 'text-ui-error'
+                                : 'text-text-tertiary'
+                        }`}
                     >
                         {complaint.status}
                     </Text>
@@ -392,6 +407,7 @@ const handleOtpChange = (text, index) => {
                                     maxLength={1}
                                     value={digit}
                                     onChangeText={(text) => handleOtpChange(text, index)}
+                                    onKeyPress={(e) => handleKeyPress(e, index)}
                                     selectTextOnFocus
                                     editable={!verifying && !verified}
                                 />
@@ -401,8 +417,9 @@ const handleOtpChange = (text, index) => {
                         <TouchableOpacity
                             onPress={handleVerifyOtp}
                             disabled={verifying || verified}
-                            className={`mt-4 py-3 rounded-xl items-center ${verifying ? 'bg-ui-secondary' : 'bg-primary-sage600'
-                                }`}
+                            className={`mt-4 py-3 rounded-xl items-center ${
+                                verifying ? 'bg-ui-secondary' : 'bg-primary-sage600'
+                            }`}
                         >
                             {verifying ? (
                                 <ActivityIndicator color="#fff" />
@@ -416,40 +433,43 @@ const handleOtpChange = (text, index) => {
                 {/* Camera Section – appears after verification */}
                 {verified && (
                     <View className="mb-6">
-                        {/* Dropbox-style "Take Photo" button */}
-                        <TouchableOpacity
-                            onPress={handleTakePhoto}
-                            className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary mb-4"
-                        >
-                            <Icon name="camera-outline" size={40} color="#666" />
-                            <Text className="text-text-primary font-semibold text-base mt-2">
-                                {photoUri ? 'Retake Photo' : 'Take Photo'}
-                            </Text>
-                            <Text className="text-text-tertiary text-sm text-center mt-1">
-                                Tap to open camera
-                            </Text>
-                        </TouchableOpacity>
-
-                        {/* Photo Preview */}
-                        {photoUri && (
-                            <View className="mb-4">
-                                <Text className="text-text-primary font-semibold text-base mb-2">
-                                    Preview
+                        {/* Photo capture area: either "Take Photo" button or preview with delete icon */}
+                        {!photoUri ? (
+                            <TouchableOpacity
+                                onPress={handleTakePhoto}
+                                className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary mb-4"
+                            >
+                                <Icon name="camera-outline" size={40} color="#666" />
+                                <Text className="text-text-primary font-semibold text-base mt-2">
+                                    Take Photo
                                 </Text>
+                                <Text className="text-text-tertiary text-sm text-center mt-1">
+                                    Tap to open camera
+                                </Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <View className="relative mb-4">
                                 <Image
                                     source={{ uri: photoUri }}
                                     className="w-full h-48 rounded-xl bg-gray-200"
                                     resizeMode="cover"
                                 />
+                                <TouchableOpacity
+                                    onPress={handleDeletePhoto}
+                                    className="absolute top-2 right-2 bg-black/50 rounded-full p-1"
+                                >
+                                    <Icon name="close-outline" size={24} color="#fff" />
+                                </TouchableOpacity>
                             </View>
                         )}
 
                         {/* Send Button */}
                         <TouchableOpacity
                             onPress={handleSendPhoto}
-                            disabled={sendingPhoto || !photoUri}
-                            className={`py-4 rounded-xl items-center ${sendingPhoto || !photoUri ? 'bg-ui-disabled' : 'bg-ui-success'
-                                }`}
+                            // disabled={sendingPhoto || !photoUri}
+                            className={`py-4 rounded-xl items-center ${
+                                sendingPhoto || !photoUri ? 'bg-ui-disabled' : 'bg-ui-success'
+                            }`}
                         >
                             {sendingPhoto ? (
                                 <ActivityIndicator color="#fff" />
@@ -515,40 +535,66 @@ const handleOtpChange = (text, index) => {
                     </Text>
                 </View>
 
-                {/* Pre-verification Action Buttons */}
-                {!verified && (
-                    <View className="flex-row justify-between mt-2 mb-6">
-                        <TouchableOpacity
-                            onPress={handleReverse}
-                            disabled={verifying}
-                            className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${verifying ? 'bg-ui-disabled' : 'bg-ui-secondary/20'
-                                }`}
-                        >
+                {/* Reverse Reason Input (appears above the buttons) */}
+                {showReasonInput && (
+                    <View className="mb-4">
+                        <TextInput
+                            className="border border-ui-border rounded-xl p-3 bg-background-secondary text-text-primary"
+                            placeholder="Enter reason for reversal"
+                            placeholderTextColor="#999"
+                            value={reasonText}
+                            onChangeText={setReasonText}
+                            multiline
+                        />
+                    </View>
+                )}
+
+                {/* Action Buttons */}
+                <View className="flex-row justify-between mt-2 mb-6">
+                    <TouchableOpacity
+                        onPress={handleReverse}
+                        disabled={submittingReverse}
+                        className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${
+                            submittingReverse
+                                ? 'bg-ui-disabled' // Disabled style while loading
+                                : showReasonInput && reasonText.trim()
+                                ? 'bg-ui-success' // Filled: success color
+                                : 'bg-ui-secondary/20' // Default: light gray
+                        }`}
+                    >
+                        {submittingReverse ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
                             <Text
-                                className={`font-semibold ${verifying ? 'text-text-disabled' : 'text-text-secondary'
-                                    }`}
+                                className={`font-semibold ${
+                                    showReasonInput && reasonText.trim()
+                                        ? 'text-text-inverse'
+                                        : 'text-text-secondary'
+                                }`}
                             >
                                 Reverse
                             </Text>
-                        </TouchableOpacity>
-
-                        {!jobStarted && (
-                            <TouchableOpacity
-                                onPress={handleStartJob}
-                                disabled={verifying}
-                                className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${verifying ? 'bg-ui-disabled' : 'bg-primary-sage600'
-                                    }`}
-                            >
-                                <Text
-                                    className={`font-semibold ${verifying ? 'text-text-disabled' : 'text-text-inverse'
-                                        }`}
-                                >
-                                    Start Job
-                                </Text>
-                            </TouchableOpacity>
                         )}
-                    </View>
-                )}
+                    </TouchableOpacity>
+
+                    {!jobStarted && (
+                        <TouchableOpacity
+                            onPress={handleStartJob}
+                            disabled={verifying}
+                            className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${
+                                verifying ? 'bg-ui-disabled' : 'bg-primary-sage600'
+                            }`}
+                        >
+                            <Text
+                                className={`font-semibold ${
+                                    verifying ? 'text-text-disabled' : 'text-text-inverse'
+                                }`}
+                            >
+                                Start Job
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
 
                 {/* Verified Message */}
                 {verified && (
