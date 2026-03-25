@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -30,7 +30,7 @@ const getLocalDateString = (date) => {
 };
 
 // Custom day component with loading spinner
-const CustomDay = ({ date, state, marking, onPress, loadingDates }) => {
+const CustomDay = memo(({ date, state, marking, onPress, loadingDates }) => {
   const dateString = date.dateString;
   const isLoading = loadingDates.has(dateString);
 
@@ -74,7 +74,7 @@ const CustomDay = ({ date, state, marking, onPress, loadingDates }) => {
       )}
     </TouchableOpacity>
   );
-};
+});
 
 const PreBooking = () => {
   const { user } = useAuth();
@@ -94,7 +94,7 @@ const PreBooking = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dates = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 3; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       dates.push(getLocalDateString(date));
@@ -103,19 +103,13 @@ const PreBooking = () => {
   }, []);
 
   // Format month as MM-YYYY (1‑based month)
-  const formatMonth = (month, year) => {
+  const formatMonth = useCallback((month, year) => {
     const monthNumber = month.toString().padStart(2, '0');
     return `${monthNumber}-${year}`;
-  };
+  }, []);
 
   // Fetch attendance data when month/year or user changes
-  useEffect(() => {
-    if (user?.id) {
-      fetchAttendance();
-    }
-  }, [displayMonth, displayYear, user]);
-
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async () => {
     if (!user?.id) return;
     const monthStr = formatMonth(displayMonth, displayYear);
     setLoading(true);
@@ -141,17 +135,23 @@ const PreBooking = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, displayMonth, displayYear, formatMonth]);
 
-  const getMonthName = (month) => {
+  useEffect(() => {
+    if (user?.id) {
+      fetchAttendance();
+    }
+  }, [fetchAttendance, user?.id]);
+
+  const getMonthName = useCallback((month) => {
     const months = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
     return months[month - 1];
-  };
+  }, []);
 
-  const animateMonthChange = (direction) => {
+  const animateMonthChange = useCallback((direction) => {
     const toValue = direction === 'left' ? -screenWidth : screenWidth;
     Animated.sequence([
       Animated.timing(slideAnim, {
@@ -165,34 +165,38 @@ const PreBooking = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  };
+  }, [slideAnim]);
 
-  const handlePrevMonth = () => {
+  const handlePrevMonth = useCallback(() => {
     animateMonthChange('right');
-    if (displayMonth === 1) {
-      setDisplayMonth(12);
-      setDisplayYear(displayYear - 1);
-    } else {
-      setDisplayMonth(displayMonth - 1);
-    }
-  };
+    setDisplayMonth(prev => {
+      if (prev === 1) return 12;
+      return prev - 1;
+    });
+    setDisplayYear(prev => {
+      if (displayMonth === 1) return prev - 1;
+      return prev;
+    });
+  }, [animateMonthChange, displayMonth]);
 
-  const handleNextMonth = () => {
+  const handleNextMonth = useCallback(() => {
     animateMonthChange('left');
-    if (displayMonth === 12) {
-      setDisplayMonth(1);
-      setDisplayYear(displayYear + 1);
-    } else {
-      setDisplayMonth(displayMonth + 1);
-    }
-  };
+    setDisplayMonth(prev => {
+      if (prev === 12) return 1;
+      return prev + 1;
+    });
+    setDisplayYear(prev => {
+      if (displayMonth === 12) return prev + 1;
+      return prev;
+    });
+  }, [animateMonthChange, displayMonth]);
 
-  const getCurrentDateString = () => {
+  const getCurrentDateString = useCallback(() => {
     const monthStr = displayMonth.toString().padStart(2, '0');
     return `${displayYear}-${monthStr}-01`;
-  };
+  }, [displayMonth, displayYear]);
 
-  const getDatesInMonth = (year, month) => {
+  const getDatesInMonth = useCallback((year, month) => {
     const dates = [];
     const firstDay = new Date(year, month - 1, 1);
     const lastDay = new Date(year, month, 0);
@@ -200,14 +204,14 @@ const PreBooking = () => {
       dates.push(new Date(d));
     }
     return dates;
-  };
+  }, []);
 
-  const buildMarkedDates = () => {
+  // Memoize the marked dates object
+  const markedDates = useMemo(() => {
     const marked = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = getLocalDateString(today);
-    console.log("today :",todayStr)
 
     // Selected dates
     selectedDates.forEach((dateStr) => {
@@ -217,12 +221,11 @@ const PreBooking = () => {
       const isPast = selectedDate < today;
       const isLocked = lockedDates.includes(dateStr);
 
-      // Choose background color: darker for locked dates
       let bgColor = '#68DAAC'; // default green
       if (isLocked) {
-        bgColor = '#68DAAC'; // (or use a darker shade if desired)
+        bgColor = '#68DAAC';
       } else if (!isCurrentMonth) {
-        bgColor = '#2e7d32'; // previous months color
+        bgColor = '#2e7d32';
       }
 
       const containerStyle = {
@@ -284,9 +287,9 @@ const PreBooking = () => {
     }
 
     return marked;
-  };
+  }, [selectedDates, displayMonth, displayYear, lockedDates, getDatesInMonth]);
 
-  const handleDayPress = async (day) => {
+  const handleDayPress = useCallback(async (day) => {
     const dateString = day.dateString;
     const selectedDate = new Date(dateString);
     const today = new Date();
@@ -374,9 +377,9 @@ const PreBooking = () => {
         return newSet;
       });
     }
-  };
+  }, [selectedDates, loadingDates, lockedDates, user, fetchAttendance]);
 
-  const renderCustomDay = ({ date, state, marking }) => (
+  const renderCustomDay = useCallback(({ date, state, marking }) => (
     <CustomDay
       date={date}
       state={state}
@@ -384,7 +387,7 @@ const PreBooking = () => {
       onPress={handleDayPress}
       loadingDates={loadingDates}
     />
-  );
+  ), [handleDayPress, loadingDates]);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -453,7 +456,7 @@ const PreBooking = () => {
               current={getCurrentDateString()}
               onDayPress={() => { }} // handled by custom day
               markingType="custom"
-              markedDates={buildMarkedDates()}
+              markedDates={markedDates}
               hideArrows={true}
               renderHeader={() => null}
               dayComponent={renderCustomDay}

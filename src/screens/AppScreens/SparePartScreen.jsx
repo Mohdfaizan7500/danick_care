@@ -10,6 +10,7 @@ const { width: screenWidth } = Dimensions.get('window')
 const SparePartScreen = () => {
     const route = useRoute();
     const product = route.params.product
+    console.log("product on spare part screen :",product)
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredParts, setFilteredParts] = useState(product.spareParts);
     const navigation = useNavigation();

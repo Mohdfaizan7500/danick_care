@@ -73,9 +73,8 @@ const Parts = () => {
   }, []);
 
   const handleSelectProduct = (product) => {
-    console.log('product:',product)
-    // if (!isConnected) return;
-    // navigation.navigate('SparePartScreen', { product });
+    if (!isConnected) return;
+    navigation.navigate('SparePartScreen', { product });
   };
 
   const renderCategoryItem = ({ item }) => (
