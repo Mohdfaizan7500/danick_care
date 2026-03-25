@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,88 +9,14 @@ import {
   LayoutAnimation,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
+import { useAuth } from '../../../context/AuthContext';
+import { getComplaints } from '../../../lib/api';
 
-// Mock data for complaints – extended with customer info and priority
-const MOCK_COMPLAINTS = [
-  {
-    id: '1',
-    complaintNumber: 'CMP001',
-    title: 'Broken AC in office',
-    status: 'Assigned',
-    priority: 'High',
-    date: '2025-03-15',
-    description: 'The AC is not cooling properly.',
-    customerName: 'John Doe',
-    address: '123 Main St, Office 4',
-    phone: '+1 555-1234',
-  },
-  {
-    id: '2',
-    complaintNumber: 'CMP002',
-    title: 'Leaking tap',
-    status: 'In Progress',
-    priority: 'Medium',
-    date: '2025-03-14',
-    description: 'Water leaking from kitchen sink.',
-    customerName: 'Jane Smith',
-    address: '456 Oak Ave, Apt 2B',
-    phone: '+1 555-5678',
-  },
-  {
-    id: '3',
-    complaintNumber: 'CMP003',
-    title: 'WiFi not working',
-    status: 'Pending',
-    priority: 'Low',
-    date: '2025-03-13',
-    description: 'No internet connection in conference room.',
-    customerName: 'Bob Johnson',
-    address: '789 Pine Rd',
-    phone: '+1 555-9012',
-  },
-  {
-    id: '4',
-    complaintNumber: 'CMP004',
-    title: 'Printer jam',
-    status: 'Complete',
-    priority: 'Medium',
-    date: '2025-03-12',
-    description: 'Printer on first floor is jammed.',
-    customerName: 'Alice Brown',
-    address: '321 Elm St',
-    phone: '+1 555-3456',
-  },
-  {
-    id: '5',
-    complaintNumber: 'CMP005',
-    title: 'Light bulb replacement',
-    status: 'Cancel',
-    priority: 'Low',
-    date: '2025-03-11',
-    description: 'Tube light in lobby is flickering.',
-    customerName: 'Charlie Davis',
-    address: '654 Maple Dr',
-    phone: '+1 555-7890',
-  },
-  {
-    id: '6',
-    complaintNumber: 'CMP006',
-    title: 'Projector bulb issue',
-    status: 'Assigned',
-    priority: 'High',
-    date: '2025-03-10',
-    description: 'Projector displays dim image.',
-    customerName: 'Diana Evans',
-    address: '987 Cedar Ln',
-    phone: '+1 555-2345',
-  },
-];
-
-// Updated tabs: removed "Cancel" and "Pending", changed "Bucket" to "All"
-const TABS = ['All', 'Assigned', 'In Progress', 'Complete'];
+// Tabs: All, Assigned, On Progress, Complete
+const TABS = ['All', 'Assigned', 'On Progress', 'Complete'];
 
 // Skeleton component for loading state
 const SkeletonCard = () => (
@@ -116,44 +42,112 @@ const SkeletonCard = () => (
 const Complaints = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTab, setSelectedTab] = useState('All'); // Changed from 'Bucket' to 'All'
+  const [selectedTab, setSelectedTab] = useState('All');
   const [tabPositions, setTabPositions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [complaintsData, setComplaintsData] = useState([]); // stores real data from API
   const scrollViewRef = useRef(null);
   const timeoutRef = useRef(null);
+  const { user } = useAuth();
+  const technicianId = user?.id || '1';
 
-  // Compute counts for each tab (only for tabs that are still present)
+  const route = useRoute();
+  const status = route?.params?.status;
+
+  // Map tab names to API status strings
+  const getApiStatus = (tab) => {
+    switch (tab) {
+      case 'All': return 'all';
+      case 'Assigned': return 'assign';
+      case 'On Progress': return 'onworking';
+      case 'Complete': return 'success';
+      default: return 'all';
+    }
+  };
+
+  // Map API status to display status
+  const mapStatusToDisplay = (apiStatus) => {
+    switch (apiStatus) {
+      case 'assign': return 'Assigned';
+      case 'onworking': return 'On Progress';
+      case 'success': return 'Complete';
+      default: return apiStatus;
+    }
+  };
+
+  // Fetch complaints from API
+  const fetchComplaints = async (tab) => {
+    const apiStatus = getApiStatus(tab);
+    setLoading(true);
+    try {
+      const response = await getComplaints(technicianId, apiStatus);
+      console.log('API Response for', tab, ':', response);
+      // The API returns data in response.data.result
+      const result = response?.data?.result || [];
+      setComplaintsData(result);
+    } catch (error) {
+      console.error('Error fetching complaints:', error);
+      setComplaintsData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch based on route param (if any)
+  useEffect(() => {
+    if (status) {
+      if (status === 'All') {
+        setSelectedTab('All');
+        fetchComplaints('All');
+      } else if (status === 'Assign') {
+        setSelectedTab('Assigned');
+        fetchComplaints('Assigned');
+      } else if (status === 'Onworking') {
+        setSelectedTab('On Progress');
+        fetchComplaints('On Progress');
+      } else if (status === 'Complete') {
+        setSelectedTab('Complete');
+        fetchComplaints('Complete');
+      }
+    } else {
+      // Default: fetch for 'All' tab when no route param
+      fetchComplaints('All');
+    }
+  }, []); // Only runs once on mount
+
+  // Compute counts for each tab based on actual data
   const counts = TABS.reduce((acc, tab) => {
     if (tab === 'All') {
-      acc[tab] = MOCK_COMPLAINTS.length;
+      acc[tab] = complaintsData.length;
     } else {
-      acc[tab] = MOCK_COMPLAINTS.filter((c) => c.status === tab).length;
+      const apiStatus = getApiStatus(tab);
+      acc[tab] = complaintsData.filter((c) => c.status === apiStatus).length;
     }
     return acc;
   }, {});
 
   // Filter complaints based on selected tab and search query
-  const filteredComplaints = MOCK_COMPLAINTS.filter((complaint) => {
-    const matchesTab = selectedTab === 'All' || complaint.status === selectedTab;
+  const filteredComplaints = complaintsData.filter((complaint) => {
+    const apiStatus = getApiStatus(selectedTab);
+    const matchesTab = selectedTab === 'All' || complaint.status === apiStatus;
     const matchesSearch =
-      complaint.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      complaint.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      complaint.complaintNumber.toLowerCase().includes(searchQuery.toLowerCase());
+      (complaint.csn || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (complaint.customer_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (complaint.service_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
   });
 
   const handleTabPress = (tab, index) => {
-    // Clear any pending timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+    if (tab === selectedTab) return;
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
     setSelectedTab(tab);
     setLoading(true);
-    timeoutRef.current = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    fetchComplaints(tab);
 
-    // Animate tab scroll
+    timeoutRef.current = setTimeout(() => {}, 500);
+
     if (scrollViewRef.current && tabPositions[index] !== undefined) {
       scrollViewRef.current.scrollTo({
         x: tabPositions[index] - 20,
@@ -167,97 +161,94 @@ const Complaints = () => {
     navigation.navigate('ComplaintDetail', { complaint });
   };
 
-  const renderComplaintCard = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => handleComplaintPress(item)}
-      className="bg-ui-card border border-ui-border rounded-xl p-4 mb-3"
-    >
-      {/* Header: Complaint number and priority */}
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-text-secondary text-xs font-medium">
-          #{item.complaintNumber}
-        </Text>
-        <View
-          className={`px-2 py-0.5 rounded-full ${
-            item.priority === 'High'
-              ? 'bg-ui-error/20'
-              : item.priority === 'Medium'
-              ? 'bg-ui-warning/20'
-              : 'bg-ui-success/20'
-          }`}
-        >
-          <Text
-            className={`text-xs font-medium ${
-              item.priority === 'High'
-                ? 'text-ui-error'
-                : item.priority === 'Medium'
-                ? 'text-ui-warning'
-                : 'text-ui-success'
+  const renderComplaintCard = ({ item }) => {
+    // Determine priority based on total amount? Or default. We'll use a placeholder for priority.
+    // Since API doesn't provide priority, we can derive from amount or keep as "Medium"
+    const priority = item.tot_amt > 500 ? 'High' : item.tot_amt > 200 ? 'Medium' : 'Low';
+    const displayStatus = mapStatusToDisplay(item.status);
+    return (
+      <TouchableOpacity
+        onPress={() => handleComplaintPress(item)}
+        className="bg-ui-card border border-ui-border rounded-xl p-4 mb-3"
+      >
+        {/* Header: Complaint number and priority */}
+        <View className="flex-row justify-between items-center mb-2">
+          <Text className="text-text-secondary text-xs font-medium">
+            #{item.csn}
+          </Text>
+          <View
+            className={`px-2 py-0.5 rounded-full ${
+              priority === 'High'
+                ? 'bg-ui-error/20'
+                : priority === 'Medium'
+                ? 'bg-ui-warning/20'
+                : 'bg-ui-success/20'
             }`}
           >
-            {item.priority}
-          </Text>
+            <Text
+              className={`text-xs font-medium ${
+                priority === 'High'
+                  ? 'text-ui-error'
+                  : priority === 'Medium'
+                  ? 'text-ui-warning'
+                  : 'text-ui-success'
+              }`}
+            >
+              {priority}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      {/* Title and status */}
-      <View className="flex-row justify-between items-center mb-1">
-        <Text className="text-text-primary font-semibold text-base flex-1 mr-2">
-          {item.title}
-        </Text>
-        <View
-          className={`px-3 py-1 rounded-full ${
-            item.status === 'Assigned'
-              ? 'bg-primary-sage100'
-              : item.status === 'In Progress'
-              ? 'bg-ui-warning/20'
-              : item.status === 'Pending'
-              ? 'bg-ui-secondary/20'
-              : item.status === 'Complete'
-              ? 'bg-ui-success/20'
-              : item.status === 'Cancel'
-              ? 'bg-ui-error/20'
-              : 'bg-gray-100'
-          }`}
-        >
-          <Text
-            className={`text-xs font-medium ${
-              item.status === 'Assigned'
-                ? 'text-primary-sage700'
-                : item.status === 'In Progress'
-                ? 'text-ui-warning'
-                : item.status === 'Pending'
-                ? 'text-text-secondary'
-                : item.status === 'Complete'
-                ? 'text-ui-success'
-                : item.status === 'Cancel'
-                ? 'text-ui-error'
-                : 'text-text-tertiary'
+        {/* Title and status */}
+        <View className="flex-row justify-between items-center mb-1">
+          <Text className="text-text-primary font-semibold text-base flex-1 mr-2">
+            {item.service_name}
+          </Text>
+          <View
+            className={`px-3 py-1 rounded-full ${
+              displayStatus === 'Assigned'
+                ? 'bg-primary-sage100'
+                : displayStatus === 'On Progress'
+                ? 'bg-ui-warning/20'
+                : displayStatus === 'Complete'
+                ? 'bg-ui-success/20'
+                : 'bg-gray-100'
             }`}
           >
-            {item.status}
-          </Text>
+            <Text
+              className={`text-xs font-medium ${
+                displayStatus === 'Assigned'
+                  ? 'text-primary-sage700'
+                  : displayStatus === 'On Progress'
+                  ? 'text-ui-warning'
+                  : displayStatus === 'Complete'
+                  ? 'text-ui-success'
+                  : 'text-text-tertiary'
+              }`}
+            >
+              {displayStatus}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      {/* Customer details */}
-      <View className="mt-2">
-        <Text className="text-text-primary text-sm font-medium">
-          {item.customerName}
+        {/* Customer details */}
+        <View className="mt-2">
+          <Text className="text-text-primary text-sm font-medium">
+            {item.customer_name}
+          </Text>
+          <Text className="text-text-tertiary text-xs">{item.service_address}</Text>
+          <Text className="text-text-tertiary text-xs">{item.customer_mobile}</Text>
+        </View>
+
+        {/* Description and date */}
+        <Text className="text-text-secondary text-sm mt-2" numberOfLines={2}>
+          Amount: ₹{item.tot_amt}
         </Text>
-        <Text className="text-text-tertiary text-xs">{item.address}</Text>
-        <Text className="text-text-tertiary text-xs">{item.phone}</Text>
-      </View>
+        <Text className="text-text-tertiary text-xs mt-1">{item.slot_date}</Text>
+      </TouchableOpacity>
+    );
+  };
 
-      {/* Description and date */}
-      <Text className="text-text-secondary text-sm mt-2" numberOfLines={2}>
-        {item.description}
-      </Text>
-      <Text className="text-text-tertiary text-xs mt-1">{item.date}</Text>
-    </TouchableOpacity>
-  );
-
-  // Render skeleton list
   const renderSkeleton = () => (
     <View style={{ padding: 16 }}>
       {[1, 2, 3, 4].map((key) => (
@@ -302,7 +293,7 @@ const Complaints = () => {
           ref={scrollViewRef}
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="px-4 py-1"
+          className="px-4 w-[100%] py-1"
         >
           {TABS.map((tab, index) => (
             <TouchableOpacity
@@ -320,12 +311,16 @@ const Complaints = () => {
             >
               <View
                 className={`px-4 py-1.5 rounded-full flex-row items-center ${
-                  selectedTab === tab ? 'bg-primary-sage600' : 'bg-background-tertiary'
+                  selectedTab === tab
+                    ? 'bg-primary-sage600'
+                    : 'bg-background-tertiary'
                 }`}
               >
                 <Text
                   className={`text-sm font-medium ${
-                    selectedTab === tab ? 'text-text-inverse' : 'text-text-secondary'
+                    selectedTab === tab
+                      ? 'text-text-inverse'
+                      : 'text-text-secondary'
                   }`}
                 >
                   {tab}
@@ -337,7 +332,9 @@ const Complaints = () => {
                 >
                   <Text
                     className={`text-xs ${
-                      selectedTab === tab ? 'text-text-inverse' : 'text-text-tertiary'
+                      selectedTab === tab
+                        ? 'text-text-inverse'
+                        : 'text-text-tertiary'
                     }`}
                   >
                     {counts[tab]}
@@ -356,7 +353,7 @@ const Complaints = () => {
         <FlatList
           data={filteredComplaints}
           renderItem={renderComplaintCard}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id?.toString() || item.csn}
           contentContainerStyle={{ padding: 16 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

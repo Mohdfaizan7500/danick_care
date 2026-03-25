@@ -94,6 +94,23 @@ export const getAllSparePartcategories = async (cityId) => {
     }
 };
 
+export const getAllSparePart = async (product_id) => {
+    console.log('payload:',product_id)
+    try {
+        const response = await apiClient.post("TechnicianAPI/PartPriceList", {
+            id: product_id
+        });
+        console.log('Spare part  response:', response);
+        // Return the full response (or only data) so the caller can handle it
+        return response; // or response.data depending on what you need
+    } catch (error) {
+        console.error('API error in getAllSparePart:', error);
+        const errorMessage = getErrorMessage(error);
+        // Throw an error so the calling component can catch it
+        throw new Error(errorMessage);
+    }
+};
+
 
 export const getAttendanceApi = async (id, month) => {
     console.log('getAttendanceApi called with id:', id, 'month:', month);
@@ -128,6 +145,27 @@ export const MarkAttandance = async (city_id,id,slot_date,month ) => {
         throw new Error(errorMessage);
     }
 };
+
+export const getComplaints = async (id,status) => {
+    const payload = {
+        id:id,
+        status:status,
+    }
+    console.log("payload:",payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/TechnicianComplaints', {
+            technician_id:id,
+            status:status
+        });
+        // console.log('Get complaints response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in getComplaints:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
 
 
 

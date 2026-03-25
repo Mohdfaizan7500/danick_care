@@ -7,16 +7,21 @@ import {
   FileText, ShoppingCart, Heart, X, Star
 } from 'lucide-react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../context/AuthContext'; // Import useAuth
 
 const PartDetails = () => {
   const route = useRoute();
   const part = route.params.part;
+  const { imagUrl } = useAuth(); // Get base image URL
+  console.log('part:', part);
+
   const [modalVisible, setModalVisible] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
 
-  // Stock status logic
+  // Stock status logic – you may adjust based on real data
   const getStockStatus = () => {
-    const inStock = part.inStock !== undefined ? part.inStock : true;
+    // In our part data, we don't have an explicit stock flag; assume true
+    const inStock = true;
     return {
       color: inStock ? 'text-status-online' : 'text-status-busy',
       bgColor: inStock ? 'bg-primary-sage50' : 'bg-status-busy/10',
@@ -30,11 +35,19 @@ const PartDetails = () => {
   const StockIcon = stockStatus.icon;
   const insets = useSafeAreaInsets();
 
+  // Helper to get full image URL
+  const getImageUrl = () => {
+    if (part.part_image) {
+      return imagUrl + part.part_image;
+    }
+    return 'https://via.placeholder.com/400x400?text=No+Image';
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background-primary" edges={['bottom']}>
       <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent />
 
-      {/* Header – absolutely positioned over image */}
+      {/* Header */}
       <View className="absolute top-0 z-10 w-full" style={{ top: insets.top }}>
         <Header
           showBackButton
@@ -53,15 +66,10 @@ const PartDetails = () => {
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Image Section with subtle gradient overlay */}
+        {/* Image Section */}
         <View className="w-full h-96 bg-background-secondary relative">
           <Image
-            source={{
-              uri:
-                part.image ||
-                part.imageUrl ||
-                'https://via.placeholder.com/400x400?text=No+Image',
-            }}
+            source={{ uri: getImageUrl() }}
             className="w-full h-full"
             resizeMode="contain"
           />
@@ -73,14 +81,14 @@ const PartDetails = () => {
           {/* Product Name & Price */}
           <View className="flex-row justify-between items-start mb-4">
             <Text className="flex-1 mr-4 text-3xl font-bold text-text-primary">
-              {part.name}
+              {part.part_name}
             </Text>
             <Text className="text-2xl font-bold text-primary-sage600">
-              {part.price}
+              ₹{part.part_price}
             </Text>
           </View>
 
-          {/* Stock Status & Rating (if available) */}
+          {/* Stock Status */}
           <View className="flex-row items-center justify-between mb-4">
             <View className={`flex-row items-center ${stockStatus.bgColor} px-3 py-1.5 rounded-full`}>
               <StockIcon size={18} color={stockStatus.iconColor} />
@@ -88,6 +96,7 @@ const PartDetails = () => {
                 {stockStatus.text}
               </Text>
             </View>
+            {/* Rating – if available */}
             {part.rating && (
               <View className="flex-row items-center">
                 <Star size={18} color="#F0B27A" fill="#F0B27A" />
@@ -100,29 +109,35 @@ const PartDetails = () => {
           <View className="flex-row mb-6">
             <View className="flex-1 items-center p-2 bg-background-secondary rounded-lg mr-2">
               <Package size={20} color="#777777" />
-              <Text className="text-xs text-text-secondary mt-1">Type</Text>
-              <Text className="text-sm font-semibold text-text-primary">{part.type || 'Part'}</Text>
+              <Text className="text-xs text-text-secondary mt-1">Section</Text>
+              <Text className="text-sm font-semibold text-text-primary">
+                {part.section || 'General'}
+              </Text>
             </View>
             <View className="flex-1 items-center p-2 bg-background-secondary rounded-lg mx-2">
               <Layers size={20} color="#777777" />
               <Text className="text-xs text-text-secondary mt-1">Category</Text>
-              <Text className="text-sm font-semibold text-text-primary">{part.category || 'General'}</Text>
+              <Text className="text-sm font-semibold text-text-primary">
+                {part.category || 'Spare Part'}
+              </Text>
             </View>
             <View className="flex-1 items-center p-2 bg-background-secondary rounded-lg ml-2">
               <Hash size={20} color="#777777" />
-              <Text className="text-xs text-text-secondary mt-1">Part #</Text>
-              <Text className="text-sm font-semibold text-text-primary">{part.partNumber?.slice(-4) || 'N/A'}</Text>
+              <Text className="text-xs text-text-secondary mt-1">Part ID</Text>
+              <Text className="text-sm font-semibold text-text-primary">
+                {part.id ? `#${part.id}` : 'N/A'}
+              </Text>
             </View>
           </View>
 
           {/* Details Grid */}
           <View className="bg-background-secondary rounded-xl p-4 mb-6">
-            {/* Manufacturer */}
+            {/* Manufacturer – fallback if not present */}
             <View className="flex-row items-center py-3 border-b border-ui-border">
               <Package size={20} color="#777777" />
               <Text className="flex-1 ml-3 text-text-secondary">Manufacturer</Text>
               <Text className="font-semibold text-text-primary">
-                {part.manufacturer || 'Original'}
+                {part.manufacturer || 'OEM'}
               </Text>
             </View>
 
@@ -135,7 +150,7 @@ const PartDetails = () => {
               </Text>
             </View>
 
-            {/* Model/Compatibility */}
+            {/* Compatibility */}
             <View className="flex-row items-center py-3">
               <FileText size={20} color="#777777" />
               <Text className="flex-1 ml-3 text-text-secondary">Compatibility</Text>
@@ -149,11 +164,11 @@ const PartDetails = () => {
           <View className="mb-6">
             <Text className="text-lg font-bold text-text-primary mb-2">Description</Text>
             <Text className="text-text-secondary leading-6">
-              {part.description || part.desc || 'No description available.'}
+              {part.description || 'No description available.'}
             </Text>
           </View>
 
-          {/* Add to Bucket Button (no quantity) */}
+          {/* Add to Bucket Button */}
           <TouchableOpacity
             onPress={() => setModalVisible(true)}
             className="bg-primary-sage500 py-4 rounded-xl flex-row items-center justify-center shadow-sm"
@@ -164,7 +179,7 @@ const PartDetails = () => {
         </View>
       </ScrollView>
 
-      {/* Modal – Additional Details (Bottom Sheet style) */}
+      {/* Modal – Additional Details */}
       <Modal
         animationType="slide"
         transparent
@@ -189,17 +204,17 @@ const PartDetails = () => {
             {/* Content */}
             <ScrollView className="max-h-96" showsVerticalScrollIndicator={false}>
               <View className="space-y-4">
-                <InfoItem label="Product Name" value={part.name} />
-                <InfoItem label="Part Number" value={part.partNumber || 'N/A'} />
-                <InfoItem label="Category" value={part.category || part.categoryName || 'General'} />
-                <InfoItem label="Price" value={part.price} highlight />
+                <InfoItem label="Product Name" value={part.part_name} />
+                <InfoItem label="Part ID" value={part.id ? `#${part.id}` : 'N/A'} />
+                <InfoItem label="Section" value={part.section || 'General'} />
+                <InfoItem label="Price" value={`₹${part.part_price}`} highlight />
                 <InfoItem label="Availability" custom>
                   <View className={`flex-row items-center ${stockStatus.bgColor} px-3 py-2 rounded-lg self-start`}>
                     <StockIcon size={16} color={stockStatus.iconColor} />
                     <Text className={`ml-1 font-medium ${stockStatus.color}`}>{stockStatus.text}</Text>
                   </View>
                 </InfoItem>
-                <InfoItem label="Description" value={part.description || part.desc || 'No description available.'} />
+                <InfoItem label="Description" value={part.description || 'No description available.'} />
                 <InfoItem label="Specifications" value={part.specifications || 'Standard specifications apply'} />
                 <InfoItem label="Shipping" value="Free shipping on orders above ₹500" />
                 <InfoItem label="Returns" value="7-day easy returns" />
@@ -210,8 +225,7 @@ const PartDetails = () => {
             <TouchableOpacity
               onPress={() => {
                 setModalVisible(false);
-                // Add to cart logic (quantity = 1)
-                console.log(`Added ${part.name} to cart`);
+                console.log(`Added ${part.part_name} to cart`);
               }}
               className="mt-6 bg-primary-sage500 py-3 rounded-xl"
             >
@@ -239,5 +253,3 @@ const InfoItem = ({ label, value, highlight, custom }) => (
 );
 
 export default PartDetails;
-
-const styles = StyleSheet.create({});

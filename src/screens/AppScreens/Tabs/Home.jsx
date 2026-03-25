@@ -118,7 +118,10 @@ const Home = () => {
 
   const handleCardPress = cardName => {
     if (!isConnected) return;
-    if (cardName === 'Complaints') navigation.navigate('Complaints');
+    if (cardName === 'All' ) navigation.navigate('Complaints',{status:"all"});
+    else if (cardName === 'Assign' ) navigation.navigate('Complaints',{status:"Assign"});
+    else if (cardName === 'Onworking' ) navigation.navigate('Complaints',{status:"Onworking"});
+    else if (cardName === 'Complete' ) navigation.navigate('Complaints',{status:"Complete"});
     else if (cardName === 'Bucket') navigation.navigate('Bucket');
     else if (cardName === 'AMC') navigation.navigate('AMC');
     else if (cardName === 'Pre-Booking') navigation.navigate('PreBooking');
@@ -155,7 +158,7 @@ const Home = () => {
       colors={[`${Colors.primary.sage400}`, '#fff', '#fff']}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      style={{flex:1}}
+      style={{ flex: 1 }}
     >
       <StatusBar
         backgroundColor="transparent"
@@ -176,9 +179,8 @@ const Home = () => {
               className="w-12 h-12 rounded-full border-2 border-white"
             />
             <View
-              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
-                user.isActive ? 'bg-green-500' : 'bg-gray-400'
-              }`}
+              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${user.isActive ? 'bg-green-500' : 'bg-gray-400'
+                }`}
             />
           </View>
           <View className="ml-3">
@@ -189,9 +191,8 @@ const Home = () => {
               </Text>
             </View>
             <Text
-              className={`text-xs font-medium ${
-                user.isActive ? 'text-green-600' : 'text-gray-500'
-              }`}
+              className={`text-xs font-medium ${user.isActive ? 'text-green-600' : 'text-gray-500'
+                }`}
             >
               {user.isActive ? '● Active' : '● Inactive'}
             </Text>
@@ -261,9 +262,8 @@ const Home = () => {
                     }}
                   >
                     <View
-                      className={`w-2 h-2 rounded-full mx-1 ${
-                        index === activeIndex ? 'bg-blue-500 w-4' : 'bg-gray-300'
-                      }`}
+                      className={`w-2 h-2 rounded-full mx-1 ${index === activeIndex ? 'bg-blue-500 w-4' : 'bg-gray-300'
+                        }`}
                     />
                   </TouchableOpacity>
                 ))}
@@ -279,7 +279,7 @@ const Home = () => {
                 </Text>
                 <View className="flex-row justify-between mb-3">
                   <Pressable
-                    onPress={() => handleCardPress('Complaints')}
+                    onPress={() => handleCardPress('All')}
                     className="bg-white rounded-xl p-4 items-center justify-between flex-row border border-gray-200 flex-1 mr-2"
                   >
                     <View>
@@ -287,7 +287,7 @@ const Home = () => {
                         24
                       </Text>
                       <Text className="text-xs text-gray-500 text-center">
-                        Complaints
+                        All
                       </Text>
                     </View>
                     <View className="bg-red-100 p-3 rounded-full mb-2">
@@ -295,7 +295,7 @@ const Home = () => {
                     </View>
                   </Pressable>
                   <Pressable
-                    onPress={() => handleCardPress('Onworking')}
+                    onPress={() => handleCardPress('Assign')}
                     className="bg-white rounded-xl p-4 items-center justify-between flex-row border border-gray-200 flex-1 ml-2"
                   >
                     <View>
@@ -303,7 +303,7 @@ const Home = () => {
                         08
                       </Text>
                       <Text className="text-xs text-gray-500 text-center">
-                        Onworking
+                       Assign
                       </Text>
                     </View>
                     <View className="bg-yellow-100 p-3 rounded-full mb-2">
@@ -313,7 +313,7 @@ const Home = () => {
                 </View>
                 <View className="flex-row justify-between">
                   <Pressable
-                    onPress={() => handleCardPress('Pending')}
+                    onPress={() => handleCardPress('Onworking')}
                     className="bg-white justify-between flex-row rounded-xl p-4 items-center border border-gray-200 flex-1 mr-2"
                   >
                     <View>
@@ -321,7 +321,7 @@ const Home = () => {
                         12
                       </Text>
                       <Text className="text-xs text-gray-500 text-center">
-                        Pending
+                        On working
                       </Text>
                     </View>
                     <View className="bg-orange-100 p-3 rounded-full mb-2">

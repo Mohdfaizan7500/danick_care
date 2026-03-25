@@ -84,12 +84,12 @@ const Parts = () => {
       disabled={!isConnected}
       activeOpacity={0.7}
     >
-      <View className="bg-white rounded-2xl px-1 pt-1 py-2 items-center border border-gray-300">
+      <View className="bg-white rounded-2xl px-4 py-6 items-center border border-gray-300">
         <View className="w-full h-20 bg-white overflow-hidden mb-2">
           <Image
             source={{ uri: item.imageUrl }}
             className="w-full h-full rounded-lg"
-            resizeMode="cover"
+            resizeMode="contain"
             onError={(e) => console.log('Image load error for', item.name, e.nativeEvent.error)}
             defaultSource={require('../../../assets/images/profileImage.jpg')} // optional fallback
           />
