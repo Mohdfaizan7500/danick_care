@@ -21,7 +21,7 @@ const Profile = () => {
 
 
   const device = Platform.OS == 'ios';
-  console.log('device:',device)
+  console.log('device:', device)
 
   // Monitor internet connection
   useEffect(() => {
@@ -80,7 +80,7 @@ const Profile = () => {
   const handleLogoutPress = () => {
     if (!isConnected) {
       // toast.error('You are offline. Please check your internet connection.');
-      toast.custom(<StatusMessage type='error' title={'You are offline. Please check your internet connection.'}/>,{duration:300})
+      toast.custom(<StatusMessage type='error' title={'You are offline. Please check your internet connection.'} />, { duration: 300 })
       return;
     }
     setLogoutDialogVisible(true);
@@ -90,7 +90,7 @@ const Profile = () => {
     // Extra safety: if offline, don't proceed
     if (!isConnected) {
       // toast.error('Cannot logout while offline.');
-      toast.custom(<StatusMessage type='error' title={'Cannot logout while offline.'}/>,{duration:300})
+      toast.custom(<StatusMessage type='error' title={'Cannot logout while offline.'} />, { duration: 300 })
 
 
       setLogoutDialogVisible(false);
@@ -104,7 +104,7 @@ const Profile = () => {
       await logout();
       setLogoutDialogVisible(false);
     } catch (error) {
-      toast.custom(<StatusMessage type='error' title={'CFailed to logout. Please try again.'}/>,{duration:300})
+      toast.custom(<StatusMessage type='error' title={'CFailed to logout. Please try again.'} />, { duration: 300 })
 
       // Alert.alert('Error', 'Failed to logout. Please try again.');
       setLogoutDialogVisible(false);
@@ -117,11 +117,13 @@ const Profile = () => {
   const handleNavigation = (route) => {
     if (!isConnected) {
       // toast.error('You are offline. Please check your internet connection.');
-      toast.custom(<StatusMessage type='error' title={'You are offline. Please check your internet connection.'}/>,{duration:300})
+      toast.custom(<StatusMessage type='error' title={'You are offline. Please check your internet connection.'} />, { duration: 300 })
       return;
     }
     else {
+      if (route !== 'ProfileEdit' && route !== 'MyComplaints'&& route !== 'AMC'  ) return toast.info('In Developemnt mode.');
       navigation.navigate(route);
+
 
     }
   };
@@ -171,7 +173,7 @@ const Profile = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{flex:1, paddingBottom: 0,}}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flex: 1, paddingBottom: 0, }}>
         <View className="absolute inset-0 z-50 w-90% pointer-events-none">
           <Toaster />
         </View>
@@ -204,7 +206,7 @@ const Profile = () => {
         </View>
 
         <View className="mt-6">
-          <View className={`bg-white mx-5 rounded-xl px-4 shadow-md ${device ? 'shadow-sm':'shadow-md'}`}>
+          <View className={`bg-white mx-5 rounded-xl px-4 shadow-md ${device ? 'shadow-sm' : 'shadow-md'}`}>
             {menuItems.map((item, index) => (
               <MenuItem
                 key={item.id}

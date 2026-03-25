@@ -41,9 +41,9 @@ apiClient.interceptors.response.use(
 // Helper to extract error message
 const getErrorMessage = (error) => {
     return error.response?.data?.message ||
-           error.response?.data?.error ||
-           error.message ||
-           'An unexpected error occurred';
+        error.response?.data?.error ||
+        error.message ||
+        'An unexpected error occurred';
 };
 
 // Login function for React Native
@@ -57,7 +57,7 @@ export const loginApi = async (username, password) => {
             password: password,
             expiresInMins: 30, // optional
         });
-        console.log('responce:',response)
+        console.log('responce:', response)
         // console.log('data:',response.data)
 
 
@@ -93,6 +93,43 @@ export const getAllSparePartcategories = async (cityId) => {
         throw new Error(errorMessage);
     }
 };
+
+
+export const getAttendanceApi = async (id, month) => {
+    console.log('getAttendanceApi called with id:', id, 'month:', month);
+    try {
+        const response = await apiClient.post('TechnicianAPI/TechnicianAttendenceList', {
+            technician_id:id,
+            month:month
+        });
+        // console.log('get all attendance response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in getAttendanceApi:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const MarkAttandance = async (city_id,id,slot_date,month ) => {
+    console.log('MarkAttandance called with city id :', city_id, 'tech id:', id,"slot_date:",slot_date,"month:",month);
+    try {
+        const response = await apiClient.post('TechnicianAPI/TechnicianAttendence', {
+            city_id:city_id,
+            tech_id:id,
+            slot_date:slot_date,
+            month:month
+        });
+        console.log('MarkAttandance response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in MarkAttandance:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+
 
 
 // You can also export the apiClient for other uses if needed

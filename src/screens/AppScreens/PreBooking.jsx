@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,65 +6,142 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { toast, Toaster } from 'sonner-native';
 import Header from '../../components/Header';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { Colors } from '../../constants/Color';
 import { CalenderIcon } from '../../assets/svgIcons/SVGIcons';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { useAuth } from '../../context/AuthContext';
+import { getAttendanceApi, MarkAttandance } from '../../lib/api';
 
 const { width: screenWidth } = Dimensions.get('window');
 
+// Helper: get local date string YYYY-MM-DD (no timezone shift)
+const getLocalDateString = (date) => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Custom day component with loading spinner
+const CustomDay = ({ date, state, marking, onPress, loadingDates }) => {
+  const dateString = date.dateString;
+  const isLoading = loadingDates.has(dateString);
+
+  let containerStyle = {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  };
+
+  if (marking?.selected) {
+    const bgColor = marking.customStyles?.container?.backgroundColor || '#68DAAC';
+    containerStyle.backgroundColor = bgColor;
+    containerStyle.borderRadius = 8;
+  } else if (state === 'disabled') {
+    containerStyle.backgroundColor = '#f3f4f6';
+    containerStyle.borderRadius = 8;
+  } else if (state === 'today') {
+    containerStyle.borderWidth = 1;
+    containerStyle.borderColor = '#9ca3af';
+    containerStyle.borderRadius = 8;
+  }
+
+  return (
+    <TouchableOpacity
+      style={containerStyle}
+      onPress={() => onPress(date)}
+      disabled={state === 'disabled' || isLoading}
+    >
+      {isLoading ? (
+        <ActivityIndicator size="small" color="#58A890" />
+      ) : (
+        <Text
+          style={{
+            fontSize: 16,
+            color: marking?.selected ? 'white' : state === 'disabled' ? '#9ca3af' : '#111827',
+          }}
+        >
+          {date.day}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+};
+
 const PreBooking = () => {
+  const { user } = useAuth();
   const [selectedDates, setSelectedDates] = useState([]);
+  const [loadingDates, setLoadingDates] = useState(new Set()); // individual day spinners
+  const [loading, setLoading] = useState(true); // overall modal loading
+  const [error, setError] = useState(null);
 
   const currentDate = new Date();
   const [displayMonth, setDisplayMonth] = useState(currentDate.getMonth() + 1);
   const [displayYear, setDisplayYear] = useState(currentDate.getFullYear());
 
-  // Animation
   const slideAnim = useRef(new Animated.Value(0)).current;
 
-  // Dummy data generation
-  useEffect(() => {
+  // Compute the next 3 dates (today, tomorrow, day after tomorrow) – these are locked
+  const lockedDates = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    const currentMonth = today.getMonth() + 1;
-    const currentYear = today.getFullYear();
-
-    // Generate 5 dates in the current month (starting from today)
-    const currentMonthDates = [];
-    for (let i = 0; i < 5; i++) {
-      const date = new Date(currentYear, currentMonth - 1, today.getDate() + i);
-      if (date.getMonth() + 1 === currentMonth) {
-        currentMonthDates.push(date.toISOString().split('T')[0]);
-      }
+    const dates = [];
+    for (let i = 0; i < 4; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      dates.push(getLocalDateString(date));
     }
-
-    // Previous month
-    let prevMonth = currentMonth - 1;
-    let prevYear = currentYear;
-    if (prevMonth === 0) {
-      prevMonth = 12;
-      prevYear -= 1;
-    }
-    // Generate 10 dates in the previous month (any dates, they will be disabled)
-    const prevMonthDates = [];
-    for (let i = 1; i <= 10; i++) {
-      const date = new Date(prevYear, prevMonth - 1, i);
-      // Only add if the date is valid (i <= last day of month)
-      if (date.getMonth() + 1 === prevMonth) {
-        prevMonthDates.push(date.toISOString().split('T')[0]);
-      }
-    }
-
-    const dummySelected = [...currentMonthDates, ...prevMonthDates];
-    setSelectedDates(dummySelected);
+    return dates;
   }, []);
+
+  // Format month as MM-YYYY (1‑based month)
+  const formatMonth = (month, year) => {
+    const monthNumber = month.toString().padStart(2, '0');
+    return `${monthNumber}-${year}`;
+  };
+
+  // Fetch attendance data when month/year or user changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchAttendance();
+    }
+  }, [displayMonth, displayYear, user]);
+
+  const fetchAttendance = async () => {
+    if (!user?.id) return;
+    const monthStr = formatMonth(displayMonth, displayYear);
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getAttendanceApi(user.id, monthStr);
+      console.log('Fetched Attendance:', response);
+
+      // Response structure: response.data.data is an array of objects with 'date' property
+      const datesArray = response?.data?.data || [];
+      if (Array.isArray(datesArray)) {
+        const dateStrings = datesArray.map(item => item.date).filter(Boolean);
+        console.log('Extracted date strings:', dateStrings);
+        setSelectedDates(dateStrings);
+      } else {
+        setSelectedDates([]);
+      }
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
+      setError(err.message);
+      toast.error('Failed to load attendance. Please try again.');
+      setSelectedDates([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getMonthName = (month) => {
     const months = [
@@ -76,7 +153,6 @@ const PreBooking = () => {
 
   const animateMonthChange = (direction) => {
     const toValue = direction === 'left' ? -screenWidth : screenWidth;
-
     Animated.sequence([
       Animated.timing(slideAnim, {
         toValue,
@@ -116,7 +192,6 @@ const PreBooking = () => {
     return `${displayYear}-${monthStr}-01`;
   };
 
-  // Helper: get all dates in current month as Date objects
   const getDatesInMonth = (year, month) => {
     const dates = [];
     const firstDay = new Date(year, month - 1, 1);
@@ -127,84 +202,74 @@ const PreBooking = () => {
     return dates;
   };
 
-  // Build markedDates object
   const buildMarkedDates = () => {
     const marked = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const todayStr = getLocalDateString(today);
+    console.log("today :",todayStr)
 
-    // 1. Selected dates – differentiate between current month and other months
+    // Selected dates
     selectedDates.forEach((dateStr) => {
       const [year, month] = dateStr.split('-').map(Number);
       const isCurrentMonth = (year === displayYear && month === displayMonth);
       const selectedDate = new Date(dateStr);
       const isPast = selectedDate < today;
+      const isLocked = lockedDates.includes(dateStr);
 
-      const containerStyle = isCurrentMonth
-        ? { backgroundColor: '#68DAAC', borderRadius: 8 }   // cyan for current month
-        : { backgroundColor: '#2e7d32', borderRadius: 8 }; // dark green for other months
+      // Choose background color: darker for locked dates
+      let bgColor = '#68DAAC'; // default green
+      if (isLocked) {
+        bgColor = '#68DAAC'; // (or use a darker shade if desired)
+      } else if (!isCurrentMonth) {
+        bgColor = '#2e7d32'; // previous months color
+      }
+
+      const containerStyle = {
+        backgroundColor: bgColor,
+        borderRadius: 8,
+      };
 
       marked[dateStr] = {
         selected: true,
-        disabled: isPast, // Mark as disabled if it's a past date
+        disabled: isPast,
+        locked: isLocked,
         customStyles: {
           container: containerStyle,
-          text: {
-            color: 'white',
-            fontWeight: 'bold',
-          },
+          text: { color: 'white', fontWeight: 'bold' },
         },
       };
     });
 
-    // 2. Disable all dates in current month that are before today
+    // Disable past dates in current month
     const monthDates = getDatesInMonth(displayYear, displayMonth);
     monthDates.forEach((date) => {
       if (date < today) {
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = getLocalDateString(date);
         if (!marked[dateStr]) {
           marked[dateStr] = {
             disabled: true,
             customStyles: {
-              container: {
-                backgroundColor: '#f3f4f6',
-                borderRadius: 8,
-              },
-              text: {
-                color: '#9ca3af',
-              },
+              container: { backgroundColor: '#f3f4f6', borderRadius: 8 },
+              text: { color: '#9ca3af' },
             },
           };
         } else if (!marked[dateStr].selected) {
-          // If not selected but disabled, ensure disabled style
           marked[dateStr].disabled = true;
           marked[dateStr].customStyles = {
-            container: {
-              backgroundColor: '#f3f4f6',
-              borderRadius: 8,
-            },
-            text: {
-              color: '#9ca3af',
-            },
+            container: { backgroundColor: '#f3f4f6', borderRadius: 8 },
+            text: { color: '#9ca3af' },
           };
         }
-        // For selected past dates, we keep the selected style but also set disabled=true above
       }
     });
 
-    // 3. Highlight today with gray border if not selected/disabled
-    const todayStr = today.toISOString().split('T')[0];
+    // Highlight today
     if (!marked[todayStr]) {
       marked[todayStr] = {
         customStyles: {
-          container: {
-            borderWidth: 1,
-            borderColor: '#9ca3af',
-            borderRadius: 8,
-          },
-          text: {
-            color: '#111827',
-          },
+          container: { borderWidth: 1, borderColor: 'red', borderRadius: 8 },
+          text: { color: '#000' },
         },
       };
     } else if (!marked[todayStr].disabled && !marked[todayStr].selected) {
@@ -221,13 +286,12 @@ const PreBooking = () => {
     return marked;
   };
 
-  const handleDayPress = (day) => {
+  const handleDayPress = async (day) => {
     const dateString = day.dateString;
     const selectedDate = new Date(dateString);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // If the date is disabled (including past or pre‑selected dummy dates), ignore click
     if (selectedDate < today) {
       toast.custom(
         <View className="bg-orange-50 border border-orange-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
@@ -241,34 +305,86 @@ const PreBooking = () => {
       return;
     }
 
-    // Toggle selection and show toast
+    // Prevent double click while loading
+    if (loadingDates.has(dateString)) return;
+
     const isSelected = selectedDates.includes(dateString);
-    if (isSelected) {
-      setSelectedDates(prev => prev.filter(d => d !== dateString));
+
+    // BLOCK: cannot uncheck a locked date
+    if (isSelected && lockedDates.includes(dateString)) {
       toast.custom(
-        <View className="bg-blue-50 border border-blue-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
-          <Icon name="calendar-outline" size={24} color="#3b82f6" />
+        <View className="bg-orange-50 border border-orange-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
+          <Icon name="lock-closed" size={24} color="#f97316" />
           <View className="flex-1">
-            <Text className="text-blue-800 font-semibold text-base">Date removed</Text>
-            <Text className="text-blue-700 text-sm">{dateString} has been removed.</Text>
+            <Text className="text-orange-800 font-semibold text-base">Locked date</Text>
+            <Text className="text-orange-700 text-sm">You cannot remove this date because it is in the next 3 days.</Text>
           </View>
         </View>,
-        { duration: 2000 }
+        { duration: 3000 }
       );
-    } else {
-      setSelectedDates(prev => [...prev, dateString]);
-      toast.custom(
-        <View className="bg-green-50 border border-green-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
-          <Icon name="checkmark-circle" size={24} color="#22c55e" />
-          <View className="flex-1">
-            <Text className="text-green-800 font-semibold text-base">Date added</Text>
-            <Text className="text-green-700 text-sm">{dateString} has been added to your availability.</Text>
-          </View>
-        </View>,
-        { duration: 2000 }
-      );
+      return;
+    }
+
+    const [year, monthdata, daydata] = dateString.split('-');
+    const cityId = user?.city_id || '1';
+    const techId = user?.id || '1';
+    const month = `${monthdata}-${year}`;
+    console.log("month on prebooking:", month);
+
+    // Add to loading set (shows spinner on that day)
+    setLoadingDates(prev => new Set(prev).add(dateString));
+
+    try {
+      const response = await MarkAttandance(cityId, techId, dateString, month);
+      console.log('MarkAttendance response:', response);
+      // Refresh the attendance list after successful API call
+      await fetchAttendance();
+
+      if (isSelected) {
+        toast.custom(
+          <View className="bg-blue-50 border border-blue-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
+            <Icon name="calendar-outline" size={24} color="#3b82f6" />
+            <View className="flex-1">
+              <Text className="text-blue-800 font-semibold text-base">Date removed</Text>
+              <Text className="text-blue-700 text-sm">{dateString} has been removed.</Text>
+            </View>
+          </View>,
+          { duration: 2000 }
+        );
+      } else {
+        toast.custom(
+          <View className="bg-green-50 border border-green-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
+            <Icon name="checkmark-circle" size={24} color="#22c55e" />
+            <View className="flex-1">
+              <Text className="text-green-800 font-semibold text-base">Date added</Text>
+              <Text className="text-green-700 text-sm">{dateString} has been added to your availability.</Text>
+            </View>
+          </View>,
+          { duration: 2000 }
+        );
+      }
+    } catch (error) {
+      console.error('Error marking attendance:', error);
+      toast.error('Failed to update availability. Please try again.');
+    } finally {
+      // Remove from loading set (hides spinner)
+      setLoadingDates(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(dateString);
+        return newSet;
+      });
     }
   };
+
+  const renderCustomDay = ({ date, state, marking }) => (
+    <CustomDay
+      date={date}
+      state={state}
+      marking={marking}
+      onPress={handleDayPress}
+      loadingDates={loadingDates}
+    />
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -324,7 +440,6 @@ const PreBooking = () => {
           </View>
         </View>
 
-        {/* Animated Calendar */}
         <View style={{ flex: 1 }}>
           <Animated.View
             style={{
@@ -336,11 +451,12 @@ const PreBooking = () => {
             <Calendar
               key={`${displayYear}-${displayMonth}`}
               current={getCurrentDateString()}
-              onDayPress={handleDayPress}
+              onDayPress={() => { }} // handled by custom day
               markingType="custom"
               markedDates={buildMarkedDates()}
               hideArrows={true}
               renderHeader={() => null}
+              dayComponent={renderCustomDay}
               theme={{
                 todayTextColor: '#3b82f6',
                 textDayFontSize: 20,
@@ -364,6 +480,38 @@ const PreBooking = () => {
           </Animated.View>
         </View>
       </ScrollView>
+
+      {/* Modal with Activity Indicator */}
+      <Modal
+        visible={loading}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => { }}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: 'white',
+              padding: 20,
+              borderRadius: 12,
+              alignItems: 'center',
+              elevation: 5,
+            }}
+          >
+            <ActivityIndicator size="large" color="#58A890" />
+            <Text style={{ marginTop: 12, fontSize: 16, color: '#333' }}>
+              Loading availability...
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

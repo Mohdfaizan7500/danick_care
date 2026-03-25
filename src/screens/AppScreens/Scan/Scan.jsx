@@ -134,6 +134,11 @@ const Scan = () => {
 
   // Main UI when online
   return (
+    // <View className='flex-1 justify-center items-center'>
+    //   <Text className='font-bold text-2xl'>Scan screen in development</Text>
+
+
+    // </View>
     <SafeAreaView className="flex-1 bg-white">
       <Header
         title="Scan QR Code"
