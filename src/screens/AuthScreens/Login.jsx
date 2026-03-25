@@ -5,12 +5,14 @@ import {
     TextInput,
     TouchableOpacity,
     ActivityIndicator,
+    StatusBar,
 } from 'react-native';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import DialogBox from '../../components/DilaogBox';
 import { loginApi } from '../../lib/api'; // adjust path as needed
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Login = ({ navigation }) => {
     const [email, setEmail] = useState('');
@@ -183,7 +185,8 @@ const Login = ({ navigation }) => {
     };
 
     return (
-        <View className="flex-1 bg-teal-100 justify-center items-center px-10">
+        <SafeAreaView className="flex-1 bg-teal-100 justify-center items-center px-10">
+            <StatusBar backgroundColor={'#CCFBF1'} barStyle={'dark-content'}/>
             <View className="bg-white w-[100%] p-8 h-auto rounded-3xl shadow-lg border border-gray-100">
                 <Text className="font-bold text-3xl text-black mb-2">Welcome Back</Text>
                 <Text className="text-gray-500 text-base mb-8">Sign in to your account</Text>
@@ -279,7 +282,7 @@ const Login = ({ navigation }) => {
                     <Text className="text-gray-600 text-center mt-4 text-base">{dialogConfig.message}</Text>
                 </View>
             </DialogBox>
-        </View>
+        </SafeAreaView>
     );
 };
 

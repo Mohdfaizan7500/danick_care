@@ -1,5 +1,5 @@
 <resources>
-    <color name="cyan_500">#B2DFDB</color>        <!-- primary cyan -->
+    <color name="cyan_500">#CCFBF1</color>        <!-- primary cyan -->
     <color name="cyan_700">#B2DFDB</color>        <!-- darker cyan -->
     <color name="cyan_100">#B2DFDB</color>        <!-- light cyan -->
     <color name="white">#FFFFFF</color>
