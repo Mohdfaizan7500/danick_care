@@ -24,6 +24,7 @@ import {
   CalanderIcon,
   ComplaintsIcon,
   CompleteIcon,
+  FileIcon,
 } from '../../../assets/svgIcons/SVGIcons';
 import { useNavigation } from '@react-navigation/native';
 import NetInfo from '@react-native-community/netinfo';
@@ -79,8 +80,8 @@ const Home = () => {
   // ---------- User data from context ----------
   const userProfile = {
     name: profileData?.technician_name || 'John Doe',
-    profileImage: profileData?.profile_photo 
-      ? `${imagUrl}${profileData.profile_photo}` 
+    profileImage: profileData?.profile_photo
+      ? `${imagUrl}${profileData.profile_photo}`
       : 'https://randomuser.me/api/portraits/men/1.jpg',
     isActive: profileData?.login_status !== 'Online',
     notificationCount: 3,
@@ -98,7 +99,7 @@ const Home = () => {
       setLoadingProfile(true);
       const response = await getProfile(user.id);
       const data = response?.data?.data[0];
-      
+
       if (data) {
         console.log('Profile data fetched:', data);
         // Save profile data to context
@@ -389,21 +390,24 @@ const Home = () => {
                 <Text className="text-gray-800 font-bold text-lg mb-3">
                   Business Metrics
                 </Text>
+
+                {/* First Row - AMC and Bucket */}
                 <View className="flex-row justify-between mb-3">
                   <TouchableOpacity
-                    onPress={() => handleCardPress('Complaints')}
+                    onPress={() => handleCardPress('AMC')}
                     className="bg-white rounded-xl p-4 items-center border border-gray-200 flex-1 mr-2"
                   >
-                    <View className="bg-red-100 p-3 rounded-full mb-2">
-                      <ComplaintsIcon width={24} height={24} fill="red" />
+                    <View className="bg-blue-100 p-3 rounded-full mb-2">
+                      <FileIcon width={24} height={24} stroke="blue" />
                     </View>
                     <Text className="text-2xl font-bold text-gray-800">
                       24
                     </Text>
                     <Text className="text-xs text-gray-500 text-center">
-                      Complaints
+                      AMC
                     </Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     onPress={() => handleCardPress('Bucket')}
                     className="bg-white rounded-xl p-4 items-center border border-gray-200 flex-1 ml-2"
@@ -419,42 +423,33 @@ const Home = () => {
                     </Text>
                   </TouchableOpacity>
                 </View>
-                <View className="flex-row justify-between mb-3">
-                  <TouchableOpacity
-                    onPress={() => handleCardPress('AMC')}
-                    className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mr-2"
-                  >
-                    <View className="bg-green-100 p-2 rounded-full mb-1">
-                      <AMCIcon width={22} height={22} stroke="#22c55e" />
-                    </View>
-                    <Text className="text-lg font-bold text-gray-800">32</Text>
-                    <Text className="text-[10px] text-gray-500 text-center">
-                      AMC
-                    </Text>
-                  </TouchableOpacity>
+
+                {/* Second Row - Pre-Booking and Payout */}
+                <View className="flex-row justify-between">
                   <TouchableOpacity
                     onPress={() => handleCardPress('Pre-Booking')}
-                    className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mx-1"
+                    className="bg-white rounded-xl p-4 items-center border border-gray-200 flex-1 mr-2"
                   >
-                    <View className="bg-purple-100 p-2 rounded-full mb-1">
-                      <CalanderIcon width={22} height={22} stroke="#a855f7" />
+                    <View className="bg-purple-100 p-3 rounded-full mb-2">
+                      <CalanderIcon width={24} height={24} stroke="#a855f7" />
                     </View>
-                    <Text className="text-lg font-bold text-gray-800">45</Text>
-                    <Text className="text-[10px] text-gray-500 text-center">
+                    <Text className="text-2xl font-bold text-gray-800">45</Text>
+                    <Text className="text-xs text-gray-500 text-center">
                       Pre-Booking
                     </Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     onPress={() => handleCardPress('Payout')}
-                    className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 ml-2"
+                    className="bg-white rounded-xl p-4 items-center border border-gray-200 flex-1 ml-2"
                   >
-                    <View className="bg-emerald-100 p-2 rounded-full mb-1">
-                      <Wallet size={22} height={22} color="#10b981" />
+                    <View className="bg-emerald-100 p-3 rounded-full mb-2">
+                      <Wallet size={24} height={24} color="#10b981" />
                     </View>
-                    <Text className="text-lg font-bold text-gray-800">
+                    <Text className="text-2xl font-bold text-gray-800">
                       ₹12.5k
                     </Text>
-                    <Text className="text-[10px] text-gray-500 text-center">
+                    <Text className="text-xs text-gray-500 text-center">
                       Payout
                     </Text>
                   </TouchableOpacity>
