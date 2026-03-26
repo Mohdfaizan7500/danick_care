@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,29 +16,7 @@ import { toast, Toaster } from 'sonner-native';
 import Header from '../../../components/Header';
 import DialogBox from '../../../components/DilaogBox';
 import StatusMessage from '../../../components/StatusMessage';
-
-// Generate 40 dummy partners
-const generateDummyPartners = (count) => {
-  const firstNames = [
-    'Amit', 'Priya', 'Ravi', 'Sneha', 'Vikram', 'Anjali', 'Rajesh', 'Deepa',
-    'Suresh', 'Kavita', 'Arjun', 'Pooja', 'Manoj', 'Neha', 'Sanjay', 'Divya',
-    'Vinod', 'Meena', 'Sunil', 'Rekha', 'Anil', 'Shilpa', 'Gaurav', 'Jyoti',
-    'Nitin', 'Sarita', 'Deepak', 'Kiran', 'Pankaj', 'Anita', 'Rahul', 'Swati',
-    'Ashok', 'Neeta', 'Vijay', 'Geeta', 'Sanjeev', 'Komal', 'Rajiv', 'Nidhi'
-  ];
-  const lastNames = [
-    'Sharma', 'Patel', 'Kumar', 'Reddy', 'Singh', 'Desai', 'Gupta', 'Nair',
-    'Iyer', 'Joshi', 'Verma', 'Malhotra', 'Mehta', 'Choudhary', 'Yadav', 'Rao',
-    'Saxena', 'Mishra', 'Trivedi', 'Bhat', 'Menon', 'Pillai', 'Kaur', 'Thakur'
-  ];
-
-  return Array.from({ length: count }, (_, i) => ({
-    id: `p${i + 1}`,
-    name: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]}`,
-  }));
-};
-
-const DUMMY_PARTNERS = generateDummyPartners(40);
+import { getAllTechnician } from '../../../lib/api';
 
 const BucketpartDetails = () => {
   const navigation = useNavigation();
@@ -50,29 +28,80 @@ const BucketpartDetails = () => {
   const [selectedTransferPartner, setSelectedTransferPartner] = useState(null);
   const [tempSelectedPartner, setTempSelectedPartner] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [technicians, setTechnicians] = useState([]);
+  const [loadingTechnicians, setLoadingTechnicians] = useState(false);
 
   // State for transfer loading
   const [transferLoading, setTransferLoading] = useState(false);
 
   // Filter partners based on search
   const filteredPartners = useMemo(() => {
-    return DUMMY_PARTNERS.filter(partner =>
-      partner.name.toLowerCase().includes(searchQuery.toLowerCase())
+    return technicians.filter(tech =>
+      tech.technician_name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [searchQuery]);
+  }, [technicians, searchQuery]);
 
-  const partNumber = item.partNumber || item.id;
-  const addedDate = item.addedDate || new Date().toLocaleDateString('en-GB');
+  // Get display values from item
+  const partNumber = item.partNumber || item.id || 'N/A';
+  const addedDate = item.addedDate || (item.created_at ? new Date(item.created_at).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'));
+  const partName = item.name || item.part_name || 'Part Name';
+  const partPrice = item.price || item.part_price || '0';
+  const partImage = item.imageUrl || (item.part_image ? `https://dainikcare.com/dainik_care_admin/${item.part_image}` : null);
+  const parentType = item.parentType || item.transfer_by || 'Unknown';
+  const parentName = item.parentName || (item.transfer_by === 'market' ? 'Market' :
+    item.transfer_by === 'partner' ? 'Partner' :
+      item.transfer_by === 'admin' ? 'Service Center' : 'Unknown');
+  const description = item.description || 'No description available';
+  const partId = item.id;
+
+  // Format parent type display
+  const getParentTypeDisplay = (type) => {
+    switch (type) {
+      case 'market':
+        return 'Market';
+      case 'partner':
+        return 'Partner';
+      case 'admin':
+        return 'Service Center';
+      case 'replace':
+        return 'Replace';
+      default:
+        return type;
+    }
+  };
+
+  // Fetch all technicians
+  const fetchAllTechnicians = async () => {
+    try {
+      setLoadingTechnicians(true);
+      const response = await getAllTechnician();
+      console.log('Technicians response:', response);
+
+      // Handle API response
+      const data = response?.data?.data || [];
+      setTechnicians(data);
+    } catch (error) {
+      console.log('fetchAllTechnicians error:', error);
+      console.error('fetchAllTechnicians error:', error);
+      toast.error('Failed to load technicians');
+      setTechnicians([]);
+    } finally {
+      setLoadingTechnicians(false);
+    }
+  };
 
   // Open modal for partner selection
   const openPartnerModal = () => {
-    setTempSelectedPartner(selectedTransferPartner); // pre-select current if any
+    setTempSelectedPartner(selectedTransferPartner);
     setSearchQuery('');
     setPartnerModalVisible(true);
+    // Fetch technicians when modal opens
+    fetchAllTechnicians();
   };
 
   // Confirm selection in modal
   const confirmPartnerSelection = () => {
+
     if (tempSelectedPartner) {
       setSelectedTransferPartner(tempSelectedPartner);
     }
@@ -86,13 +115,12 @@ const BucketpartDetails = () => {
       return;
     }
     setTransferLoading(true);
-    setTimeout(() => {
+    setTimeout(async() => {
       setTransferLoading(false);
       setSelectedTransferPartner(null);
-      toast.custom(<StatusMessage type='success' title={`Part transferred to ${selectedTransferPartner.name}`} />, { duration: 1000 });
-      navigation.goBack();
-
-
+      console.log(`Part transferred to technician id  ${selectedTransferPartner.id}`)
+       toast.custom(<StatusMessage type='success' title={`Part transferred to ${selectedTransferPartner.technician_name}`} />, { duration: 1000 });
+      // navigation.goBack();
     }, 2000);
   };
 
@@ -111,28 +139,45 @@ const BucketpartDetails = () => {
 
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
         {/* Image */}
-        <View className="w-full h-100 bg-background-secondary">
-          <Image
-            source={{ uri: item.imageUrl }}
-            className="w-full h-full"
-            resizeMode="contain"
-          />
+        <View className="w-full h-96 bg-background-secondary">
+          {partImage ? (
+            <Image
+              source={{ uri: partImage }}
+              className="w-full h-full"
+              resizeMode="contain"
+            />
+          ) : (
+            <View className="w-full h-full items-center justify-center">
+              <Icon name="image-outline" size={60} color="#CCCCCC" />
+              <Text className="text-text-tertiary mt-2">No Image Available</Text>
+            </View>
+          )}
         </View>
 
         {/* Details */}
         <View className="p-5">
           <Text className="text-2xl font-bold text-text-primary mb-2">
-            {item.name}
+            {partName}
           </Text>
 
           <View className="flex-row items-center mb-2">
+            <Icon name="pricetag-outline" size={18} color="#666666" />
+            <Text className="text-text-secondary ml-2">Price: ₹{partPrice}</Text>
+          </View>
+
+          <View className="flex-row items-center mb-2">
             <Icon name="barcode-outline" size={18} color="#666666" />
+            <Text className="text-text-secondary ml-2">Part ID: {partId}</Text>
+          </View>
+
+          <View className="flex-row items-center mb-2">
+            <Icon name="qr-code-outline" size={18} color="#666666" />
             <Text className="text-text-secondary ml-2">Part No: {partNumber}</Text>
           </View>
 
           <View className="flex-row items-center mb-2">
             <Icon name="folder-outline" size={18} color="#666666" />
-            <Text className="text-text-secondary ml-2">Type: {item.parentType}</Text>
+            <Text className="text-text-secondary ml-2">Type: {getParentTypeDisplay(parentType)}</Text>
           </View>
 
           <View className="flex-row items-center mb-4">
@@ -140,7 +185,16 @@ const BucketpartDetails = () => {
             <Text className="text-text-secondary ml-2">Added on: {addedDate}</Text>
           </View>
 
-          {item.parentType === 'Partner' && (
+          {/* Description Section */}
+          {description && description !== 'No description available' && (
+            <View className="bg-background-secondary p-4 rounded-xl mb-4 border border-ui-border">
+              <Text className="text-text-primary font-semibold mb-2">Description</Text>
+              <Text className="text-text-secondary leading-5">{description}</Text>
+            </View>
+          )}
+
+          {/* Current Partner Section - Only show for Partner type */}
+          {parentType === 'partner' && (
             <View className="bg-primary-sage50 p-4 rounded-xl mb-6 border border-primary-sage200">
               <Text className="text-primary-sage800 font-semibold mb-1">
                 Current Partner
@@ -148,7 +202,7 @@ const BucketpartDetails = () => {
               <View className="flex-row items-center">
                 <Icon name="business-outline" size={16} color="#287860" />
                 <Text className="text-primary-sage700 ml-2">
-                  {item.parentName} (ID: {item.partnerId || 'P12345'})
+                  {parentName} (ID: {item.partnerId || 'N/A'})
                 </Text>
               </View>
             </View>
@@ -163,7 +217,7 @@ const BucketpartDetails = () => {
               <Icon name="people-outline" size={20} color="#666666" />
               <Text className="text-text-primary ml-2 font-medium">
                 {selectedTransferPartner
-                  ? `Selected: ${selectedTransferPartner.name}`
+                  ? `Selected: ${selectedTransferPartner.technician_name}`
                   : 'Select Partner for Transfer'}
               </Text>
             </View>
@@ -175,8 +229,8 @@ const BucketpartDetails = () => {
             onPress={handleTransfer}
             disabled={!selectedTransferPartner || transferLoading}
             className={`py-4 rounded-xl flex-row items-center justify-center ${!selectedTransferPartner || transferLoading
-              ? 'bg-primary-sage300'
-              : 'bg-primary-sage600'
+                ? 'bg-primary-sage300'
+                : 'bg-primary-sage600'
               }`}
           >
             {transferLoading ? (
@@ -186,7 +240,7 @@ const BucketpartDetails = () => {
                 <Icon name="swap-horizontal" size={20} color="white" />
                 <Text className="text-text-inverse font-semibold text-lg ml-2">
                   {selectedTransferPartner
-                    ? `Transfer to ${selectedTransferPartner.name}`
+                    ? `Transfer to ${selectedTransferPartner.technician_name}`
                     : 'Confirm Transfer'}
                 </Text>
               </>
@@ -199,7 +253,7 @@ const BucketpartDetails = () => {
       <DialogBox
         visible={partnerModalVisible}
         onClose={() => setPartnerModalVisible(false)}
-        title="Select Partner"
+        title="Select Technician"
         size="lg"
         showCloseButton={true}
         closeIconName="close"
@@ -229,7 +283,7 @@ const BucketpartDetails = () => {
             <View className="flex-row items-center">
               <Icon name="person" size={18} color="#287860" />
               <Text className="text-primary-sage800 font-medium ml-2">
-                {tempSelectedPartner.name}
+                {tempSelectedPartner.technician_name}
               </Text>
             </View>
             <TouchableOpacity onPress={() => setTempSelectedPartner(null)}>
@@ -243,7 +297,7 @@ const BucketpartDetails = () => {
           <Icon name="search" size={20} color="#999999" />
           <TextInput
             className="flex-1 ml-2 text-base text-text-primary"
-            placeholder="Search partners..."
+            placeholder="Search technicians..."
             placeholderTextColor="#999999"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -255,33 +309,40 @@ const BucketpartDetails = () => {
           )}
         </View>
 
-        {/* Partner List */}
-        <FlatList
-          data={filteredPartners}
-          keyExtractor={(p) => p.id}
-          renderItem={({ item: partner }) => (
-            <TouchableOpacity
-              onPress={() => setTempSelectedPartner(partner)}
-              className={`p-4 rounded-xl mb-2 border ${tempSelectedPartner?.id === partner.id
-                ? 'border-primary-sage400 bg-primary-sage50'
-                : 'border-ui-border bg-background-secondary'
-                }`}
-            >
-              <Text className="text-base font-medium text-text-primary">
-                {partner.name}
-              </Text>
-              <Text className="text-xs text-text-tertiary">ID: {partner.id}</Text>
-            </TouchableOpacity>
-          )}
-          showsVerticalScrollIndicator={false}
-          className="max-h-[400px]"
-          ListEmptyComponent={
-            <View className="py-10 items-center">
-              <Icon name="people-outline" size={40} color="#DDDDDD" />
-              <Text className="text-text-tertiary mt-2">No partners found</Text>
-            </View>
-          }
-        />
+        {/* Technician List */}
+        {loadingTechnicians ? (
+          <View className="py-10 items-center">
+            <ActivityIndicator size="large" color="#58A890" />
+            <Text className="text-text-tertiary mt-2">Loading technicians...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredPartners}
+            keyExtractor={(tech) => tech.id?.toString()}
+            renderItem={({ item: tech }) => (
+              <TouchableOpacity
+                onPress={() => setTempSelectedPartner(tech)}
+                className={`p-4 rounded-xl mb-2 border ${tempSelectedPartner?.id === tech.id
+                    ? 'border-primary-sage400 bg-primary-sage50'
+                    : 'border-ui-border bg-background-secondary'
+                  }`}
+              >
+                <Text className="text-base font-medium text-text-primary">
+                  {tech.technician_name}
+                </Text>
+                <Text className="text-xs text-text-tertiary">ID: {tech.id}</Text>
+              </TouchableOpacity>
+            )}
+            showsVerticalScrollIndicator={false}
+            className="max-h-[400px]"
+            ListEmptyComponent={
+              <View className="py-10 items-center">
+                <Icon name="people-outline" size={40} color="#DDDDDD" />
+                <Text className="text-text-tertiary mt-2">No technicians found</Text>
+              </View>
+            }
+          />
+        )}
       </DialogBox>
     </SafeAreaView>
   );

@@ -130,35 +130,7 @@ const PartDetails = () => {
             </View>
           </View>
 
-          {/* Details Grid */}
-          <View className="bg-background-secondary rounded-xl p-4 mb-6">
-            {/* Manufacturer – fallback if not present */}
-            <View className="flex-row items-center py-3 border-b border-ui-border">
-              <Package size={20} color="#777777" />
-              <Text className="flex-1 ml-3 text-text-secondary">Manufacturer</Text>
-              <Text className="font-semibold text-text-primary">
-                {part.manufacturer || 'OEM'}
-              </Text>
-            </View>
-
-            {/* Warranty */}
-            <View className="flex-row items-center py-3 border-b border-ui-border">
-              <FileText size={20} color="#777777" />
-              <Text className="flex-1 ml-3 text-text-secondary">Warranty</Text>
-              <Text className="font-semibold text-text-primary">
-                {part.warranty || '1 Year'}
-              </Text>
-            </View>
-
-            {/* Compatibility */}
-            <View className="flex-row items-center py-3">
-              <FileText size={20} color="#777777" />
-              <Text className="flex-1 ml-3 text-text-secondary">Compatibility</Text>
-              <Text className="font-semibold text-text-primary">
-                {part.compatibility || 'Universal'}
-              </Text>
-            </View>
-          </View>
+          
 
           {/* Description */}
           <View className="mb-6">

@@ -210,6 +210,34 @@ export const getAMCList = async (payload) => {
     }
 };
 
+export const technicianAssignPart  = async (payload) => {
+    console.log('payload',payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/TechnicianAssignPart', payload);
+        console.log('technicianAssignPart response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in technicianAssignPart:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+
+
+export const getAllTechnician   = async () => {
+    // console.log('payload',payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/AllTechnician' );
+        console.log('getAllTechnician response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in getAllTechnician:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
 
 
 
