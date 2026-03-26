@@ -12,7 +12,9 @@ import StatusMessage from '../../../components/StatusMessage';
 import NetInfo from '@react-native-community/netinfo'; // Import NetInfo
 import { MaterialIcons } from '@react-native-vector-icons/material-icons';
 const Profile = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, profileData, imagUrl } = useAuth();
+  const tech_id = user?.id
+  console.log('id:', tech_id)
   const navigation = useNavigation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogLoggingOut, setIsDialogLoggingOut] = useState(false);
@@ -30,6 +32,7 @@ const Profile = () => {
     });
     return () => unsubscribe();
   }, []);
+
 
   const menuItems = [
     {
@@ -121,7 +124,7 @@ const Profile = () => {
       return;
     }
     else {
-      if (route !== 'ProfileEdit' && route !== 'MyComplaints'&& route !== 'AMC'  ) return toast.info('In Developemnt mode.');
+      if (route !== 'ProfileEdit' && route !== 'MyComplaints' && route !== 'AMC') return toast.info('In Developemnt mode.');
       navigation.navigate(route);
 
 
@@ -180,24 +183,24 @@ const Profile = () => {
 
         <View className="bg-white p-5 items-center border-b border-gray-200">
           <Image
-            source={user?.image ? { uri: user.image } : require('../../../assets/images/profileImage.jpg')}
+            source={profileData?.profile_photo ? { uri: `${imagUrl}${profileData.profile_photo}` } : require('../../../assets/images/profileImage.jpg')}
             className="w-24 h-24 rounded-full mb-4 border-3 border-white shadow-md"
           />
 
           <Text className="text-2xl font-bold text-gray-800">
-            {user?.firstName && user?.lastName
-              ? `${user.firstName} ${user.lastName}`
-              : user?.username || 'User Name'}
+            {profileData?.firstName && profileData?.lastName
+              ? `${profileData?.firstName} ${profileData?.lastName}`
+              : profileData?.technician_name || 'User Name'}
           </Text>
 
           <View className="flex-row items-center mt-1 gap-2">
             <Phone size={14} color="gray" />
-            <Text className="text-xs text-gray-500 font-medium">{user?.phone || '+91 98765 43210'}</Text>
+            <Text className="text-xs text-gray-500 font-medium">+91 {profileData?.technician_mobile || '+91 98765 43210'}</Text>
           </View>
 
           <View className="flex-row items-center gap-2">
             <Mail size={14} color="gray" />
-            <Text className="text-xs text-gray-500 font-medium">{user?.email || 'No email provided'}</Text>
+            <Text className="text-xs text-gray-500 font-medium">{profileData?.email || 'No email provided'}</Text>
           </View>
 
           {user?.username && (user?.firstName || user?.lastName) && (

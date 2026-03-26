@@ -11,6 +11,7 @@ import {
   Pressable,
   Dimensions,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -31,6 +32,7 @@ import NoInternet from '../../NoInternet';
 import OffLineScreen from '../OffLineScreen';
 import { toast } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
+import { getProfile } from '../../../lib/api';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -66,21 +68,56 @@ const carouselImages = [
 const Home = () => {
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [loadingProfile, setLoadingProfile] = useState(false);
   const flatListRef = useRef(null);
   const navigation = useNavigation();
-  const { IsOnline } = useAuth();
+  const { IsOnline, user, imagUrl, profileData, updateProfileData } = useAuth();
 
   // ---------- Network state ----------
   const [isConnected, setIsConnected] = useState(true);
 
-  // ---------- User data (mock) ----------
-  const user = {
-    name: 'John Doe',
-    profileImage: 'https://randomuser.me/api/portraits/men/1.jpg',
-    isActive: true,
+  // ---------- User data from context ----------
+  const userProfile = {
+    name: profileData?.technician_name || 'John Doe',
+    profileImage: profileData?.profile_photo 
+      ? `${imagUrl}${profileData.profile_photo}` 
+      : 'https://randomuser.me/api/portraits/men/1.jpg',
+    isActive: profileData?.login_status !== 'Online',
     notificationCount: 3,
     walletBalance: '₹2,500',
   };
+
+  // ---------- Fetch profile on mount ----------
+  const fetchProfile = async () => {
+    if (!user?.id) {
+      console.log('No user ID available');
+      return;
+    }
+
+    try {
+      setLoadingProfile(true);
+      const response = await getProfile(user.id);
+      const data = response?.data?.data[0];
+      
+      if (data) {
+        console.log('Profile data fetched:', data);
+        // Save profile data to context
+        await updateProfileData(data);
+      }
+    } catch (error) {
+      console.log('Fetch profile error:', error);
+      console.error('Fetch profile error:', error);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  useEffect(() => {
+    // Fetch profile when component mounts and user is available
+    if (user?.id) {
+      fetchProfile();
+    }
+  }, [user?.id]);
 
   // ---------- Auto‑scroll for carousel ----------
   useEffect(() => {
@@ -118,10 +155,10 @@ const Home = () => {
 
   const handleCardPress = cardName => {
     if (!isConnected) return;
-    if (cardName === 'All' ) navigation.navigate('Complaints',{status:"all"});
-    else if (cardName === 'Assign' ) navigation.navigate('Complaints',{status:"Assign"});
-    else if (cardName === 'Onworking' ) navigation.navigate('Complaints',{status:"Onworking"});
-    else if (cardName === 'Complete' ) navigation.navigate('Complaints',{status:"Complete"});
+    if (cardName === 'All') navigation.navigate('Complaints', { status: "all" });
+    else if (cardName === 'Assign') navigation.navigate('Complaints', { status: "Assign" });
+    else if (cardName === 'Onworking') navigation.navigate('Complaints', { status: "Onworking" });
+    else if (cardName === 'Complete') navigation.navigate('Complaints', { status: "Complete" });
     else if (cardName === 'Bucket') navigation.navigate('Bucket');
     else if (cardName === 'AMC') navigation.navigate('AMC');
     else if (cardName === 'Pre-Booking') navigation.navigate('PreBooking');
@@ -175,11 +212,11 @@ const Home = () => {
         <View className="flex-row items-center flex-1">
           <View className="relative">
             <Image
-              source={{ uri: user.profileImage }}
+              source={{ uri: userProfile.profileImage }}
               className="w-12 h-12 rounded-full border-2 border-white"
             />
             <View
-              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${user.isActive ? 'bg-green-500' : 'bg-gray-400'
+              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${userProfile.isActive ? 'bg-green-500' : 'bg-gray-400'
                 }`}
             />
           </View>
@@ -187,14 +224,14 @@ const Home = () => {
             <Text className="text-gray-700 text-sm">Welcome Back</Text>
             <View className="flex-row items-center">
               <Text className="text-gray-900 font-bold text-lg">
-                {user.name}
+                {loadingProfile ? 'Loading...' : userProfile.name}
               </Text>
             </View>
             <Text
-              className={`text-xs font-medium ${user.isActive ? 'text-green-600' : 'text-gray-500'
+              className={`text-xs font-medium ${userProfile.isActive ? 'text-green-600' : 'text-gray-500'
                 }`}
             >
-              {user.isActive ? '● Active' : '● Inactive'}
+              {userProfile.isActive ? '● Active' : '● Inactive'}
             </Text>
           </View>
         </View>
@@ -207,7 +244,7 @@ const Home = () => {
           >
             <Wallet size={18} color="#333" />
             <Text className="ml-1 text-gray-800 font-semibold">
-              {user.walletBalance}
+              {userProfile.walletBalance}
             </Text>
           </TouchableOpacity>
 
@@ -215,10 +252,10 @@ const Home = () => {
             <View className="w-10 h-10 bg-white/20 rounded-full items-center justify-center">
               <Bell size={22} color="#333" />
             </View>
-            {user.notificationCount > 0 && (
+            {userProfile.notificationCount > 0 && (
               <View className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-5 h-5 items-center justify-center px-1">
                 <Text className="text-white text-xs font-bold">
-                  {user.notificationCount > 9 ? '9+' : user.notificationCount}
+                  {userProfile.notificationCount > 9 ? '9+' : userProfile.notificationCount}
                 </Text>
               </View>
             )}
@@ -303,7 +340,7 @@ const Home = () => {
                         08
                       </Text>
                       <Text className="text-xs text-gray-500 text-center">
-                       Assign
+                        Assign
                       </Text>
                     </View>
                     <View className="bg-yellow-100 p-3 rounded-full mb-2">

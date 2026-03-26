@@ -95,7 +95,7 @@ export const getAllSparePartcategories = async (cityId) => {
 };
 
 export const getAllSparePart = async (product_id) => {
-    console.log('payload:',product_id)
+    console.log('payload:', product_id)
     try {
         const response = await apiClient.post("TechnicianAPI/PartPriceList", {
             id: product_id
@@ -116,8 +116,8 @@ export const getAttendanceApi = async (id, month) => {
     console.log('getAttendanceApi called with id:', id, 'month:', month);
     try {
         const response = await apiClient.post('TechnicianAPI/TechnicianAttendenceList', {
-            technician_id:id,
-            month:month
+            technician_id: id,
+            month: month
         });
         // console.log('get all attendance response:', response);
         return response;
@@ -128,14 +128,14 @@ export const getAttendanceApi = async (id, month) => {
     }
 };
 
-export const MarkAttandance = async (city_id,id,slot_date,month ) => {
-    console.log('MarkAttandance called with city id :', city_id, 'tech id:', id,"slot_date:",slot_date,"month:",month);
+export const MarkAttandance = async (city_id, id, slot_date, month) => {
+    console.log('MarkAttandance called with city id :', city_id, 'tech id:', id, "slot_date:", slot_date, "month:", month);
     try {
         const response = await apiClient.post('TechnicianAPI/TechnicianAttendence', {
-            city_id:city_id,
-            tech_id:id,
-            slot_date:slot_date,
-            month:month
+            city_id: city_id,
+            tech_id: id,
+            slot_date: slot_date,
+            month: month
         });
         console.log('MarkAttandance response:', response);
         return response;
@@ -146,21 +146,65 @@ export const MarkAttandance = async (city_id,id,slot_date,month ) => {
     }
 };
 
-export const getComplaints = async (id,status) => {
+export const getComplaints = async (id, status) => {
     const payload = {
-        id:id,
-        status:status,
+        id: id,
+        status: status,
     }
-    console.log("payload:",payload)
+    console.log("payload:", payload)
     try {
         const response = await apiClient.post('TechnicianAPI/TechnicianComplaints', {
-            technician_id:id,
-            status:status
+            technician_id: id,
+            status: status
         });
         // console.log('Get complaints response:', response);
         return response;
     } catch (error) {
         console.error('API error in getComplaints:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const getProfile = async (id) => {
+    const payload = {
+        id: id,
+    }
+    console.log("payload:", payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/TechnicianProfile', {
+            technician_id: id,
+        });
+        console.log('Get profile response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in getProfile:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+// api.js - Add this function
+export const changePassword = async (payload) => {
+    try {
+        const response = await apiClient.post('TechnicianAPI/ChangePassword', payload);
+        console.log('Change password response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in changePassword:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const getAMCList = async (payload) => {
+    console.log('payload',payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/AMCList', payload);
+        console.log('Get AMC List response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in getAMCList:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }

@@ -20,6 +20,8 @@ import BuckePartDetails from '../../screens/AppScreens/Bucket/BucketpartDetails'
 import Billing from '../../screens/AppScreens/Complaints/Billing';
 import AddPartBilling from '../../screens/AppScreens/Complaints/AddPartBilling';
 import Remarkscreen from '../../screens/AppScreens/Complaints/Remarkscreen';
+import AMcDetails from '../../screens/AppScreens/AMCDetails';
+import AMCDetails from '../../screens/AppScreens/AMCDetails';
 // import BottomTabs from 
 const Stack = createNativeStackNavigator();
 
@@ -105,6 +107,8 @@ const AppStack = () => {
       <Stack.Screen name="Billing" component={Billing} />
       <Stack.Screen name="AddPartBilling" component={AddPartBilling} />
       <Stack.Screen name="Remarkscreen" component={Remarkscreen} />
+      <Stack.Screen name="AMCDetails" component={AMCDetails} />
+
 
 
     </Stack.Navigator>

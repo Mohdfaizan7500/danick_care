@@ -1,3 +1,4 @@
+// AuthContext.js - Updated
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
@@ -8,12 +9,13 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [profileData, setProfileData] = useState(null); // Add profile data state
   const [accessToken, setAccessToken] = useState(null);
   const [refreshToken, setRefreshToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [IsOnline, setIsOnline] = useState(true);
   const [importedPart, setImportedPart] = useState(null);
-  const[imagUrl,setImageUrl]= useState('https://dainikcare.com/dainik_care_admin/');
+  const [imagUrl, setImageUrl] = useState('https://dainikcare.com/dainik_care_admin/');
 
   // Initialize from stored tokens
   useEffect(() => {
@@ -24,32 +26,26 @@ export const AuthProvider = ({ children }) => {
     try {
       const storedAccessToken = await AsyncStorage.getItem('accessToken');
       const storedRefreshToken = await AsyncStorage.getItem('refreshToken');
-      // let storedUserData = await AsyncStorage.getItem('userData');
-      // let parsedData = null;
-      // if (storedUserData) {
-      //   try {
-      //     parsedData = JSON.parse(storedUserData);
-      //     console.log('parse data :',parsedData)
-      //   } catch (error) {
-      //     console.error('Failed to parse stored user data:', error);
-      //   }
-      // }
-      // Now parsedData contains the object, or null if parsing failed.
-
+      const storedProfileData = await AsyncStorage.getItem('profileData');
 
       if (storedAccessToken && storedAccessToken !== 'undefined') {
         try {
           const decodedToken = jwtDecode(storedAccessToken);
-          console.log('decode data:', decodedToken)
+          console.log('decode data:', decodedToken);
           const userData = {
             id: decodedToken.id || decodedToken.sub,
             technician_id: decodedToken.technician_id,
             city_id: decodedToken?.city_id
           };
-          console.log('userdata from local storage :', userData)
+          console.log('userdata from local storage :', userData);
           setAccessToken(storedAccessToken);
           setRefreshToken(storedRefreshToken);
           setUser(userData);
+          
+          // Load stored profile data if exists
+          if (storedProfileData && storedProfileData !== 'undefined') {
+            setProfileData(JSON.parse(storedProfileData));
+          }
         } catch (decodeError) {
           console.error('Error decoding token:', decodeError);
           const storedUser = await AsyncStorage.getItem('userData');
@@ -93,16 +89,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // NEW: Update profile data
+  const updateProfileData = async (data) => {
+    try {
+      setProfileData(data);
+      await AsyncStorage.setItem('profileData', JSON.stringify(data));
+      console.log('Profile data stored successfully');
+    } catch (error) {
+      console.error('Error storing profile data:', error);
+    }
+  };
+
   const logout = async () => {
     try {
       setUser(null);
       setAccessToken(null);
       setRefreshToken(null);
+      setProfileData(null);
       setImportedPart(null);
 
       await AsyncStorage.removeItem('accessToken');
       await AsyncStorage.removeItem('refreshToken');
       await AsyncStorage.removeItem('userData');
+      await AsyncStorage.removeItem('profileData');
 
       console.log('Logout successful');
     } catch (error) {
@@ -144,12 +153,14 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    profileData,          // Add profile data to context
     accessToken,
     refreshToken,
     isLoading,
     importedPart,
     updateImportedPart,
-    setAuthData,          // <-- new method to set auth data
+    setAuthData,
+    updateProfileData,    // Add update function
     logout,
     updateUser,
     refreshUserFromToken,
