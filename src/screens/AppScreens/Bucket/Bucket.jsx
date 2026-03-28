@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,18 +9,25 @@ import {
   ScrollView,
   LayoutAnimation,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../../components/Header';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { toast } from 'sonner-native';
+import { toast, Toaster } from 'sonner-native';
 import DialogBox from '../../../components/DilaogBox';
 import { useAuth } from '../../../context/AuthContext';
-import { technicianAssignPart } from '../../../lib/api';
+import {
+  getPartCount,
+  technicianAssignPart,
+  partTransferCancel,
+  partTransferReceive
+} from '../../../lib/api';
+import StatusMessage from '../../../components/StatusMessage';
 
 // Tabs
-const TABS = ['All', 'Partner', 'Market', 'Service Center', 'Transferred', 'Received'];
+const TABS = ['All', 'Technician', 'Market', 'Admin', 'Transferred', 'Received'];
 
 // Skeleton component for loading state
 const SkeletonCard = () => (
@@ -49,26 +56,37 @@ const Bucket = () => {
   const [loadingItemId, setLoadingItemId] = useState(null);
   const [products, setProducts] = useState([]);
   const [isTabLoading, setIsTabLoading] = useState(false);
+  const [partCounts, setPartCounts] = useState({
+    all: 0,
+    technician: 0,
+    market: 0,
+    admin: 0,
+    transferred: 0,
+    received: 0
+  });
   const tabTimeoutRef = useRef(null);
   const { user, imagUrl } = useAuth();
   const technician_id = user?.id;
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // Map tab to transfer_by parameter
   const getTransferByParam = (tab) => {
     switch (tab) {
       case 'All':
         return '';
-      case 'Partner':
+      case 'Technician':
         return 'technician';
       case 'Market':
         return 'market';
-      case 'Service Center':
+      case 'Admin':
         return 'admin';
-
       case 'Transferred':
-        return 'technician';
+        return 'transfered';
       case 'Received':
-        return 'technician';
+        return 'received';
       default:
         return '';
     }
@@ -95,8 +113,8 @@ const Bucket = () => {
         partNumber: item.id,
         name: item.part_name,
         parentName: item.transfer_by === 'market' ? 'Market' :
-          item.transfer_by === 'partner' ? 'Partner' :
-            item.transfer_by === 'admin' ? 'Service Center' :
+          item.transfer_by === 'technician' ? 'Technician' :
+            item.transfer_by === 'admin' ? 'Admin' :
               item.transfer_by === 'replace' ? 'Replace' : 'Unknown',
         price: item.part_price,
         imageUrl: item.part_image ? imagUrl + item.part_image : 'https://via.placeholder.com/100',
@@ -107,6 +125,7 @@ const Bucket = () => {
         transferId: item.transfer_id,
         toPartner: item.to_partner,
         fromPartner: item.from_partner,
+        part_accept: item.part_accept,
         ...item
       })) : [];
 
@@ -121,6 +140,49 @@ const Bucket = () => {
     }
   };
 
+  const fetchPartCount = async () => {
+    try {
+      const payload = {
+        technician_id: technician_id?.toString(),
+      };
+      const response = await getPartCount(payload);
+      console.log('Part count response:', response?.data);
+      const data = response?.data || {};
+
+      setPartCounts({
+        all: data.all || 0,
+        technician: data.technician || 0,
+        market: data.market || 0,
+        admin: data.admin || 0,
+        transferred: data.transfered || 0,
+        received: data.received || 0
+      });
+    } catch (error) {
+      console.log('fetch part count error:', error);
+      console.error('fetch part count error:', error);
+    }
+  };
+
+  // Filter products based on search query
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return products;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return products.filter(item =>
+      item.name?.toLowerCase().includes(query) ||
+      item.id?.toString().toLowerCase().includes(query) ||
+      item.parentName?.toLowerCase().includes(query) ||
+      item.description?.toLowerCase().includes(query) ||
+      item.price?.toString().includes(query)
+    );
+  }, [products, searchQuery]);
+
+  useEffect(() => {
+    fetchPartCount();
+  }, []);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -132,15 +194,23 @@ const Bucket = () => {
   useEffect(() => {
     const transferBy = getTransferByParam(selectedTab);
     fetchParts(transferBy);
+    // Clear search when changing tabs
+    setSearchQuery('');
   }, [selectedTab]);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      const transferBy = getTransferByParam(selectedTab);
+      fetchParts(transferBy);
+      fetchPartCount();
+    }, [selectedTab])
+  );
 
   // Confirmation dialog state
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmItem, setConfirmItem] = useState(null);
-
-  // Filter products based on selected tab (additional client-side filtering if needed)
-  const filteredProducts = products;
 
   const openImageModal = (imageUrl) => {
     setSelectedImage(imageUrl);
@@ -149,6 +219,8 @@ const Bucket = () => {
 
   const handleTabPress = (tab, index) => {
     setSelectedTab(tab);
+    // Clear search when changing tabs
+    setSearchQuery('');
 
     // Scroll to tab
     if (scrollViewRef.current && tabPositions[index] !== undefined) {
@@ -161,7 +233,12 @@ const Bucket = () => {
   };
 
   const handleCardPress = (item) => {
-    navigation.navigate('BucketpartDetails', { item });
+    console.log(item)
+    if (item?.part_accept == 0) {
+      toast.custom(<StatusMessage type='warning' title={'Information'} message={`This part is transferred to ${item.technician_name} technician. Please cancel first for use.`} />);
+    } else {
+      navigation.navigate('BucketpartDetails', { item });
+    }
   };
 
   // Open confirmation dialog
@@ -177,29 +254,92 @@ const Bucket = () => {
   };
 
   // Handle confirmed action
-  const handleConfirmed = () => {
+  const handleConfirmed = async () => {
     setConfirmVisible(false);
     if (!confirmItem || !confirmAction) return;
 
     setLoadingItemId(confirmItem.id);
-    setTimeout(() => {
-      setLoadingItemId(null);
-      const actionMessages = {
-        cancelTransfer: `Transfer ${confirmItem.transferId} cancelled`,
-        acceptReceived: `Transfer ${confirmItem.transferId} accepted`,
-        cancelReceived: `Transfer ${confirmItem.transferId} rejected`,
-        add: `${confirmItem.name} added to bucket`,
-      };
-      toast.success(actionMessages[confirmAction] || 'Action completed');
 
-      // Remove item from list after any transfer action
-      if (confirmAction.startsWith('cancel') || confirmAction === 'acceptReceived') {
-        removeItem(confirmItem.id);
+    try {
+      let response;
+      let successMessage = '';
+
+      switch (confirmAction) {
+        case 'cancelTransfer':
+        case 'cancelReceived':
+          // Call cancel transfer API for both cancelTransfer and cancelReceived
+          const cancelPayload = {
+            part_id: confirmItem.id.toString()
+          };
+
+          console.log(`${confirmAction} payload:`, cancelPayload);
+          response = await partTransferCancel(cancelPayload);
+          console.log(`${confirmAction} response:`, response?.data);
+
+          // Check if the API call was successful
+          if (response?.data?.status === 'success' || response?.data?.success) {
+            successMessage = response?.data?.msg ||
+              (confirmAction === 'cancelTransfer'
+                ? `Transfer cancelled successfully`
+                : `Received item rejected successfully`);
+            removeItem(confirmItem.id);
+            // Update part counts after cancellation
+            await fetchPartCount();
+            // Refresh current tab data
+            const transferBy = getTransferByParam(selectedTab);
+            await fetchParts(transferBy);
+          } else {
+            throw new Error(response?.data?.message || 'Failed to cancel');
+          }
+          break;
+
+        case 'acceptReceived':
+          // Call accept/receive transfer API
+          const acceptPayload = {
+            technician_id: technician_id?.toString(),
+            part_id: confirmItem.id.toString()
+          };
+
+          console.log('Accept transfer payload:', acceptPayload);
+          response = await partTransferReceive(acceptPayload);
+          console.log('Accept transfer response:', response?.data);
+
+          // Check if the API call was successful
+          if (response?.data?.status === 'success' || response?.data?.success) {
+            successMessage = response?.data?.msg || `Part accepted successfully`;
+            // Remove item from list after successful accept
+            removeItem(confirmItem.id);
+            // Update part counts after acceptance
+            await fetchPartCount();
+            // Refresh current tab data
+            const transferBy = getTransferByParam(selectedTab);
+            await fetchParts(transferBy);
+          } else {
+            throw new Error(response?.data?.message || 'Failed to accept transfer');
+          }
+          break;
+
+        case 'add':
+          // Handle add to bucket action
+          toast.info('Add to bucket API not implemented yet');
+          break;
+
+        default:
+          successMessage = 'Action completed';
       }
 
+      if (successMessage) {
+        toast.custom(<StatusMessage type='success' title={successMessage} />);
+      }
+
+    } catch (error) {
+      console.log(`${confirmAction} error:`, error);
+      toast.error(error.message || 'Action failed. Please try again.');
+    } finally {
+      setLoadingItemId(null);
       setConfirmItem(null);
       setConfirmAction(null);
-    }, 1500);
+    }
   };
 
   // Get dialog content based on action
@@ -270,13 +410,38 @@ const Bucket = () => {
     );
   };
 
+  // Get count for a specific tab
+  const getTabCount = (tab) => {
+    switch (tab) {
+      case 'All':
+        return partCounts.all;
+      case 'Technician':
+        return partCounts.technician;
+      case 'Market':
+        return partCounts.market;
+      case 'Admin':
+        return partCounts.admin;
+      case 'Transferred':
+        return partCounts.transferred;
+      case 'Received':
+        return partCounts.received;
+      default:
+        return 0;
+    }
+  };
+
   const renderItem = ({ item }) => {
     const isLoading = loadingItemId === item.id;
     const isTransferredTab = selectedTab === 'Transferred';
     const isReceivedTab = selectedTab === 'Received';
+    if (item?.part_accept == 0) {
+      console.log("item:", item)
+    }
 
     return (
-      <View className="bg-white border border-gray-300 rounded-2xl p-4 mb-3">
+      <View
+        className={`border ${item?.part_accept == 0 && (!isTransferredTab && !isReceivedTab) && 'opacity-50'} bg-white border-gray-300 rounded-2xl p-4 mb-3`}
+      >
         {/* Main card content (pressable) */}
         <TouchableOpacity onPress={() => handleCardPress(item)} className="flex-row items-center justify-between">
           {/* Left side: image + text */}
@@ -294,43 +459,46 @@ const Bucket = () => {
               <Text className="text-lg font-bold text-text-primary">{item.name}</Text>
               <Text className="text-sm text-text-tertiary">{item.parentName}</Text>
               {item.description ? (
-                <Text className="text-xs text-text-tertiary mt-1" numberOfLines={2}>
+                <Text className="text-xs w-40 text-text-tertiary mt-1" numberOfLines={2}>
                   {item.description}
                 </Text>
               ) : null}
-              {item.transferStatus && (
+              {item.part_accept == 0 && (
                 <Text className="text-xs text-ui-info mt-1">
-                  {item.transferStatus === 'sent' ? `To: ${item.toPartner}` : `From: ${item.fromPartner}`}
+                  {item.part_accept == 0 ? `Transferd To: ${item.technician_name}` : `Received From: ${item.technician_name}`}
                 </Text>
               )}
             </View>
           </View>
 
           {/* Right side: price */}
-          <Text className="text-xl font-extrabold text-ui-success">
-            ₹{item.price}
-          </Text>
+          <View className='flex-col  items-end'>
+            <Text className="text-xl font-extrabold text-ui-success">
+              ₹{item.price}
+            </Text>
+            {/* Conditional buttons */}
+            {isTransferredTab && (
+              <View className="mt-3 flex-row justify-end">
+                <TouchableOpacity
+                  onPress={() => openConfirmation('cancelTransfer', item)}
+                  disabled={isLoading}
+                  className={`px-4 py-2 rounded-lg flex-row items-center ${isLoading ? 'bg-ui-disabled' : 'bg-ui-error'}`}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Icon name="close-circle-outline" size={18} color="#fff" />
+                      <Text className="text-white font-medium ml-1">Cancel</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
 
-        {/* Conditional buttons */}
-        {isTransferredTab && (
-          <View className="mt-3 flex-row justify-end">
-            <TouchableOpacity
-              onPress={() => openConfirmation('cancelTransfer', item)}
-              disabled={isLoading}
-              className={`px-4 py-2 rounded-lg flex-row items-center ${isLoading ? 'bg-ui-disabled' : 'bg-ui-error'}`}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Icon name="close-circle-outline" size={18} color="#fff" />
-                  <Text className="text-white font-medium ml-1">Cancel</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
+
 
         {isReceivedTab && (
           <View className="mt-3 flex-row justify-end space-x-2 gap-4">
@@ -384,13 +552,43 @@ const Bucket = () => {
       <Header
         title="Bucket"
         titlePosition="left"
-        titleStyle="font-bold text-2xl ml-5"
+        titleStyle="font-bold text-2xl ml-5 "
         showRightIcon={true}
+        containerStyle=' flex-row pt-3 py-2 px-4'
         customRightIconComponent={
           <Icon name="bag-add-outline" size={24} color="#333" />
         }
         onRightIconPress={() => navigation.navigate('AddPart')}
       />
+      <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+        <Toaster />
+      </View>
+
+      {/* Search Bar */}
+      <View className="px-4 py-0 bg-background-primary">
+        <View className={`flex-row items-center bg-background-secondary rounded-xl px-3 py-0 border ${isSearchFocused ? 'border-primary-sage500' : 'border-ui-border'}`}>
+          <Icon name="search-outline" size={20} color="#999999" />
+          <TextInput
+            className="flex-1 ml-2 text-base text-text-primary"
+            placeholder="Search by name, ID, type, or price..."
+            placeholderTextColor="#999999"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Icon name="close-circle" size={20} color="#999999" />
+            </TouchableOpacity>
+          )}
+        </View>
+        {searchQuery.length > 0 && (
+          <Text className="text-xs text-text-tertiary mt-1 ml-1">
+            Found {filteredProducts.length} result(s)
+          </Text>
+        )}
+      </View>
 
       {/* Filter Tabs */}
       <View className="py-2 border-b border-ui-border">
@@ -400,30 +598,56 @@ const Bucket = () => {
           showsHorizontalScrollIndicator={false}
           className="px-2"
         >
-          {TABS.map((tab, index) => (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => handleTabPress(tab, index)}
-              onLayout={(event) => {
-                const layout = event.nativeEvent.layout;
-                setTabPositions((prev) => {
-                  const newPositions = [...prev];
-                  newPositions[index] = layout.x;
-                  return newPositions;
-                });
-              }}
-              className="mr-2"
-            >
-              <Text
-                className={`text-base px-4 py-1 rounded-full font-semibold ${selectedTab === tab
-                  ? 'bg-primary-sage600 text-text-inverse'
-                  : 'bg-background-tertiary text-text-secondary'
-                  }`}
+          {TABS.map((tab, index) => {
+            const count = getTabCount(tab);
+            return (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => handleTabPress(tab, index)}
+                onLayout={(event) => {
+                  const layout = event.nativeEvent.layout;
+                  setTabPositions((prev) => {
+                    const newPositions = [...prev];
+                    newPositions[index] = layout.x;
+                    return newPositions;
+                  });
+                }}
+                className="mr-2"
               >
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <View
+                  className={`px-4 py-1 rounded-full flex-row items-center ${selectedTab === tab
+                    ? 'bg-primary-sage600'
+                    : 'bg-background-tertiary'
+                    }`}
+                >
+                  <Text
+                    className={`text-base font-semibold ${selectedTab === tab
+                      ? 'text-text-inverse'
+                      : 'text-text-secondary'
+                      }`}
+                  >
+                    {tab}
+                  </Text>
+
+                  <View
+                    className={`ml-1.5 px-1.5 rounded-full min-w-[20px] h-5 items-center justify-center ${selectedTab === tab
+                      ? 'bg-white/30'
+                      : 'bg-ui-border'
+                      }`}
+                  >
+                    <Text
+                      className={`text-xs font-bold ${selectedTab === tab
+                        ? 'text-text-inverse'
+                        : 'text-text-tertiary'
+                        }`}
+                    >
+                      {count}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </View>
 
@@ -438,9 +662,20 @@ const Bucket = () => {
           contentContainerStyle={{ padding: 16 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <Text className="text-center text-text-tertiary mt-10">
-              No items found
-            </Text>
+            <View className="items-center justify-center mt-10">
+              <Icon name="search-outline" size={60} color="#CCCCCC" />
+              <Text className="text-center text-text-tertiary mt-4">
+                {searchQuery ? 'No items match your search' : 'No items found'}
+              </Text>
+              {searchQuery && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  className="mt-2 px-4 py-2 bg-primary-sage100 rounded-lg"
+                >
+                  <Text className="text-primary-sage700">Clear Search</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           }
         />
       )}

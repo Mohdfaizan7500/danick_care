@@ -13,10 +13,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import { useAuth } from '../../../context/AuthContext';
-import { getComplaints } from '../../../lib/api';
+import { getComplaints, getDeshBoardCount } from '../../../lib/api';
 
-// Tabs: All, Assigned, On Progress, Complete
-const TABS = ['All', 'Assigned', 'On Progress', 'Complete'];
+// Tabs: All, Assigned, On Progress, Complete, Cancel
+const TABS = ['All', 'Assigned', 'On Progress', 'Complete', 'Cancel'];
 
 // Skeleton component for loading state
 const SkeletonCard = () => (
@@ -45,7 +45,18 @@ const Complaints = () => {
   const [selectedTab, setSelectedTab] = useState('All');
   const [tabPositions, setTabPositions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [complaintsData, setComplaintsData] = useState([]); // stores real data from API
+  const [complaintsData, setComplaintsData] = useState([]);
+  const [dashboardCounts, setDashboardCounts] = useState({
+    all: 0,
+    assign: 0,
+    onworking: 0,
+    completed: 0,
+    cancel: 0,
+    amc: 0,
+    bucket: 0,
+    prebooking: 0,
+    payout: 0,
+  });
   const scrollViewRef = useRef(null);
   const timeoutRef = useRef(null);
   const { user } = useAuth();
@@ -61,6 +72,7 @@ const Complaints = () => {
       case 'Assigned': return 'assign';
       case 'On Progress': return 'onworking';
       case 'Complete': return 'success';
+      case 'Cancel': return 'cancel';
       default: return 'all';
     }
   };
@@ -71,6 +83,7 @@ const Complaints = () => {
       case 'assign': return 'Assigned';
       case 'onworking': return 'On Progress';
       case 'success': return 'Complete';
+      case 'cancel': return 'Cancel';
       default: return apiStatus;
     }
   };
@@ -82,7 +95,6 @@ const Complaints = () => {
     try {
       const response = await getComplaints(technicianId, apiStatus);
       console.log('API Response for', tab, ':', response);
-      // The API returns data in response.data.result
       const result = response?.data?.result || [];
       setComplaintsData(result);
     } catch (error) {
@@ -93,12 +105,66 @@ const Complaints = () => {
     }
   };
 
+  // Fetch dashboard counts from API
+  const fetchTabCount = async () => {
+    if (!user?.id) {
+      console.log('No user ID available');
+      return;
+    }
+
+    try {
+      const payload = {
+        technician_id: user?.id.toString(),
+      };
+      const response = await getDeshBoardCount(payload);
+      
+      if (response?.data?.success) {
+        const data = response.data;
+        
+        setDashboardCounts({
+          all: data.all || 0,
+          assign: data.assign || 0,
+          onworking: data.onworking || 0,
+          completed: data.completed || 0,
+          cancel: data.cancel || 0,
+          amc: data.amc || 0,
+          bucket: data.bucket || 0,
+          prebooking: data.prebooking || 0,
+          payout: data.payout || 0,
+        });
+      }
+    } catch (error) {
+      console.log('Fetch dashboard error:', error);
+    }
+  };
+
+  // Format payout amount to k format
+  const formatPayout = (amount) => {
+    if (!amount) return '0';
+    const number = parseFloat(amount);
+    if (number >= 1000) {
+      return `${(number / 1000).toFixed(1)}k`;
+    }
+    return number.toString();
+  };
+
   // Initial fetch based on route param (if any)
   useEffect(() => {
+    fetchTabCount();
+    
+    if (status === 'Complete' || status === 'Cancel') {
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({
+          x: 200,
+          animated: true,
+        });
+      }
+    }
+    
     if (status) {
       if (status === 'All') {
-        setSelectedTab('All');
-        fetchComplaints('All');
+        setSelectedTab('');
+        fetchComplaints('Complete');
       } else if (status === 'Assign') {
         setSelectedTab('Assigned');
         fetchComplaints('Assigned');
@@ -108,23 +174,33 @@ const Complaints = () => {
       } else if (status === 'Complete') {
         setSelectedTab('Complete');
         fetchComplaints('Complete');
+      } else if (status === 'Cancel') {
+        setSelectedTab('Cancel');
+        fetchComplaints('Cancel');
       }
     } else {
       // Default: fetch for 'All' tab when no route param
       fetchComplaints('All');
     }
-  }, []); // Only runs once on mount
+  }, []);
 
-  // Compute counts for each tab based on actual data
-  const counts = TABS.reduce((acc, tab) => {
-    if (tab === 'All') {
-      acc[tab] = complaintsData.length;
-    } else {
-      const apiStatus = getApiStatus(tab);
-      acc[tab] = complaintsData.filter((c) => c.status === apiStatus).length;
+  // Get count for each tab from dashboard data
+  const getTabCount = (tab) => {
+    switch (tab) {
+      case 'All':
+        return dashboardCounts.all;
+      case 'Assigned':
+        return dashboardCounts.assign;
+      case 'On Progress':
+        return dashboardCounts.onworking;
+      case 'Complete':
+        return dashboardCounts.completed;
+      case 'Cancel':
+        return dashboardCounts.cancel;
+      default:
+        return 0;
     }
-    return acc;
-  }, {});
+  };
 
   // Filter complaints based on selected tab and search query
   const filteredComplaints = complaintsData.filter((complaint) => {
@@ -146,7 +222,7 @@ const Complaints = () => {
     setLoading(true);
     fetchComplaints(tab);
 
-    timeoutRef.current = setTimeout(() => {}, 500);
+    timeoutRef.current = setTimeout(() => { }, 500);
 
     if (scrollViewRef.current && tabPositions[index] !== undefined) {
       scrollViewRef.current.scrollTo({
@@ -162,14 +238,13 @@ const Complaints = () => {
   };
 
   const renderComplaintCard = ({ item }) => {
-    // Determine priority based on total amount? Or default. We'll use a placeholder for priority.
-    // Since API doesn't provide priority, we can derive from amount or keep as "Medium"
     const priority = item.tot_amt > 500 ? 'High' : item.tot_amt > 200 ? 'Medium' : 'Low';
     const displayStatus = mapStatusToDisplay(item.status);
     return (
       <TouchableOpacity
+        disabled={displayStatus === 'Cancel'}
         onPress={() => handleComplaintPress(item)}
-        className="bg-ui-card border border-ui-border rounded-xl p-4 mb-3"
+        className={`border border-ui-border rounded-xl p-4 mb-3 ${displayStatus === 'Cancel' ? 'bg-red-50 border-red-300' : 'bg-ui-card'}`}
       >
         {/* Header: Complaint number and priority */}
         <View className="flex-row justify-between items-center mb-2">
@@ -177,22 +252,20 @@ const Complaints = () => {
             #{item.csn}
           </Text>
           <View
-            className={`px-2 py-0.5 rounded-full ${
-              priority === 'High'
-                ? 'bg-ui-error/20'
-                : priority === 'Medium'
+            className={`px-2 py-0.5 rounded-full ${priority === 'High'
+              ? 'bg-ui-error/20'
+              : priority === 'Medium'
                 ? 'bg-ui-warning/20'
                 : 'bg-ui-success/20'
-            }`}
+              }`}
           >
             <Text
-              className={`text-xs font-medium ${
-                priority === 'High'
-                  ? 'text-ui-error'
-                  : priority === 'Medium'
+              className={`text-xs font-medium ${priority === 'High'
+                ? 'text-ui-error'
+                : priority === 'Medium'
                   ? 'text-ui-warning'
                   : 'text-ui-success'
-              }`}
+                }`}
             >
               {priority}
             </Text>
@@ -205,26 +278,28 @@ const Complaints = () => {
             {item.service_name}
           </Text>
           <View
-            className={`px-3 py-1 rounded-full ${
-              displayStatus === 'Assigned'
-                ? 'bg-primary-sage100'
-                : displayStatus === 'On Progress'
+            className={`px-3 py-1 rounded-full ${displayStatus === 'Assigned'
+              ? 'bg-primary-sage100'
+              : displayStatus === 'On Progress'
                 ? 'bg-ui-warning/20'
                 : displayStatus === 'Complete'
-                ? 'bg-ui-success/20'
-                : 'bg-gray-100'
-            }`}
+                  ? 'bg-ui-success/20'
+                  : displayStatus === 'Cancel'
+                    ? 'bg-ui-error/20'
+                    : 'bg-gray-100'
+              }`}
           >
             <Text
-              className={`text-xs font-medium ${
-                displayStatus === 'Assigned'
-                  ? 'text-primary-sage700'
-                  : displayStatus === 'On Progress'
+              className={`text-xs font-medium ${displayStatus === 'Assigned'
+                ? 'text-primary-sage700'
+                : displayStatus === 'On Progress'
                   ? 'text-ui-warning'
                   : displayStatus === 'Complete'
-                  ? 'text-ui-success'
-                  : 'text-text-tertiary'
-              }`}
+                    ? 'text-ui-success'
+                    : displayStatus === 'Cancel'
+                      ? 'text-ui-error'
+                      : 'text-text-tertiary'
+                }`}
             >
               {displayStatus}
             </Text>
@@ -287,7 +362,7 @@ const Complaints = () => {
         </View>
       </View>
 
-      {/* Tabs with counts and scroll-on-click */}
+      {/* Tabs with counts from dashboard */}
       <View className="border-b border-ui-border">
         <ScrollView
           ref={scrollViewRef}
@@ -295,54 +370,53 @@ const Complaints = () => {
           showsHorizontalScrollIndicator={false}
           className="px-4 w-[100%] py-1"
         >
-          {TABS.map((tab, index) => (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => handleTabPress(tab, index)}
-              onLayout={(event) => {
-                const layout = event.nativeEvent.layout;
-                setTabPositions((prev) => {
-                  const newPositions = [...prev];
-                  newPositions[index] = layout.x;
-                  return newPositions;
-                });
-              }}
-              className="mr-3"
-            >
-              <View
-                className={`px-4 py-1.5 rounded-full flex-row items-center ${
-                  selectedTab === tab
+          {TABS.map((tab, index) => {
+            const count = getTabCount(tab);
+            return (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => handleTabPress(tab, index)}
+                onLayout={(event) => {
+                  const layout = event.nativeEvent.layout;
+                  setTabPositions((prev) => {
+                    const newPositions = [...prev];
+                    newPositions[index] = layout.x;
+                    return newPositions;
+                  });
+                }}
+                className="mr-3"
+              >
+                <View
+                  className={`px-4 py-1.5 rounded-full flex-row items-center ${selectedTab === tab
                     ? 'bg-primary-sage600'
                     : 'bg-background-tertiary'
-                }`}
-              >
-                <Text
-                  className={`text-sm font-medium ${
-                    selectedTab === tab
-                      ? 'text-text-inverse'
-                      : 'text-text-secondary'
-                  }`}
-                >
-                  {tab}
-                </Text>
-                <View
-                  className={`ml-2 px-2 py-0.5 rounded-full ${
-                    selectedTab === tab ? 'bg-white/30' : 'bg-ui-border'
-                  }`}
+                    }`}
                 >
                   <Text
-                    className={`text-xs ${
-                      selectedTab === tab
+                    className={`text-sm font-medium ${selectedTab === tab
+                      ? 'text-text-inverse'
+                      : 'text-text-secondary'
+                      }`}
+                  >
+                    {tab}
+                  </Text>
+                  <View
+                    className={`ml-2 px-2 py-0.5 rounded-full ${selectedTab === tab ? 'bg-white/30' : 'bg-ui-border'
+                      }`}
+                  >
+                    <Text
+                      className={`text-xs ${selectedTab === tab
                         ? 'text-text-inverse'
                         : 'text-text-tertiary'
-                    }`}
-                  >
-                    {counts[tab]}
-                  </Text>
+                        }`}
+                    >
+                      {count}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </View>
 

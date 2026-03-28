@@ -16,12 +16,13 @@ import { toast, Toaster } from 'sonner-native';
 import Header from '../../../components/Header';
 import DialogBox from '../../../components/DilaogBox';
 import StatusMessage from '../../../components/StatusMessage';
-import { getAllTechnician } from '../../../lib/api';
+import { getAllTechnician, partTransferToTechnician } from '../../../lib/api';
 
 const BucketpartDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { item } = route.params;
+  console.log('item:', item)
 
   // State for partner selection modal
   const [partnerModalVisible, setPartnerModalVisible] = useState(false);
@@ -101,27 +102,52 @@ const BucketpartDetails = () => {
 
   // Confirm selection in modal
   const confirmPartnerSelection = () => {
-
     if (tempSelectedPartner) {
       setSelectedTransferPartner(tempSelectedPartner);
     }
     setPartnerModalVisible(false);
   };
 
-  // Actual transfer
-  const handleTransfer = () => {
+  // Actual transfer with navigation and refresh
+  // Actual transfer with navigation and refresh
+  const handleTransfer = async () => {
     if (!selectedTransferPartner) {
       toast.error('Please select a partner first');
       return;
     }
-    setTransferLoading(true);
-    setTimeout(async() => {
-      setTransferLoading(false);
-      setSelectedTransferPartner(null);
-      console.log(`Part transferred to technician id  ${selectedTransferPartner.id}`)
-       toast.custom(<StatusMessage type='success' title={`Part transferred to ${selectedTransferPartner.technician_name}`} />, { duration: 1000 });
-      // navigation.goBack();
-    }, 2000);
+
+    try {
+      setTransferLoading(true);
+      const payload = {
+        technician_id: selectedTransferPartner.id,
+        part_id: partId
+      };
+
+      console.log('Transfer payload:', payload);
+      const response = await partTransferToTechnician(payload);
+      console.log('Transfer response:', response);
+
+      // Show success toast
+      toast.custom(
+        <StatusMessage
+          type='success'
+          title={`Part transferred to ${selectedTransferPartner.technician_name}`}
+        />,
+        { duration: 2000 }
+      );
+
+      // Wait for a short moment to ensure toast is shown, then navigate back
+      // This gives time for the toast to render before navigation
+      setTimeout(() => {
+        navigation.goBack();
+      }, 500); // 500ms delay ensures toast is visible
+
+    } catch (error) {
+      console.log('Failed to transfer:', error);
+      console.error('Failed to transfer:', error);
+      toast.error('Transfer failed. Please try again.');
+      setTransferLoading(false); // Reset loading state on error
+    }
   };
 
   return (
@@ -229,8 +255,8 @@ const BucketpartDetails = () => {
             onPress={handleTransfer}
             disabled={!selectedTransferPartner || transferLoading}
             className={`py-4 rounded-xl flex-row items-center justify-center ${!selectedTransferPartner || transferLoading
-                ? 'bg-primary-sage300'
-                : 'bg-primary-sage600'
+              ? 'bg-primary-sage300'
+              : 'bg-primary-sage600'
               }`}
           >
             {transferLoading ? (
@@ -323,8 +349,8 @@ const BucketpartDetails = () => {
               <TouchableOpacity
                 onPress={() => setTempSelectedPartner(tech)}
                 className={`p-4 rounded-xl mb-2 border ${tempSelectedPartner?.id === tech.id
-                    ? 'border-primary-sage400 bg-primary-sage50'
-                    : 'border-ui-border bg-background-secondary'
+                  ? 'border-primary-sage400 bg-primary-sage50'
+                  : 'border-ui-border bg-background-secondary'
                   }`}
               >
                 <Text className="text-base font-medium text-text-primary">

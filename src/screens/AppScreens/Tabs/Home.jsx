@@ -33,7 +33,7 @@ import NoInternet from '../../NoInternet';
 import OffLineScreen from '../OffLineScreen';
 import { toast } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import { getProfile } from '../../../lib/api';
+import { getDeshBoardCount, getProfile } from '../../../lib/api';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -70,6 +70,7 @@ const Home = () => {
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
   const [loadingProfile, setLoadingProfile] = useState(false);
+  const [count, setCount] = useState(null)
   const flatListRef = useRef(null);
   const navigation = useNavigation();
   const { IsOnline, user, imagUrl, profileData, updateProfileData } = useAuth();
@@ -113,10 +114,39 @@ const Home = () => {
     }
   };
 
+  const fetchDashboardCount = async () => {
+    if (!user?.id) {
+      console.log('No user ID available');
+      return;
+    }
+
+    try {
+      const payload = {
+        technician_id: user?.id.toString(),
+      }
+      setLoadingProfile(true);
+      const response = await getDeshBoardCount(payload);
+      // if(response?)
+      const data = response?.data;
+      if (data?.success) {
+        console.log('deshboard count :', data)
+        setCount(data);
+      }
+
+      
+    } catch (error) {
+      console.log('Fetch deshboard error:', error);
+      console.error('Fetch deshboard error:', error);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
   useEffect(() => {
     // Fetch profile when component mounts and user is available
     if (user?.id) {
       fetchProfile();
+      fetchDashboardCount();
     }
   }, [user?.id]);
 
@@ -157,6 +187,7 @@ const Home = () => {
   const handleCardPress = cardName => {
     if (!isConnected) return;
     if (cardName === 'All') navigation.navigate('Complaints', { status: "all" });
+    else if (cardName === 'Cancel') navigation.navigate('Complaints', { status: "Cancel" });
     else if (cardName === 'Assign') navigation.navigate('Complaints', { status: "Assign" });
     else if (cardName === 'Onworking') navigation.navigate('Complaints', { status: "Onworking" });
     else if (cardName === 'Complete') navigation.navigate('Complaints', { status: "Complete" });
@@ -190,6 +221,20 @@ const Home = () => {
     offset: screenWidth * index,
     index,
   });
+
+  const formatNumberToK = (num) => {
+  // Convert to number if it's a string
+  const number = parseFloat(num);
+  
+  // Check if it's a valid number
+  if (isNaN(number)) return '0';
+  
+  // Divide by 1000 to get thousands
+  const thousands = number / 1000;
+  
+  // Format to 1 decimal place and add 'k'
+  return `${thousands.toFixed(1)}k`;
+};
 
   return (
     <LinearGradient
@@ -315,72 +360,78 @@ const Home = () => {
                 <Text className="text-gray-800 font-bold text-lg mb-3">
                   Status Overview
                 </Text>
+
+                {/* Row 1 → All + Cancel */}
                 <View className="flex-row justify-between mb-3">
+                  {/* All */}
                   <Pressable
                     onPress={() => handleCardPress('All')}
-                    className="bg-white rounded-xl p-4 items-center justify-between flex-row border border-gray-200 flex-1 mr-2"
+                    className="bg-white rounded-xl p-4 py-6 flex-row items-center justify-between border border-gray-200 flex-1 mr-2"
                   >
                     <View>
-                      <Text className="text-2xl font-bold text-gray-800">
-                        24
-                      </Text>
-                      <Text className="text-xs text-gray-500 text-center">
-                        All
-                      </Text>
+                      <Text className="text-2xl font-bold text-gray-800">{count?.all || 0} </Text>
+                      <Text className="text-xs text-gray-500">All</Text>
                     </View>
-                    <View className="bg-red-100 p-3 rounded-full mb-2">
+                    <View className="bg-red-100 p-3 rounded-full">
                       <ComplaintsIcon width={24} height={24} fill="red" />
                     </View>
                   </Pressable>
+
+                  {/* Cancel */}
                   <Pressable
-                    onPress={() => handleCardPress('Assign')}
-                    className="bg-white rounded-xl p-4 items-center justify-between flex-row border border-gray-200 flex-1 ml-2"
+                    onPress={() => handleCardPress('Cancel')}
+                    className="bg-white rounded-xl p-4 flex-row items-center justify-between border border-gray-200 flex-1 ml-2"
                   >
                     <View>
-                      <Text className="text-2xl font-bold text-gray-800">
-                        08
-                      </Text>
-                      <Text className="text-xs text-gray-500 text-center">
-                        Assign
-                      </Text>
+                      <Text className="text-2xl font-bold text-gray-800">{count?.cancel || 0}</Text>
+                      <Text className="text-xs text-gray-500">Cancel</Text>
                     </View>
-                    <View className="bg-yellow-100 p-3 rounded-full mb-2">
-                      <Icon name="wrench-clock" size={24} color="#eab308" />
+                    <View className="bg-gray-200 p-3 rounded-full">
+                      <Icon name="close-circle-outline" size={24} color="gray" />
                     </View>
                   </Pressable>
                 </View>
+
+                {/* Row 2 → Assign, Onworking, Complete */}
                 <View className="flex-row justify-between">
+                  {/* Assign */}
+                  <Pressable
+                    onPress={() => handleCardPress('Assign')}
+                    className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mr-1"
+                  >
+                    <View className="bg-yellow-100 p-2 rounded-full mb-1">
+                      <Icon name="wrench-clock" size={20} color="#eab308" />
+                    </View>
+                    <Text className="text-lg font-bold text-gray-800">{count?.assign || 0}</Text>
+                    <Text className="text-xs text-gray-500 text-center">Assign</Text>
+                  </Pressable>
+
+                  {/* Onworking */}
                   <Pressable
                     onPress={() => handleCardPress('Onworking')}
-                    className="bg-white justify-between flex-row rounded-xl p-4 items-center border border-gray-200 flex-1 mr-2"
+                    className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mx-1"
                   >
-                    <View>
-                      <Text className="text-2xl font-bold text-gray-800">
-                        12
-                      </Text>
-                      <Text className="text-xs text-gray-500 text-center">
-                        On working
-                      </Text>
+                    <View className="bg-orange-100 p-2 rounded-full mb-1">
+                      <Icon name="clock-outline" size={20} color="#f97316" />
                     </View>
-                    <View className="bg-orange-100 p-3 rounded-full mb-2">
-                      <Icon name="clock-outline" size={24} color="#f97316" />
-                    </View>
+                    <Text className="text-lg font-bold text-gray-800">{count?.onworking || 0}</Text>
+                    <Text className="text-xs text-gray-500 text-center">
+                      On working
+                    </Text>
                   </Pressable>
+
+                  {/* Complete */}
                   <Pressable
                     onPress={() => handleCardPress('Complete')}
-                    className="bg-white justify-between flex-row rounded-xl p-4 items-center border border-gray-200 flex-1 ml-2"
+                    className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 ml-1"
                   >
-                    <View>
-                      <Text className="text-2xl font-bold text-gray-800">
-                        67
-                      </Text>
-                      <Text className="text-xs text-gray-500 text-center">
-                        Complete
-                      </Text>
+                    <View className="bg-green-100 p-2 rounded-full mb-1">
+                      <CompleteIcon width={20} height={20} fill="teal" />
                     </View>
-                    <View className="bg-green-100 p-3 rounded-full mb-2">
-                      <CompleteIcon width={24} height={24} fill="teal" />
-                    </View>
+                    <Text className="text-lg font-bold text-gray-800">{count?.completed || 0}</Text>
+                    <Text className="text-xs text-gray-500 text-center">
+                      Complete
+                    </Text>
                   </Pressable>
                 </View>
               </View>
@@ -401,7 +452,7 @@ const Home = () => {
                       <FileIcon width={24} height={24} stroke="blue" />
                     </View>
                     <Text className="text-2xl font-bold text-gray-800">
-                      24
+                      {count?.amc || 0}
                     </Text>
                     <Text className="text-xs text-gray-500 text-center">
                       AMC
@@ -416,7 +467,7 @@ const Home = () => {
                       <BucketIcon width={24} height={24} fill="#f97316" />
                     </View>
                     <Text className="text-2xl font-bold text-gray-800">
-                      156
+                       {count?.bucket || 0}
                     </Text>
                     <Text className="text-xs text-gray-500 text-center">
                       Bucket
@@ -433,7 +484,7 @@ const Home = () => {
                     <View className="bg-purple-100 p-3 rounded-full mb-2">
                       <CalanderIcon width={24} height={24} stroke="#a855f7" />
                     </View>
-                    <Text className="text-2xl font-bold text-gray-800">45</Text>
+                    <Text className="text-2xl font-bold text-gray-800"> {count?.prebooking || 0}</Text>
                     <Text className="text-xs text-gray-500 text-center">
                       Pre-Booking
                     </Text>
@@ -447,7 +498,7 @@ const Home = () => {
                       <Wallet size={24} height={24} color="#10b981" />
                     </View>
                     <Text className="text-2xl font-bold text-gray-800">
-                      ₹12.5k
+                      {formatNumberToK(count?.payout || 0)}
                     </Text>
                     <Text className="text-xs text-gray-500 text-center">
                       Payout

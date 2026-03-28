@@ -3,7 +3,8 @@ import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // const BASE_URL = 'https://dummyjson.com/';
-const BASE_URL = 'http://192.168.1.19:5001/';
+const BASE_URL = 'http://192.168.1.6:5001/';
+// const BASE_URL = 'http://api.dainikcare.com/';
 
 
 
@@ -198,7 +199,7 @@ export const changePassword = async (payload) => {
 };
 
 export const getAMCList = async (payload) => {
-    console.log('payload',payload)
+    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AMCList', payload);
         console.log('Get AMC List response:', response);
@@ -210,8 +211,8 @@ export const getAMCList = async (payload) => {
     }
 };
 
-export const technicianAssignPart  = async (payload) => {
-    console.log('payload',payload)
+export const technicianAssignPart = async (payload) => {
+    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/TechnicianAssignPart', payload);
         console.log('technicianAssignPart response:', response);
@@ -225,10 +226,10 @@ export const technicianAssignPart  = async (payload) => {
 
 
 
-export const getAllTechnician   = async () => {
+export const getAllTechnician = async () => {
     // console.log('payload',payload)
     try {
-        const response = await apiClient.post('TechnicianAPI/AllTechnician' );
+        const response = await apiClient.post('TechnicianAPI/AllTechnician');
         console.log('getAllTechnician response:', response);
         return response;
     } catch (error) {
@@ -237,6 +238,156 @@ export const getAllTechnician   = async () => {
         throw new Error(errorMessage);
     }
 };
+
+export const getPartCount = async (payload) => {
+    // console.log('payload',payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/TechnicianPartCount', payload);
+        console.log('getPartCount response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in getPartCount:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const partTransferToTechnician = async (payload) => {
+    // console.log('payload',payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/PartTransferTechnician', payload);
+        console.log('partTransferToTechnician response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in partTransferToTechnician:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+export const partTransferCancel = async (payload) => {
+    // console.log('payload',payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/PartTransferCancel', payload);
+        console.log('partTransferCancel response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in partTransferCancel:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const partTransferReceive = async (payload) => {
+    // console.log('payload',payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/PartTransferReceive', payload);
+        console.log('partTransferReceive response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in partTransferReceive:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const sendOTP = async (payload) => {
+    // console.log('payload',payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/OTPSent', payload);
+        console.log('sendOTP api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in sendOTP:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+export const verifyOTP = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/OTPVerification', payload);
+        console.log('OTPVerify api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in OTPVerify:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+// api.js - Update the UploadComplaintImage function
+export const UploadComplaintImage = async (formData) => {
+    console.log('Uploading image with formData');
+
+    try {
+        const response = await apiClient.post('/TechnicianAPI/UploadComplaintImage', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                'Accept': 'application/json',
+            },
+        });
+        console.log('UploadComplaintImage api response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in UploadComplaintImage:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const GetComplaintImage = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/GetComplaintImage', payload);
+        console.log('GetComplaintImage api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in GetComplaintImage:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const deletComplaintImage = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/DeleteComplaintImage', payload);
+        console.log('deletComplaintImage api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in deletComplaintImage:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const getComplaintImage = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/GetComplaintImage', payload);
+        console.log('getComplaintImage api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in getComplaintImage:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const getDeshBoardCount = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/DashboardCount', payload);
+        console.log('getDeshBoardCount api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in getDeshBoardCount:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+
 
 
 

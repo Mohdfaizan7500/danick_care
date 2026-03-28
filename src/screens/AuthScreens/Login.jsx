@@ -85,7 +85,7 @@ const Login = ({ navigation }) => {
 
                 ...userData, // keep any extra fields
             };
-            console.log('user:',user)
+            console.log('user:', user)
 
             // Save to AuthContext (which will store in AsyncStorage)
             await setAuthData(user, accessToken, refreshToken);
@@ -112,7 +112,7 @@ const Login = ({ navigation }) => {
     const fillDemoAccount = () => {
         // Use the demo credentials from your backend
         setEmail('46757');      // technician_id
-        setPassword('111');     // password
+        setPassword('123');     // password
         showDialog('info', 'Demo Account Filled', 'Demo credentials have been filled. Click Sign In to continue.');
     };
 
@@ -186,7 +186,7 @@ const Login = ({ navigation }) => {
 
     return (
         <SafeAreaView className="flex-1 bg-teal-100 justify-center items-center px-10">
-            <StatusBar backgroundColor={'#CCFBF1'} barStyle={'dark-content'}/>
+            <StatusBar backgroundColor={'#CCFBF1'} barStyle={'dark-content'} />
             <View className="bg-white w-[100%] p-8 h-auto rounded-3xl shadow-lg border border-gray-100">
                 <Text className="font-bold text-3xl text-black mb-2">Welcome Back</Text>
                 <Text className="text-gray-500 text-base mb-8">Sign in to your account</Text>
@@ -252,7 +252,7 @@ const Login = ({ navigation }) => {
                 >
                     <Text className="font-bold text-sm text-gray-800 mb-2">Demo Account (Click to fill)</Text>
                     <Text className="font-normal text-xs text-gray-500">Username: 46757</Text>
-                    <Text className="font-normal text-xs text-gray-500">Password: 111</Text>
+                    <Text className="font-normal text-xs text-gray-500">Password: 123</Text>
                 </TouchableOpacity>
             </View>
 

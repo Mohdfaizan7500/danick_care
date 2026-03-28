@@ -125,10 +125,10 @@ const AMC = () => {
       <ScrollView className="flex-1 px-4 mt-4" showsVerticalScrollIndicator={false}>
         <View className="flex-row flex-wrap justify-between">
           {filteredServices.length > 0 ? (
-            filteredServices.map((service) => (
+            filteredServices.map((service,index) => (
               <TouchableOpacity
                 onPress={() => handleCardPress(service)}
-                key={service.id}
+                key={index}
                 className="w-[48%] bg-ui-card rounded-xl p-3 mb-3 border border-ui-border"
                 activeOpacity={0.7}
               >

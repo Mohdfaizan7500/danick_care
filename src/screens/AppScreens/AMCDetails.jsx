@@ -60,6 +60,8 @@ const AMCDetails = () => {
                     titlePosition="left"
                     containerStyle="bg-transparent px-5 py-4"
                 />
+
+                
             </View>
 
             <ScrollView

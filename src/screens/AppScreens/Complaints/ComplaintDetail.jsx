@@ -18,18 +18,26 @@ import Header from '../../../components/Header';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { launchCamera } from 'react-native-image-picker';
+import { sendOTP, verifyOTP, UploadComplaintImage } from '../../../lib/api';
+// Import this for file handling
+import RNFS from 'react-native-fs';
 
 const ComplaintDetail = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { complaint } = route.params;
+    console.log('complaint:', complaint)
 
     // OTP flow states
     const [jobStarted, setJobStarted] = useState(false);
     const [showOtp, setShowOtp] = useState(false);
-    const [otp, setOtp] = useState(['', '', '', '']);
+    const [otp, setOtp] = useState(['', '', '', '', '']);
     const [verifying, setVerifying] = useState(false);
     const [verified, setVerified] = useState(false);
+    const [sendingOTP, setSendingOTP] = useState(false);
+    const [generatedOTP, setGeneratedOTP] = useState('');
+    const [otpResponseData, setOtpResponseData] = useState(null);
+    const [complaintData, setComplaintData] = useState(complaint);
     const inputRefs = useRef([]);
 
     // Camera states
@@ -41,6 +49,32 @@ const ComplaintDetail = () => {
     const [reasonText, setReasonText] = useState('');
     const [submittingReverse, setSubmittingReverse] = useState(false);
     const submitTimeoutRef = useRef(null);
+
+    // Check if OTP is already verified from the complaint data
+    useEffect(() => {
+        // Check if the complaint already has verify_otp flag set to true
+        if (complaint.verify_otp === true) {
+            console.log('OTP already verified for this complaint');
+            setVerified(true);
+            setJobStarted(true);
+            setOtpResponseData({
+                customer_name: complaint.customer_name,
+                contact_no: complaint.customer_mobile,
+                id: complaint.id
+            });
+        }
+        
+        // Check if upload_image is "1", navigate directly to next screen
+        if (complaint.upload_image === "1") {
+            console.log('Upload image already completed, navigating to remarks screen');
+            // Navigate directly to remarks screen
+            navigation.replace('Remarkscreen', { 
+                complaintData: complaint,
+                isVerified: complaint.verify_otp === true,
+                isImageUploaded: true
+            });
+        }
+    }, [complaint, navigation]);
 
     // Disable swipe back gesture when verified
     useEffect(() => {
@@ -59,7 +93,7 @@ const ComplaintDetail = () => {
     }, []);
 
     const handlePhoneCall = () => {
-        const phoneNumber = complaint.phone;
+        const phoneNumber = complaintData.customer_mobile;
         if (phoneNumber) {
             Linking.openURL(`tel:${phoneNumber}`).catch(() => {
                 toast.custom(
@@ -84,7 +118,7 @@ const ComplaintDetail = () => {
     };
 
     const handleOpenMaps = () => {
-        const address = complaint.address;
+        const address = complaintData.service_address;
         if (address) {
             const encodedAddress = encodeURIComponent(address);
             Linking.openURL(`https://maps.google.com/?q=${encodedAddress}`).catch(() => {
@@ -110,14 +144,11 @@ const ComplaintDetail = () => {
     };
 
     const handleReverse = () => {
-        // If already submitting, ignore click
         if (submittingReverse) return;
 
         if (!showReasonInput) {
-            // First click: show reason input
             setShowReasonInput(true);
         } else {
-            // Second click: submit reason with loading
             if (!reasonText.trim()) {
                 toast.custom(
                     <StatusMessage
@@ -130,12 +161,9 @@ const ComplaintDetail = () => {
                 return;
             }
 
-            // Start submission
             setSubmittingReverse(true);
 
-            // Simulate 2-second delay
             submitTimeoutRef.current = setTimeout(() => {
-                // Show success toast
                 toast.custom(
                     <StatusMessage
                         type="success"
@@ -144,23 +172,64 @@ const ComplaintDetail = () => {
                     />,
                     { duration: 2000 }
                 );
-                // Navigate back after toast (or immediately)
                 navigation.goBack();
             }, 2000);
         }
     };
 
-    const handleStartJob = () => {
-        setJobStarted(true);
-        setShowOtp(true);
-        toast.custom(
-            <StatusMessage
-                type="success"
-                title="OTP sent to customer"
-                className="mx-4 mb-6"
-            />,
-            { duration: 3000 }
-        );
+    const handleStartJob = async (complaint) => {
+        const payload = {
+            complaint_id: complaint.id,
+            mobile: complaint.customer_mobile
+        };
+        console.log('Send OTP payload:', payload);
+
+        setSendingOTP(true);
+
+        try {
+            const response = await sendOTP(payload);
+            console.log('sendOTP response:', response);
+
+            if (response && response.data && response.data.success) {
+                if (response.data.otp) {
+                    setGeneratedOTP(response.data.otp);
+                    console.log('Generated OTP:', response.data.otp);
+                }
+
+                setJobStarted(true);
+                setShowOtp(true);
+
+                toast.custom(
+                    <StatusMessage
+                        type="success"
+                        title={response.data.msg || "OTP sent to customer"}
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
+            } else {
+                toast.custom(
+                    <StatusMessage
+                        type="error"
+                        title={response?.data?.msg || "Failed to send OTP"}
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
+            }
+        } catch (error) {
+            console.error('Error sending OTP:', error);
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title={error.response?.data?.msg || error.message || "Failed to send OTP. Please try again."}
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
+        } finally {
+            setSendingOTP(false);
+        }
     };
 
     const handleOtpChange = (text, index) => {
@@ -175,10 +244,13 @@ const ComplaintDetail = () => {
             return;
         }
 
-        newOtp[index] = text;
-        setOtp(newOtp);
-        if (index < 3) {
-            inputRefs.current[index + 1]?.focus();
+        // Only allow numbers
+        if (/^\d+$/.test(text)) {
+            newOtp[index] = text;
+            setOtp(newOtp);
+            if (index < 4) {
+                inputRefs.current[index + 1]?.focus();
+            }
         }
     };
 
@@ -193,35 +265,99 @@ const ComplaintDetail = () => {
         }
     };
 
-    const handleVerifyOtp = () => {
+    const handleVerifyOtp = async () => {
         const enteredOtp = otp.join('');
-        // if (enteredOtp.length !== 4) { ... } // Optional validation
+
+        // Validate OTP length
+        if (enteredOtp.length !== 5) {
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title="Please enter complete 5-digit OTP"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
+            return;
+        }
 
         setVerifying(true);
-        setTimeout(() => {
-            if (true || enteredOtp === '1234') {
+
+        try {
+            // Prepare payload for OTP verification
+            const payload = {
+                complaint_id: complaintData.id,
+                mobile: complaintData.customer_mobile,
+                otp: enteredOtp
+            };
+
+            console.log('Verifying OTP with payload:', payload);
+
+            // Call verifyOTP API
+            const response = await verifyOTP(payload);
+            console.log('OTP verification response:', response);
+
+            // Check if verification was successful
+            if (response && response.data && response.data.success) {
+                // Store the response data
+                setOtpResponseData(response.data.result);
                 setVerified(true);
                 setShowOtp(false);
+
+                // Update complaint data with the new information from response
+                if (response.data.result && response.data.result.length > 0) {
+                    const updatedComplaint = response.data.result[0];
+                    setComplaintData(prev => ({
+                        ...prev,
+                        ...updatedComplaint,
+                        verify_otp: true // Mark as verified
+                    }));
+                }
+
                 toast.custom(
                     <StatusMessage
                         type="success"
-                        title="OTP verified successfully"
+                        title="OTP verified successfully!"
                         className="mx-4 mb-6"
                     />,
                     { duration: 3000 }
                 );
             } else {
+                // Handle unsuccessful verification
                 setVerifying(false);
+                setOtp(['', '', '', '', '']); // Clear OTP on failure
+
                 toast.custom(
                     <StatusMessage
                         type="error"
-                        title="Invalid OTP"
+                        title={response?.data?.msg || "Invalid OTP. Please try again."}
                         className="mx-4 mb-6"
                     />,
                     { duration: 3000 }
                 );
             }
-        }, 1500);
+
+        } catch (error) {
+            console.error('Error verifying OTP:', error);
+            setVerifying(false);
+
+            // Clear OTP on error
+            setOtp(['', '', '', '', '']);
+
+            // Show appropriate error message
+            const errorMessage = error.response?.data?.msg ||
+                error.response?.data?.message ||
+                "Failed to verify OTP. Please try again.";
+
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title={errorMessage}
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
+        }
     };
 
     // Camera functions
@@ -267,6 +403,7 @@ const ComplaintDetail = () => {
             maxHeight: 2000,
             maxWidth: 2000,
             quality: 0.8,
+            saveToPhotos: false,
         };
 
         launchCamera(options, (response) => {
@@ -284,6 +421,7 @@ const ComplaintDetail = () => {
                 );
             } else if (response.assets && response.assets[0]) {
                 setPhotoUri(response.assets[0].uri);
+                console.log('Photo URI:', response.assets[0].uri);
             }
         });
     };
@@ -292,23 +430,212 @@ const ComplaintDetail = () => {
         setPhotoUri(null);
     };
 
-    const handleSendPhoto = () => {
-        // if (!photoUri) { ... } // Optional validation
-
-        setSendingPhoto(true);
-
-        setTimeout(() => {
-            setSendingPhoto(false);
+    // handleSendPhoto function - Always uses "before" and status "1"
+    const handleSendPhoto = async () => {
+        if (!photoUri) {
             toast.custom(
                 <StatusMessage
-                    type="success"
-                    title="Photo sent successfully!"
+                    type="error"
+                    title="Please take a photo first"
                     className="mx-4 mb-6"
                 />,
                 { duration: 3000 }
             );
-            navigation.replace('Remarkscreen');
-        }, 2000);
+            return;
+        }
+
+        setSendingPhoto(true);
+
+        try {
+            // Create form data for file upload
+            const formData = new FormData();
+
+            // Get file info
+            const fileUri = photoUri;
+            const fileName = fileUri.split('/').pop();
+            const fileType = 'image/jpeg';
+
+            // Append the image file
+            formData.append('image', {
+                uri: Platform.OS === 'ios' ? fileUri.replace('file://', '') : fileUri,
+                name: fileName || `photo_${Date.now()}.jpg`,
+                type: fileType,
+            });
+
+            // Always use "before" and status "1"
+            formData.append('complaint_id', complaintData.id.toString());
+            formData.append('image_type', 'before working'); // Always "before"
+            formData.append('status', '1'); // Always "1"
+
+            // Log the form data for debugging
+            console.log('Uploading image with params:', {
+                complaint_id: complaintData.id,
+                image_type: 'before working',
+                status: '1',
+                fileName: fileName,
+                fileUri: fileUri
+            });
+
+            // Call the upload API
+            const response = await UploadComplaintImage(formData);
+            console.log('Upload response:', response);
+
+            // Check if upload was successful
+            if (response && response.data && response.data.success) {
+                toast.custom(
+                    <StatusMessage
+                        type="success"
+                        title={response.data.msg || "Photo uploaded successfully!"}
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
+
+                // Navigate to next screen after successful upload
+                navigation.replace('Remarkscreen', {
+                    customerData: otpResponseData,
+                    complaintData: complaintData,
+                    isVerified: true,
+                    photoUploaded: true,
+                    imageType: 'before working'
+                });
+            } else {
+                // Handle unsuccessful upload
+                toast.custom(
+                    <StatusMessage
+                        type="error"
+                        title={response?.data?.msg || response?.data?.message || "Failed to upload photo"}
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
+                setSendingPhoto(false);
+            }
+
+        } catch (error) {
+            console.error('Error uploading photo:', error);
+
+            // Log more details about the error
+            if (error.response) {
+                console.error('Error response data:', error.response.data);
+                console.error('Error response status:', error.response.status);
+                console.error('Error response headers:', error.response.headers);
+            }
+
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title={error.response?.data?.msg || error.response?.data?.message || error.message || "Failed to upload photo. Please try again."}
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
+            setSendingPhoto(false);
+        }
+    };
+
+    // Format the date for display
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        return dateString;
+    };
+
+    // Determine priority based on available data or set default
+    const getPriority = () => {
+        return 'Medium';
+    };
+
+    // Determine status display
+    const getStatusDisplay = () => {
+        const status = complaintData.status;
+        switch (status) {
+            case 'assign':
+                return 'Assigned';
+            case 'in_progress':
+                return 'In Progress';
+            case 'onworking':
+                return 'On Working';
+            case 'pending':
+                return 'Pending';
+            case 'complete':
+                return 'Complete';
+            case 'cancel':
+                return 'Cancel';
+            default:
+                return status || 'Assigned';
+        }
+    };
+
+    // Determine status color class
+    const getStatusColorClass = () => {
+        const status = complaintData.status;
+        switch (status) {
+            case 'assign':
+                return 'bg-primary-sage100';
+            case 'in_progress':
+                return 'bg-ui-warning/20';
+            case 'onworking':
+                return 'bg-blue-100';
+            case 'pending':
+                return 'bg-ui-secondary/20';
+            case 'complete':
+                return 'bg-ui-success/20';
+            case 'cancel':
+                return 'bg-ui-error/20';
+            default:
+                return 'bg-gray-100';
+        }
+    };
+
+    // Determine status text color class
+    const getStatusTextColorClass = () => {
+        const status = complaintData.status;
+        switch (status) {
+            case 'assign':
+                return 'text-primary-sage700';
+            case 'in_progress':
+                return 'text-ui-warning';
+            case 'onworking':
+                return 'text-blue-600';
+            case 'pending':
+                return 'text-text-secondary';
+            case 'complete':
+                return 'text-ui-success';
+            case 'cancel':
+                return 'text-ui-error';
+            default:
+                return 'text-text-tertiary';
+        }
+    };
+
+    // Determine priority color class
+    const getPriorityColorClass = () => {
+        const priority = getPriority();
+        switch (priority) {
+            case 'High':
+                return 'bg-ui-error/20';
+            case 'Medium':
+                return 'bg-ui-warning/20';
+            case 'Low':
+                return 'bg-ui-success/20';
+            default:
+                return 'bg-ui-warning/20';
+        }
+    };
+
+    // Determine priority text color class
+    const getPriorityTextColorClass = () => {
+        const priority = getPriority();
+        switch (priority) {
+            case 'High':
+                return 'text-ui-error';
+            case 'Medium':
+                return 'text-ui-warning';
+            case 'Low':
+                return 'text-ui-success';
+            default:
+                return 'text-ui-warning';
+        }
     };
 
     return (
@@ -317,7 +644,7 @@ const ComplaintDetail = () => {
                 <Toaster />
             </View>
             <Header
-                title={`Complaint #${complaint.complaintNumber}`}
+                title={`Complaint #${complaintData.id || complaintData.complaintNumber || complaintData.csn}`}
                 titlePosition="left"
                 titleStyle="font-bold text-2xl ml-5 text-text-primary"
                 showBackButton={true}
@@ -329,80 +656,36 @@ const ComplaintDetail = () => {
                 {/* Title and Priority */}
                 <View className="flex-row items-center justify-between">
                     <Text className="text-text-primary text-2xl font-bold mb-2">
-                        {complaint.title}
+                        {complaintData.service_name}
                     </Text>
                     <View className="mb-2">
-                        <View
-                            className={`px-3 py-1 rounded-full ${
-                                complaint.priority === 'High'
-                                    ? 'bg-ui-error/20'
-                                    : complaint.priority === 'Medium'
-                                    ? 'bg-ui-warning/20'
-                                    : 'bg-ui-success/20'
-                            }`}
-                        >
-                            <Text
-                                className={`text-xs font-medium ${
-                                    complaint.priority === 'High'
-                                        ? 'text-ui-error'
-                                        : complaint.priority === 'Medium'
-                                        ? 'text-ui-warning'
-                                        : 'text-ui-success'
-                                }`}
-                            >
-                                {complaint.priority} Priority
+                        <View className={`px-3 py-1 rounded-full ${getPriorityColorClass()}`}>
+                            <Text className={`text-xs font-medium ${getPriorityTextColorClass()}`}>
+                                {getPriority()} Priority
                             </Text>
                         </View>
                     </View>
                 </View>
 
                 {/* Status Badge */}
-                <View
-                    className={`self-start px-4 py-2 rounded-full mb-4 ${
-                        complaint.status === 'Assigned'
-                            ? 'bg-primary-sage100'
-                            : complaint.status === 'In Progress'
-                            ? 'bg-ui-warning/20'
-                            : complaint.status === 'Pending'
-                            ? 'bg-ui-secondary/20'
-                            : complaint.status === 'Complete'
-                            ? 'bg-ui-success/20'
-                            : complaint.status === 'Cancel'
-                            ? 'bg-ui-error/20'
-                            : 'bg-gray-100'
-                    }`}
-                >
-                    <Text
-                        className={`text-sm font-medium ${
-                            complaint.status === 'Assigned'
-                                ? 'text-primary-sage700'
-                                : complaint.status === 'In Progress'
-                                ? 'text-ui-warning'
-                                : complaint.status === 'Pending'
-                                ? 'text-text-secondary'
-                                : complaint.status === 'Complete'
-                                ? 'text-ui-success'
-                                : complaint.status === 'Cancel'
-                                ? 'text-ui-error'
-                                : 'text-text-tertiary'
-                        }`}
-                    >
-                        {complaint.status}
+                <View className={`self-start px-4 py-2 rounded-full mb-2 ${getStatusColorClass()}`}>
+                    <Text className={`text-sm font-medium ${getStatusTextColorClass()}`}>
+                        {getStatusDisplay()}
                     </Text>
                 </View>
 
-                {/* OTP Input Section */}
-                {showOtp && !verified && (
+                {/* OTP Input Section - Only show if not already verified */}
+                {!verified && showOtp && (
                     <View className="mb-6">
                         <Text className="text-text-primary text-base mb-3 text-center">
-                            Enter 4-digit OTP sent to customer
+                            Enter 5-digit OTP sent to customer
                         </Text>
-                        <View className="flex-row justify-center gap-3">
+                        <View className="flex-row justify-center gap-2">
                             {otp.map((digit, index) => (
                                 <TextInput
                                     key={index}
                                     ref={(el) => (inputRefs.current[index] = el)}
-                                    className="w-14 h-14 border border-ui-border rounded-xl text-center text-2xl font-bold text-text-primary bg-background-secondary"
+                                    className="w-12 h-14 border border-ui-border rounded-xl text-center text-2xl font-bold text-text-primary bg-background-secondary"
                                     keyboardType="number-pad"
                                     maxLength={1}
                                     value={digit}
@@ -417,9 +700,8 @@ const ComplaintDetail = () => {
                         <TouchableOpacity
                             onPress={handleVerifyOtp}
                             disabled={verifying || verified}
-                            className={`mt-4 py-3 rounded-xl items-center ${
-                                verifying ? 'bg-ui-secondary' : 'bg-primary-sage600'
-                            }`}
+                            className={`mt-4 py-3 rounded-xl items-center ${verifying ? 'bg-ui-secondary' : 'bg-primary-sage600'
+                                }`}
                         >
                             {verifying ? (
                                 <ActivityIndicator color="#fff" />
@@ -430,10 +712,26 @@ const ComplaintDetail = () => {
                     </View>
                 )}
 
+                {/* Display Verified Customer Info when already verified */}
+                {verified && (
+                    <View className="bg-ui-success/10 border border-ui-success rounded-xl p-3 mb-4">
+                        <View className="flex-row items-center">
+                            <Icon name="checkmark-circle" size={20} color="#58A890" />
+                            <Text className="text-ui-success font-bold ml-2">Job Verified</Text>
+                        </View>
+                        <Text className="text-text-primary text-sm mt-1">
+                            {complaintData.customer_name} • {complaintData.customer_mobile}
+                        </Text>
+                    </View>
+                )}
+
                 {/* Camera Section – appears after verification */}
                 {verified && (
                     <View className="mb-6">
-                        {/* Photo capture area: either "Take Photo" button or preview with delete icon */}
+                        <Text className="text-text-primary text-base mb-2 font-semibold">
+                            Take Before Working Photo
+                        </Text>
+                        {/* Photo capture area */}
                         {!photoUri ? (
                             <TouchableOpacity
                                 onPress={handleTakePhoto}
@@ -466,16 +764,15 @@ const ComplaintDetail = () => {
                         {/* Send Button */}
                         <TouchableOpacity
                             onPress={handleSendPhoto}
-                            // disabled={sendingPhoto || !photoUri}
-                            className={`py-4 rounded-xl items-center ${
-                                sendingPhoto || !photoUri ? 'bg-ui-disabled' : 'bg-ui-success'
-                            }`}
+                            className={`py-4 rounded-xl items-center ${sendingPhoto || !photoUri ? 'bg-ui-disabled' : 'bg-ui-success'
+                                }`}
+                            disabled={sendingPhoto || !photoUri}
                         >
                             {sendingPhoto ? (
                                 <ActivityIndicator color="#fff" />
                             ) : (
                                 <Text className="text-text-inverse font-semibold text-base">
-                                    Send Photo
+                                    Upload Photo
                                 </Text>
                             )}
                         </TouchableOpacity>
@@ -501,14 +798,14 @@ const ComplaintDetail = () => {
                     <View className="flex-row items-center mb-2">
                         <Icon name="person-outline" size={18} color="#666" />
                         <Text className="text-text-primary text-base ml-2">
-                            {complaint.customerName}
+                            {complaintData.customer_name}
                         </Text>
                     </View>
 
                     <View className="flex-row items-center mb-2">
                         <Icon name="location-outline" size={18} color="#666" />
                         <Text className="text-text-secondary text-base ml-2 flex-1">
-                            {complaint.address}
+                            {complaintData.service_address}
                         </Text>
                     </View>
 
@@ -518,24 +815,42 @@ const ComplaintDetail = () => {
                         disabled={verified}
                     >
                         <Icon name="call-outline" size={18} color="#666" />
-                        <Text className="text-[#666] text-base ml-2">{complaint.phone}</Text>
+                        <Text className="text-[#666] text-base ml-2">{complaintData.customer_mobile}</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Description Card */}
+                {/* Service Details Card */}
                 <View className="bg-ui-card border border-ui-border rounded-xl p-4 mb-4">
                     <Text className="text-text-primary font-semibold text-lg mb-2">
-                        Description
+                        Service Details
                     </Text>
-                    <Text className="text-text-secondary text-base">
-                        {complaint.description}
-                    </Text>
-                    <Text className="text-text-tertiary text-sm mt-2">
-                        Reported on: {complaint.date}
-                    </Text>
+                    <View className="flex-row justify-between mb-2">
+                        <Text className="text-text-secondary">Service Name:</Text>
+                        <Text className="text-text-primary font-medium">{complaintData.service_name}</Text>
+                    </View>
+                    <View className="flex-row justify-between mb-2">
+                        <Text className="text-text-secondary">CSN:</Text>
+                        <Text className="text-text-primary font-medium">{complaintData.csn}</Text>
+                    </View>
+                    <View className="flex-row justify-between mb-2">
+                        <Text className="text-text-secondary">Total Amount:</Text>
+                        <Text className="text-text-primary font-medium">₹{complaintData.tot_amt}</Text>
+                    </View>
+                    {complaintData.slot_date && (
+                        <View className="flex-row justify-between mb-2">
+                            <Text className="text-text-secondary">Slot Date:</Text>
+                            <Text className="text-text-primary font-medium">{formatDate(complaintData.slot_date)}</Text>
+                        </View>
+                    )}
+                    {complaintData.slot_time && (
+                        <View className="flex-row justify-between">
+                            <Text className="text-text-secondary">Slot Time:</Text>
+                            <Text className="text-text-primary font-medium">{complaintData.slot_time}</Text>
+                        </View>
+                    )}
                 </View>
 
-                {/* Reverse Reason Input (appears above the buttons) */}
+                {/* Reverse Reason Input */}
                 {showReasonInput && (
                     <View className="mb-4">
                         <TextInput
@@ -545,71 +860,58 @@ const ComplaintDetail = () => {
                             value={reasonText}
                             onChangeText={setReasonText}
                             multiline
+                            numberOfLines={3}
                         />
                     </View>
                 )}
 
-                {/* Action Buttons */}
+                {/* Action Buttons - Hide Start Job button if already verified */}
                 <View className="flex-row justify-between mt-2 mb-6">
                     <TouchableOpacity
                         onPress={handleReverse}
                         disabled={submittingReverse}
-                        className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${
-                            submittingReverse
-                                ? 'bg-ui-disabled' // Disabled style while loading
+                        className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${submittingReverse
+                                ? 'bg-ui-disabled'
                                 : showReasonInput && reasonText.trim()
-                                ? 'bg-ui-success' // Filled: success color
-                                : 'bg-ui-secondary/20' // Default: light gray
-                        }`}
+                                    ? 'bg-ui-success'
+                                    : 'bg-ui-secondary/20'
+                            }`}
                     >
                         {submittingReverse ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
                             <Text
-                                className={`font-semibold ${
-                                    showReasonInput && reasonText.trim()
+                                className={`font-semibold ${showReasonInput && reasonText.trim()
                                         ? 'text-text-inverse'
                                         : 'text-text-secondary'
-                                }`}
+                                    }`}
                             >
                                 Reverse
                             </Text>
                         )}
                     </TouchableOpacity>
 
-                    {!jobStarted && (
+                    {/* Only show Start Job button if not already verified and job not started */}
+                    {!verified && !jobStarted && (
                         <TouchableOpacity
-                            onPress={handleStartJob}
-                            disabled={verifying}
-                            className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${
-                                verifying ? 'bg-ui-disabled' : 'bg-primary-sage600'
-                            }`}
-                        >
-                            <Text
-                                className={`font-semibold ${
-                                    verifying ? 'text-text-disabled' : 'text-text-inverse'
+                            onPress={() => handleStartJob(complaintData)}
+                            disabled={verifying || sendingOTP}
+                            className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${verifying || sendingOTP ? 'bg-ui-disabled' : 'bg-primary-sage600'
                                 }`}
-                            >
-                                Start Job
-                            </Text>
+                        >
+                            {sendingOTP ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text
+                                    className={`font-semibold ${verifying || sendingOTP ? 'text-text-disabled' : 'text-text-inverse'
+                                        }`}
+                                >
+                                    Start Job
+                                </Text>
+                            )}
                         </TouchableOpacity>
                     )}
                 </View>
-
-                {/* Verified Message */}
-                {verified && (
-                    <View className="bg-ui-success/20 border flex-row items-start gap-2 border-ui-success rounded-xl p-2 mb-4">
-                        <Icon name="checkmark-circle" size={20} color="#58A890" />
-                        <View className="flex-1">
-                            <Text className="text-ui-success font-bold text-sm">
-                                Job Verified
-                            </Text>
-                            <Text className="text-text-secondary text-xs text-left">
-                                Please take a photo to complete the job.
-                            </Text>
-                        </View>
-                    </View>
-                )}
             </ScrollView>
         </SafeAreaView>
     );
