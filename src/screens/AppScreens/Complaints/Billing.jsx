@@ -16,7 +16,7 @@ import { useAuth } from '../../../context/AuthContext';
 import DialogBox from '../../../components/DilaogBox';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import { FetchPartForComplaints, AttechPartWithComplaints } from '../../../lib/api';
+import { FetchPartForComplaints, AttechPartWithComplaints, RecomplaitAttechPart } from '../../../lib/api';
 
 const Billing = () => {
   const navigation = useNavigation();
@@ -41,7 +41,10 @@ const Billing = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Function to fetch parts
+  // Check if it's a recomplaint
+  const isRecomplaint = complaintData?.recomplaint === 'Yes';
+
+  // Function to fetch parts based on complaint type
   const fetchParts = async () => {
     if (!complaintData) {
       console.log('No complaint data available');
@@ -53,34 +56,62 @@ const Billing = () => {
       setLoadingParts(true);
       setError(null);
 
-      const payload = {
-        technician_id: user?.id?.toString() || '1',
-        service_id: complaintData.service_id?.toString() || complaintData.id?.toString()
-      };
-
-      console.log('Fetching parts with payload:', payload);
-      const response = await FetchPartForComplaints(payload);
-      console.log('API Response:', response);
-
-      // Handle different response structures
+      let response;
       let partsData = [];
-      if (response?.data?.data && Array.isArray(response.data.data)) {
-        partsData = response.data.data;
-      } else if (response?.data?.result && Array.isArray(response.data.result)) {
-        partsData = response.data.result;
-      } else if (Array.isArray(response?.data)) {
-        partsData = response.data;
+
+      if (isRecomplaint && complaintData.oldcomp_id) {
+        // For recomplaint, call RecomplaitAttechPart API with oldcomp_id
+        const payload = {
+          technician_id: user?.id?.toString() || '1',
+          oldcomp_id: complaintData.oldcomp_id?.toString()
+        };
+        
+        console.log('Fetching recomplaint parts with payload:', payload);
+        response = await RecomplaitAttechPart(payload);
+        console.log('Recomplaint API Response:', response);
+        
+        // Handle recomplaint response structure
+        if (response?.data?.data && Array.isArray(response.data.data)) {
+          partsData = response.data.data;
+        } else if (response?.data?.result && Array.isArray(response.data.result)) {
+          partsData = response.data.result;
+        } else if (Array.isArray(response?.data)) {
+          partsData = response.data;
+        }
+      } else {
+        // For new complaint, call FetchPartForComplaints API
+        const payload = {
+          technician_id: user?.id?.toString() || '1',
+          complaint_id: complaintData.id?.toString()
+        };
+        
+        console.log('Fetching new complaint parts with payload:', payload);
+        response = await FetchPartForComplaints(payload);
+        console.log('New Complaint API Response:', response);
+        
+        // Handle new complaint response structure
+        if (response?.data?.data && Array.isArray(response.data.data)) {
+          partsData = response.data.data;
+        } else if (response?.data?.result && Array.isArray(response.data.result)) {
+          partsData = response.data.result;
+        } else if (Array.isArray(response?.data)) {
+          partsData = response.data;
+        }
       }
 
-      // Filter parts where status is "1" (attached)
-      const attachedParts = partsData.filter(part => part.status === "1" || part.status === 1);
+      // Filter parts where status is "1" (attached) - only for new complaints
+      // For recomplaints, we might want to show all parts or handle differently
+      let attachedParts = partsData;
+      if (!isRecomplaint) {
+        attachedParts = partsData.filter(part => part.status === "1" || part.status === 1);
+      }
       
       // Map API response to component format
       const formattedParts = attachedParts.map(part => ({
         id: part.id?.toString(),
-        name: part.part_name || 'Part',
+        name: part.part_name || part.name || 'Part',
         partNumber: part.id?.toString() || '',
-        price: parseFloat(part.part_price) || 0,
+        price: parseFloat(part.part_price || part.price) || 0,
         imageUrl: part.part_image
           ? `${imagUrl}${part.part_image}`
           : 'https://via.placeholder.com/150',
@@ -164,7 +195,8 @@ const Billing = () => {
           updateImportedPart(updatedParts);
           
           // Reset discount if it exceeds new total
-          const newTotalBeforeDiscount = (totalPartsPrice - partToRemove.price) + SERVICE_CHARGE;
+          const removedPart = parts.find(p => p.id === partToRemove);
+          const newTotalBeforeDiscount = (totalPartsPrice - (removedPart?.price || 0)) + SERVICE_CHARGE;
           if (discount > newTotalBeforeDiscount) {
             setDiscount(newTotalBeforeDiscount);
             setDiscountError('');
@@ -275,7 +307,9 @@ const Billing = () => {
   const renderLoading = () => (
     <View className="flex-1 justify-center items-center py-10">
       <ActivityIndicator size="large" color="#2E7D32" />
-      <Text className="text-text-secondary mt-4">Loading parts...</Text>
+      <Text className="text-text-secondary mt-4">
+        {isRecomplaint ? 'Loading recomplaint parts...' : 'Loading parts...'}
+      </Text>
     </View>
   );
 
@@ -302,17 +336,19 @@ const Billing = () => {
       </View>
       
       <Header
-        title="Billing"
+        title={isRecomplaint ? "Recomplaint Billing" : "Billing"}
         titlePosition="left"
         titleStyle="font-bold text-2xl ml-5"
         showBackButton={true}
-        showRightIcon={true}
+        showRightIcon={!isRecomplaint} // Hide add part button for recomplaints
         customRightIconComponent={
           <Icon name="bag-add-outline" size={24} color="#333" />
         }
         onRightIconPress={() => navigation.navigate('AddPartBilling',{ complaintData })}
         containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
       />
+
+     
 
       <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
         {loadingParts ? (
@@ -347,10 +383,8 @@ const Billing = () => {
                     ₹{part.price.toFixed(2)}
                   </Text>
                 </View>
-                {/* Remove Icon */}
-                {isRemoving ? (
-                  <ActivityIndicator size="small" color="#ff4444" />
-                ) : (
+                {/* Remove Icon - hide for recomplaint parts if they shouldn't be removable */}
+                {!isRecomplaint && !isRemoving && (
                   <TouchableOpacity
                     onPress={() => {
                       setPartToRemove(part.id);
@@ -360,6 +394,7 @@ const Billing = () => {
                     <Icon name="trash-outline" size={20} color="#ff4444" />
                   </TouchableOpacity>
                 )}
+                {isRemoving && <ActivityIndicator size="small" color="#ff4444" />}
               </View>
             );
           })
@@ -367,7 +402,7 @@ const Billing = () => {
           <View className="items-center justify-center py-10">
             <Icon name="cart-outline" size={50} color="#ccc" />
             <Text className="text-text-tertiary text-base mt-2">
-              No parts added yet
+              {isRecomplaint ? 'No parts found for this recomplaint' : 'No parts added yet'}
             </Text>
           </View>
         )}

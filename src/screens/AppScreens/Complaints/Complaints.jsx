@@ -127,10 +127,10 @@ const Complaints = () => {
         technician_id: user?.id.toString(),
       };
       const response = await getDeshBoardCount(payload);
-      
+
       if (response?.data?.success) {
         const data = response.data;
-        
+
         setDashboardCounts({
           all: data.all || 0,
           assign: data.assign || 0,
@@ -161,7 +161,7 @@ const Complaints = () => {
   // Initial fetch based on route param (if any)
   useEffect(() => {
     fetchTabCount();
-    
+
     if (status === 'Complete' || status === 'Cancel') {
       if (scrollViewRef.current) {
         scrollViewRef.current.scrollTo({
@@ -170,7 +170,7 @@ const Complaints = () => {
         });
       }
     }
-    
+
     if (status) {
       if (status === 'All') {
         setSelectedTab('All');
@@ -216,24 +216,24 @@ const Complaints = () => {
   const filteredComplaints = complaintsData.filter((complaint) => {
     // First check if complaint exists
     if (!complaint) return false;
-    
+
     const apiStatus = getApiStatus(selectedTab);
     const matchesTab = selectedTab === 'All' || complaint.status === apiStatus;
-    
+
     // Safe string conversion with null checks
     const complaintId = complaint?.id?.toString() || '';
     const complaintCsn = complaint?.csn?.toString() || '';
     const customerName = complaint?.customer_name || '';
     const serviceName = complaint?.service_name || '';
-    
+
     const searchLower = searchQuery.toLowerCase();
-    
-    const matchesSearch = 
+
+    const matchesSearch =
       complaintId.toLowerCase().includes(searchLower) ||
       complaintCsn.toLowerCase().includes(searchLower) ||
       customerName.toLowerCase().includes(searchLower) ||
       serviceName.toLowerCase().includes(searchLower);
-    
+
     return matchesTab && matchesSearch;
   });
 
@@ -261,84 +261,103 @@ const Complaints = () => {
     navigation.navigate('ComplaintDetail', { complaint });
   };
 
-const renderComplaintCard = ({ item }) => {
-  // Add null checks for item properties
-  if (!item) return null;
-  
-  const displayStatus = mapStatusToDisplay(item.status);
-  const serviceType = item.service || item.service_name || 'Service';
-  
-  return (
-    <TouchableOpacity
-      disabled={displayStatus === 'Cancel'}
-      onPress={() => handleComplaintPress(item)}
-      className={`border border-ui-border rounded-xl p-4 mb-3 ${displayStatus === 'Cancel' ? 'bg-red-50 border-red-300' : 'bg-ui-card'}`}
-    >
-      {/* Header: Complaint number and service type */}
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-text-secondary text-xs font-medium">
-          #{item?.id || item?.csn || 'N/A'}
-        </Text>
-        <View className="px-2 py-0.5 rounded-full bg-primary-sage100">
-          <Text className="text-xs font-medium text-primary-sage700">
-            {serviceType}
-          </Text>
-        </View>
-      </View>
+  // Function to determine if it's a recomplaint
+  const isRecomplaint = (complaint) => {
+    return complaint?.recomplaint === 'Yes' || complaint?.recomplaint === true;
+  };
 
-      {/* Title and status */}
-      <View className="flex-row justify-between items-center mb-1">
-        <Text className="text-text-primary font-semibold text-base flex-1 mr-2">
-          {item.service_name || 'Service'}
-        </Text>
-        <View
-          className={`px-3 py-1 rounded-full ${
-            displayStatus === 'Assigned'
-              ? 'bg-primary-sage100'
-              : displayStatus === 'On Progress'
-                ? 'bg-ui-warning/20'
-                : displayStatus === 'Complete'
-                  ? 'bg-ui-success/20'
-                  : displayStatus === 'Cancel'
-                    ? 'bg-ui-error/20'
-                    : 'bg-gray-100'
-          }`}
-        >
-          <Text
-            className={`text-xs font-medium ${
-              displayStatus === 'Assigned'
-                ? 'text-primary-sage700'
+  const renderComplaintCard = ({ item }) => {
+    // Add null checks for item properties
+    if (!item) return null;
+
+    const displayStatus = mapStatusToDisplay(item.status);
+    const serviceType = item.service || item.service_name || 'Service';
+    const recomplaint = isRecomplaint(item);
+
+    return (
+      <TouchableOpacity
+        disabled={displayStatus === 'Cancel'}
+        onPress={() => handleComplaintPress(item)}
+        className={`border border-ui-border rounded-xl p-4 mb-3 ${displayStatus === 'Cancel' ? 'bg-red-50 border-red-300' : 'bg-ui-card'}`}
+      >
+        {/* Header: Complaint number and service type */}
+        <View className="flex-row justify-between items-center mb-2">
+          <Text className="text-text-secondary text-xs font-medium">
+            #{item?.id || item?.csn || 'N/A'}
+          </Text>
+          <View className="px-2 py-0.5 rounded-full bg-primary-sage100">
+            <Text className="text-xs font-medium text-primary-sage700">
+              {serviceType}
+            </Text>
+          </View>
+        </View>
+
+        {/* Title and status */}
+        <View className="flex-row justify-between items-center mb-1">
+          <Text className="text-text-primary font-semibold text-base flex-1 mr-2">
+            {item.service_name || 'Service'}
+          </Text>
+          <View
+            className={`px-3 py-1 rounded-full ${displayStatus === 'Assigned'
+                ? 'bg-primary-sage100'
                 : displayStatus === 'On Progress'
-                  ? 'text-ui-warning'
+                  ? 'bg-ui-warning/20'
                   : displayStatus === 'Complete'
-                    ? 'text-ui-success'
+                    ? 'bg-ui-success/20'
                     : displayStatus === 'Cancel'
-                      ? 'text-ui-error'
-                      : 'text-text-tertiary'
+                      ? 'bg-ui-error/20'
+                      : 'bg-gray-100'
+              }`}
+          >
+            <Text
+              className={`text-xs font-medium ${displayStatus === 'Assigned'
+                  ? 'text-primary-sage700'
+                  : displayStatus === 'On Progress'
+                    ? 'text-ui-warning'
+                    : displayStatus === 'Complete'
+                      ? 'text-ui-success'
+                      : displayStatus === 'Cancel'
+                        ? 'text-ui-error'
+                        : 'text-text-tertiary'
+                }`}
+            >
+              {displayStatus}
+            </Text>
+          </View>
+        </View>
+
+        {/* Customer details */}
+        <View className="mt-2">
+          <Text className="text-text-primary text-sm font-medium">
+            {item.customer_name || 'Customer'}
+          </Text>
+          <Text className="text-text-tertiary text-xs">{item.service_address || 'Address not available'}</Text>
+          <Text className="text-text-tertiary text-xs">{item.customer_mobile || 'Mobile not available'}</Text>
+        </View>
+
+        {/* Amount and date */}
+        <Text className="text-text-secondary text-sm mt-2" numberOfLines={2}>
+          Amount: ₹{parseFloat(item.tot_amt || 0).toFixed(2)}
+        </Text>
+        <Text className="text-text-tertiary text-xs mt-1">{item.slot_date || 'Date not available'}</Text>
+        
+        {/* Recomplaint/New Badge - positioned at bottom right */}
+        <View className="absolute bottom-2 right-2">
+          <View
+            className={`px-2 py-1 rounded-full ${
+              recomplaint 
+                ? 'bg-orange-500' 
+                : 'bg-blue-500'
             }`}
           >
-            {displayStatus}
-          </Text>
+            <Text className="text-white text-xs font-bold">
+              {recomplaint ? 'Recomplaint' : 'New'}
+            </Text>
+          </View>
         </View>
-      </View>
-
-      {/* Customer details */}
-      <View className="mt-2">
-        <Text className="text-text-primary text-sm font-medium">
-          {item.customer_name || 'Customer'}
-        </Text>
-        <Text className="text-text-tertiary text-xs">{item.service_address || 'Address not available'}</Text>
-        <Text className="text-text-tertiary text-xs">{item.customer_mobile || 'Mobile not available'}</Text>
-      </View>
-
-      {/* Amount and date */}
-      <Text className="text-text-secondary text-sm mt-2" numberOfLines={2}>
-        Amount: ₹{parseFloat(item.tot_amt || 0).toFixed(2)}
-      </Text>
-      <Text className="text-text-tertiary text-xs mt-1">{item.slot_date || 'Date not available'}</Text>
-    </TouchableOpacity>
-  );
-};
+      </TouchableOpacity>
+    );
+  };
 
   const renderSkeleton = () => (
     <View style={{ padding: 16 }}>

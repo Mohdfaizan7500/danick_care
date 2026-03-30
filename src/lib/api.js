@@ -403,7 +403,7 @@ export const fetchPartsForComplaint = async (payload) => {
 export const AttechPartWithComplaints  = async (payload) => {
     console.log('payload', payload)
     try {
-        const response = await apiClient.post('TechnicianAPI/AttechPartWithComplaints', payload);
+        const response = await apiClient.post('TechnicianAPI/AttachedPartWithComplaints', payload);
         console.log('AttechPartWithComplaints api  response:', response);
         return response;
     } catch (error) {
@@ -416,11 +416,24 @@ export const AttechPartWithComplaints  = async (payload) => {
 export const FetchPartForComplaints  = async (payload) => {
     console.log('payload', payload)
     try {
-        const response = await apiClient.post('TechnicianAPI/FetchPartForComplaints', payload);
+        const response = await apiClient.post('TechnicianAPI/FetchComplaintsParts', payload);
         console.log('FetchPartForComplaints api  response:', response);
         return response;
     } catch (error) {
         console.error('API error in FetchPartForComplaints:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const RecomplaitAttechPart  = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/RecomplaitAttachedPart', payload);
+        console.log('RecomplaitAttechPart api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in RecomplaitAttechPart:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
