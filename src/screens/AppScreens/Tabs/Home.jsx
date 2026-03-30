@@ -12,6 +12,7 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -70,7 +71,8 @@ const Home = () => {
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
   const [loadingProfile, setLoadingProfile] = useState(false);
-  const [count, setCount] = useState(null)
+  const [refreshing, setRefreshing] = useState(false);
+  const [count, setCount] = useState(null);
   const flatListRef = useRef(null);
   const navigation = useNavigation();
   const { IsOnline, user, imagUrl, profileData, updateProfileData } = useAuth();
@@ -123,22 +125,40 @@ const Home = () => {
     try {
       const payload = {
         technician_id: user?.id.toString(),
-      }
-      setLoadingProfile(true);
+      };
       const response = await getDeshBoardCount(payload);
-      // if(response?)
       const data = response?.data;
       if (data?.success) {
-        console.log('deshboard count :', data)
+        console.log('deshboard count :', data);
         setCount(data);
       }
-
-      
     } catch (error) {
       console.log('Fetch deshboard error:', error);
       console.error('Fetch deshboard error:', error);
+    }
+  };
+
+  // ---------- Refresh function for pull-to-refresh ----------
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // Fetch both profile and dashboard data simultaneously
+      await Promise.all([
+        fetchProfile(),
+        fetchDashboardCount()
+      ]);
+      toast.custom(
+        <StatusMessage type='success' title={"Data refreshed successfully"} />,
+        { duration: 1000 }
+      );
+    } catch (error) {
+      console.log('Refresh error:', error);
+      toast.custom(
+        <StatusMessage type='error' title={"Failed to refresh data"} />,
+        { duration: 1000 }
+      );
     } finally {
-      setLoadingProfile(false);
+      setRefreshing(false);
     }
   };
 
@@ -186,7 +206,7 @@ const Home = () => {
 
   const handleCardPress = cardName => {
     if (!isConnected) return;
-    if (cardName === 'All') navigation.navigate('Complaints', { status: "all" });
+    if (cardName === 'All') navigation.navigate('Complaints', { status: "All" });
     else if (cardName === 'Cancel') navigation.navigate('Complaints', { status: "Cancel" });
     else if (cardName === 'Assign') navigation.navigate('Complaints', { status: "Assign" });
     else if (cardName === 'Onworking') navigation.navigate('Complaints', { status: "Onworking" });
@@ -223,18 +243,18 @@ const Home = () => {
   });
 
   const formatNumberToK = (num) => {
-  // Convert to number if it's a string
-  const number = parseFloat(num);
-  
-  // Check if it's a valid number
-  if (isNaN(number)) return '0';
-  
-  // Divide by 1000 to get thousands
-  const thousands = number / 1000;
-  
-  // Format to 1 decimal place and add 'k'
-  return `${thousands.toFixed(1)}k`;
-};
+    // Convert to number if it's a string
+    const number = parseFloat(num);
+    
+    // Check if it's a valid number
+    if (isNaN(number)) return '0';
+    
+    // Divide by 1000 to get thousands
+    const thousands = number / 1000;
+    
+    // Format to 1 decimal place and add 'k'
+    return `${thousands.toFixed(1)}k`;
+  };
 
   return (
     <LinearGradient
@@ -316,6 +336,16 @@ const Home = () => {
             className="flex-1"
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 20 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[Colors.primary.sage400]} // Android
+                tintColor={Colors.primary.sage400} // iOS
+                title="Pull to refresh" // iOS
+                titleColor={Colors.primary.sage400} // iOS
+              />
+            }
           >
             {/* Carousel */}
             <View className="mt-2">

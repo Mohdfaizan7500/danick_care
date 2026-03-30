@@ -124,9 +124,9 @@ const Profile = () => {
       return;
     }
     else {
-      if (route !== 'ProfileEdit' && route !== 'MyComplaints' && route !== 'AMC') return toast.info('In Developemnt mode.');
       navigation.navigate(route);
 
+      
 
     }
   };
