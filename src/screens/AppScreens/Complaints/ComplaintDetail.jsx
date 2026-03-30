@@ -50,8 +50,16 @@ const ComplaintDetail = () => {
     const [submittingReverse, setSubmittingReverse] = useState(false);
     const submitTimeoutRef = useRef(null);
 
+    // Check if complaint status is complete (success)
+    const isComplete = complaint.status === 'success';
+
     // Check if OTP is already verified from the complaint data
     useEffect(() => {
+        // If complaint is complete, skip OTP checks
+        if (isComplete) {
+            return;
+        }
+        
         // Check if the complaint already has verify_otp flag set to true
         if (complaint.verify_otp === true) {
             console.log('OTP already verified for this complaint');
@@ -74,14 +82,16 @@ const ComplaintDetail = () => {
                 isImageUploaded: true
             });
         }
-    }, [complaint, navigation]);
+    }, [complaint, navigation, isComplete]);
 
     // Disable swipe back gesture when verified
     useEffect(() => {
-        navigation.setOptions({
-            gestureEnabled: !verified,
-        });
-    }, [verified, navigation]);
+        if (!isComplete) {
+            navigation.setOptions({
+                gestureEnabled: !verified,
+            });
+        }
+    }, [verified, navigation, isComplete]);
 
     // Cleanup timeout on unmount
     useEffect(() => {
@@ -658,13 +668,13 @@ const ComplaintDetail = () => {
                     <Text className="text-text-primary text-2xl font-bold mb-2">
                         {complaintData.service_name}
                     </Text>
-                    <View className="mb-2">
+                    {/* <View className="mb-2">
                         <View className={`px-3 py-1 rounded-full ${getPriorityColorClass()}`}>
                             <Text className={`text-xs font-medium ${getPriorityTextColorClass()}`}>
                                 {getPriority()} Priority
                             </Text>
                         </View>
-                    </View>
+                    </View> */}
                 </View>
 
                 {/* Status Badge */}
@@ -674,109 +684,114 @@ const ComplaintDetail = () => {
                     </Text>
                 </View>
 
-                {/* OTP Input Section - Only show if not already verified */}
-                {!verified && showOtp && (
-                    <View className="mb-6">
-                        <Text className="text-text-primary text-base mb-3 text-center">
-                            Enter 5-digit OTP sent to customer
-                        </Text>
-                        <View className="flex-row justify-center gap-2">
-                            {otp.map((digit, index) => (
-                                <TextInput
-                                    key={index}
-                                    ref={(el) => (inputRefs.current[index] = el)}
-                                    className="w-12 h-14 border border-ui-border rounded-xl text-center text-2xl font-bold text-text-primary bg-background-secondary"
-                                    keyboardType="number-pad"
-                                    maxLength={1}
-                                    value={digit}
-                                    onChangeText={(text) => handleOtpChange(text, index)}
-                                    onKeyPress={(e) => handleKeyPress(e, index)}
-                                    selectTextOnFocus
-                                    editable={!verifying && !verified}
-                                />
-                            ))}
-                        </View>
-
-                        <TouchableOpacity
-                            onPress={handleVerifyOtp}
-                            disabled={verifying || verified}
-                            className={`mt-4 py-3 rounded-xl items-center ${verifying ? 'bg-ui-secondary' : 'bg-primary-sage600'
-                                }`}
-                        >
-                            {verifying ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text className="text-text-inverse font-semibold">Verify OTP</Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {/* Display Verified Customer Info when already verified */}
-                {verified && (
-                    <View className="bg-ui-success/10 border border-ui-success rounded-xl p-3 mb-4">
-                        <View className="flex-row items-center">
-                            <Icon name="checkmark-circle" size={20} color="#58A890" />
-                            <Text className="text-ui-success font-bold ml-2">Job Verified</Text>
-                        </View>
-                        <Text className="text-text-primary text-sm mt-1">
-                            {complaintData.customer_name} • {complaintData.customer_mobile}
-                        </Text>
-                    </View>
-                )}
-
-                {/* Camera Section – appears after verification */}
-                {verified && (
-                    <View className="mb-6">
-                        <Text className="text-text-primary text-base mb-2 font-semibold">
-                            Take Before Working Photo
-                        </Text>
-                        {/* Photo capture area */}
-                        {!photoUri ? (
-                            <TouchableOpacity
-                                onPress={handleTakePhoto}
-                                className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary mb-4"
-                            >
-                                <Icon name="camera-outline" size={40} color="#666" />
-                                <Text className="text-text-primary font-semibold text-base mt-2">
-                                    Take Photo
+                {/* Only show OTP, verification, camera, reverse, and action buttons if NOT complete */}
+                {!isComplete && (
+                    <>
+                        {/* OTP Input Section - Only show if not already verified */}
+                        {!verified && showOtp && (
+                            <View className="mb-6">
+                                <Text className="text-text-primary text-base mb-3 text-center">
+                                    Enter 5-digit OTP sent to customer
                                 </Text>
-                                <Text className="text-text-tertiary text-sm text-center mt-1">
-                                    Tap to open camera
-                                </Text>
-                            </TouchableOpacity>
-                        ) : (
-                            <View className="relative mb-4">
-                                <Image
-                                    source={{ uri: photoUri }}
-                                    className="w-full h-48 rounded-xl bg-gray-200"
-                                    resizeMode="cover"
-                                />
+                                <View className="flex-row justify-center gap-2">
+                                    {otp.map((digit, index) => (
+                                        <TextInput
+                                            key={index}
+                                            ref={(el) => (inputRefs.current[index] = el)}
+                                            className="w-12 h-14 border border-ui-border rounded-xl text-center text-2xl font-bold text-text-primary bg-background-secondary"
+                                            keyboardType="number-pad"
+                                            maxLength={1}
+                                            value={digit}
+                                            onChangeText={(text) => handleOtpChange(text, index)}
+                                            onKeyPress={(e) => handleKeyPress(e, index)}
+                                            selectTextOnFocus
+                                            editable={!verifying && !verified}
+                                        />
+                                    ))}
+                                </View>
+
                                 <TouchableOpacity
-                                    onPress={handleDeletePhoto}
-                                    className="absolute top-2 right-2 bg-black/50 rounded-full p-1"
+                                    onPress={handleVerifyOtp}
+                                    disabled={verifying || verified}
+                                    className={`mt-4 py-3 rounded-xl items-center ${verifying ? 'bg-ui-secondary' : 'bg-primary-sage600'
+                                        }`}
                                 >
-                                    <Icon name="close-outline" size={24} color="#fff" />
+                                    {verifying ? (
+                                        <ActivityIndicator color="#fff" />
+                                    ) : (
+                                        <Text className="text-text-inverse font-semibold">Verify OTP</Text>
+                                    )}
                                 </TouchableOpacity>
                             </View>
                         )}
 
-                        {/* Send Button */}
-                        <TouchableOpacity
-                            onPress={handleSendPhoto}
-                            className={`py-4 rounded-xl items-center ${sendingPhoto || !photoUri ? 'bg-ui-disabled' : 'bg-ui-success'
-                                }`}
-                            disabled={sendingPhoto || !photoUri}
-                        >
-                            {sendingPhoto ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text className="text-text-inverse font-semibold text-base">
-                                    Upload Photo
+                        {/* Display Verified Customer Info when already verified */}
+                        {verified && (
+                            <View className="bg-ui-success/10 border border-ui-success rounded-xl p-3 mb-4">
+                                <View className="flex-row items-center">
+                                    <Icon name="checkmark-circle" size={20} color="#58A890" />
+                                    <Text className="text-ui-success font-bold ml-2">Job Verified</Text>
+                                </View>
+                                <Text className="text-text-primary text-sm mt-1">
+                                    {complaintData.customer_name} • {complaintData.customer_mobile}
                                 </Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
+                            </View>
+                        )}
+
+                        {/* Camera Section – appears after verification */}
+                        {verified && (
+                            <View className="mb-6">
+                                <Text className="text-text-primary text-base mb-2 font-semibold">
+                                    Take Before Working Photo
+                                </Text>
+                                {/* Photo capture area */}
+                                {!photoUri ? (
+                                    <TouchableOpacity
+                                        onPress={handleTakePhoto}
+                                        className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary mb-4"
+                                    >
+                                        <Icon name="camera-outline" size={40} color="#666" />
+                                        <Text className="text-text-primary font-semibold text-base mt-2">
+                                            Take Photo
+                                        </Text>
+                                        <Text className="text-text-tertiary text-sm text-center mt-1">
+                                            Tap to open camera
+                                        </Text>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View className="relative mb-4">
+                                        <Image
+                                            source={{ uri: photoUri }}
+                                            className="w-full h-48 rounded-xl bg-gray-200"
+                                            resizeMode="cover"
+                                        />
+                                        <TouchableOpacity
+                                            onPress={handleDeletePhoto}
+                                            className="absolute top-2 right-2 bg-black/50 rounded-full p-1"
+                                        >
+                                            <Icon name="close-outline" size={24} color="#fff" />
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+
+                                {/* Send Button */}
+                                <TouchableOpacity
+                                    onPress={handleSendPhoto}
+                                    className={`py-4 rounded-xl items-center ${sendingPhoto || !photoUri ? 'bg-ui-disabled' : 'bg-ui-success'
+                                        }`}
+                                    disabled={sendingPhoto || !photoUri}
+                                >
+                                    {sendingPhoto ? (
+                                        <ActivityIndicator color="#fff" />
+                                    ) : (
+                                        <Text className="text-text-inverse font-semibold text-base">
+                                            Upload Photo
+                                        </Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </>
                 )}
 
                 {/* Customer Details Card */}
@@ -812,7 +827,7 @@ const ComplaintDetail = () => {
                     <TouchableOpacity
                         onPress={handlePhoneCall}
                         className="flex-row items-center"
-                        disabled={verified}
+                        disabled={verified && !isComplete}
                     >
                         <Icon name="call-outline" size={18} color="#666" />
                         <Text className="text-[#666] text-base ml-2">{complaintData.customer_mobile}</Text>
@@ -850,68 +865,73 @@ const ComplaintDetail = () => {
                     )}
                 </View>
 
-                {/* Reverse Reason Input */}
-                {showReasonInput && (
-                    <View className="mb-4">
-                        <TextInput
-                            className="border border-ui-border rounded-xl p-3 bg-background-secondary text-text-primary"
-                            placeholder="Enter reason for reversal"
-                            placeholderTextColor="#999"
-                            value={reasonText}
-                            onChangeText={setReasonText}
-                            multiline
-                            numberOfLines={3}
-                        />
-                    </View>
-                )}
+                {/* Only show Reverse and Action Buttons if NOT complete */}
+                {!isComplete && (
+                    <>
+                        {/* Reverse Reason Input */}
+                        {showReasonInput && (
+                            <View className="mb-4">
+                                <TextInput
+                                    className="border border-ui-border rounded-xl p-3 bg-background-secondary text-text-primary"
+                                    placeholder="Enter reason for reversal"
+                                    placeholderTextColor="#999"
+                                    value={reasonText}
+                                    onChangeText={setReasonText}
+                                    multiline
+                                    numberOfLines={3}
+                                />
+                            </View>
+                        )}
 
-                {/* Action Buttons - Hide Start Job button if already verified */}
-                <View className="flex-row justify-between mt-2 mb-6">
-                    <TouchableOpacity
-                        onPress={handleReverse}
-                        disabled={submittingReverse}
-                        className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${submittingReverse
-                                ? 'bg-ui-disabled'
-                                : showReasonInput && reasonText.trim()
-                                    ? 'bg-ui-success'
-                                    : 'bg-ui-secondary/20'
-                            }`}
-                    >
-                        {submittingReverse ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <Text
-                                className={`font-semibold ${showReasonInput && reasonText.trim()
-                                        ? 'text-text-inverse'
-                                        : 'text-text-secondary'
+                        {/* Action Buttons */}
+                        <View className="flex-row justify-between mt-2 mb-6">
+                            <TouchableOpacity
+                                onPress={handleReverse}
+                                disabled={submittingReverse}
+                                className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${submittingReverse
+                                        ? 'bg-ui-disabled'
+                                        : showReasonInput && reasonText.trim()
+                                            ? 'bg-ui-success'
+                                            : 'bg-ui-secondary/20'
                                     }`}
                             >
-                                Reverse
-                            </Text>
-                        )}
-                    </TouchableOpacity>
+                                {submittingReverse ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text
+                                        className={`font-semibold ${showReasonInput && reasonText.trim()
+                                                ? 'text-text-inverse'
+                                                : 'text-text-secondary'
+                                            }`}
+                                    >
+                                        Reverse
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
 
-                    {/* Only show Start Job button if not already verified and job not started */}
-                    {!verified && !jobStarted && (
-                        <TouchableOpacity
-                            onPress={() => handleStartJob(complaintData)}
-                            disabled={verifying || sendingOTP}
-                            className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${verifying || sendingOTP ? 'bg-ui-disabled' : 'bg-primary-sage600'
-                                }`}
-                        >
-                            {sendingOTP ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text
-                                    className={`font-semibold ${verifying || sendingOTP ? 'text-text-disabled' : 'text-text-inverse'
+                            {/* Only show Start Job button if not already verified and job not started */}
+                            {!verified && !jobStarted && (
+                                <TouchableOpacity
+                                    onPress={() => handleStartJob(complaintData)}
+                                    disabled={verifying || sendingOTP}
+                                    className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${verifying || sendingOTP ? 'bg-ui-disabled' : 'bg-primary-sage600'
                                         }`}
                                 >
-                                    Start Job
-                                </Text>
+                                    {sendingOTP ? (
+                                        <ActivityIndicator color="#fff" />
+                                    ) : (
+                                        <Text
+                                            className={`font-semibold ${verifying || sendingOTP ? 'text-text-disabled' : 'text-text-inverse'
+                                                }`}
+                                        >
+                                            Start Job
+                                        </Text>
+                                    )}
+                                </TouchableOpacity>
                             )}
-                        </TouchableOpacity>
-                    )}
-                </View>
+                        </View>
+                    </>
+                )}
             </ScrollView>
         </SafeAreaView>
     );

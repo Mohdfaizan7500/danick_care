@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,30 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import { useAuth } from '../../../context/AuthContext';
 import DialogBox from '../../../components/DilaogBox';
+import { toast, Toaster } from 'sonner-native';
+import StatusMessage from '../../../components/StatusMessage';
+import { FetchPartForComplaints, AttechPartWithComplaints } from '../../../lib/api';
 
 const Billing = () => {
   const navigation = useNavigation();
-  const { importedPart, updateImportedPart } = useAuth();
+  const { importedPart, updateImportedPart, user, imagUrl } = useAuth();
   const [discount, setDiscount] = useState(0);
   const SERVICE_CHARGE = 500;
+  const route = useRoute();
+  const complaintData = route.params?.complaintData || null;
+  console.log('Complaint Data in Billing:', complaintData);
+
+  // State for parts
+  const [parts, setParts] = useState([]);
+  const [loadingParts, setLoadingParts] = useState(true);
+  const [error, setError] = useState(null);
+  const [removingPartId, setRemovingPartId] = useState(null);
+  const [discountError, setDiscountError] = useState('');
 
   // Dialog states
   const [removeDialogVisible, setRemoveDialogVisible] = useState(false);
@@ -28,25 +41,172 @@ const Billing = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Calculations
-  const totalPartsPrice = importedPart?.reduce((sum, part) => sum + part.price, 0) || 0;
-  const totalPayable = totalPartsPrice + SERVICE_CHARGE - discount;
-
-  const handleRemovePart = () => {
-    if (partToRemove && importedPart) {
-      const updatedParts = importedPart.filter((p) => p.id !== partToRemove);
-      updateImportedPart(updatedParts);
+  // Function to fetch parts
+  const fetchParts = async () => {
+    if (!complaintData) {
+      console.log('No complaint data available');
+      setLoadingParts(false);
+      return;
     }
-    setRemoveDialogVisible(false);
-    setPartToRemove(null);
+
+    try {
+      setLoadingParts(true);
+      setError(null);
+
+      const payload = {
+        technician_id: user?.id?.toString() || '1',
+        service_id: complaintData.service_id?.toString() || complaintData.id?.toString()
+      };
+
+      console.log('Fetching parts with payload:', payload);
+      const response = await FetchPartForComplaints(payload);
+      console.log('API Response:', response);
+
+      // Handle different response structures
+      let partsData = [];
+      if (response?.data?.data && Array.isArray(response.data.data)) {
+        partsData = response.data.data;
+      } else if (response?.data?.result && Array.isArray(response.data.result)) {
+        partsData = response.data.result;
+      } else if (Array.isArray(response?.data)) {
+        partsData = response.data;
+      }
+
+      // Filter parts where status is "1" (attached)
+      const attachedParts = partsData.filter(part => part.status === "1" || part.status === 1);
+      
+      // Map API response to component format
+      const formattedParts = attachedParts.map(part => ({
+        id: part.id?.toString(),
+        name: part.part_name || 'Part',
+        partNumber: part.id?.toString() || '',
+        price: parseFloat(part.part_price) || 0,
+        imageUrl: part.part_image
+          ? `${imagUrl}${part.part_image}`
+          : 'https://via.placeholder.com/150',
+        description: part.description || '',
+        transfer_by: part.transfer_by,
+        part_accept: part.part_accept,
+        status: part.status
+      }));
+
+      console.log('Formatted parts:', formattedParts);
+      setParts(formattedParts);
+      
+      // Update context with the attached parts
+      updateImportedPart(formattedParts);
+
+    } catch (err) {
+      console.error('Error fetching parts:', err);
+      setError(err.message || 'Failed to fetch parts');
+      setParts([]);
+      updateImportedPart([]);
+    } finally {
+      setLoadingParts(false);
+    }
+  };
+
+  // Fetch parts on component mount
+  useEffect(() => {
+    fetchParts();
+  }, [complaintData, user?.id]);
+
+  // Refresh parts when screen comes into focus (when returning from AddPartBilling)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Billing screen focused, refreshing parts...');
+      fetchParts();
+    }, [complaintData, user?.id])
+  );
+
+  // Calculations - use parts from state instead of importedPart
+  const totalPartsPrice = parts?.reduce((sum, part) => sum + part.price, 0) || 0;
+  const totalBeforeDiscount = totalPartsPrice + SERVICE_CHARGE;
+  const totalPayable = totalBeforeDiscount - discount;
+
+  // Handle discount change with validation
+  const handleDiscountChange = (text) => {
+    const value = parseFloat(text) || 0;
+    
+    // Check if discount exceeds total before discount
+    if (value > totalBeforeDiscount) {
+      setDiscountError(`Discount cannot exceed ₹${totalBeforeDiscount.toFixed(2)}`);
+      setDiscount(totalBeforeDiscount);
+    } else if (value < 0) {
+      setDiscountError('Discount cannot be negative');
+      setDiscount(0);
+    } else {
+      setDiscountError('');
+      setDiscount(value);
+    }
+  };
+
+  const handleRemovePart = async () => {
+    if (partToRemove && parts) {
+      setRemovingPartId(partToRemove);
+      
+      try {
+        // Call API to detach part with status "0"
+        const payload = {
+          part_id: partToRemove,
+          complaint_id: complaintData?.id?.toString(),
+          status: "0"
+        };
+        
+        console.log('Detaching part with payload:', payload);
+        const response = await AttechPartWithComplaints(payload);
+        console.log('Detach response:', response);
+        
+        if (response?.data?.success) {
+          // Update local state by removing the part
+          const updatedParts = parts.filter((p) => p.id !== partToRemove);
+          setParts(updatedParts);
+          updateImportedPart(updatedParts);
+          
+          // Reset discount if it exceeds new total
+          const newTotalBeforeDiscount = (totalPartsPrice - partToRemove.price) + SERVICE_CHARGE;
+          if (discount > newTotalBeforeDiscount) {
+            setDiscount(newTotalBeforeDiscount);
+            setDiscountError('');
+          }
+          
+          toast.custom(
+            <StatusMessage type='success' title="Part removed successfully" />,
+            { duration: 1500 }
+          );
+        } else {
+          throw new Error(response?.data?.message || 'Failed to remove part');
+        }
+      } catch (err) {
+        console.error('Error removing part:', err);
+        toast.custom(
+          <StatusMessage type='error' title={err.message || 'Failed to remove part'} />,
+          { duration: 2000 }
+        );
+      } finally {
+        setRemovingPartId(null);
+        setRemoveDialogVisible(false);
+        setPartToRemove(null);
+      }
+    } else {
+      setRemoveDialogVisible(false);
+      setPartToRemove(null);
+    }
   };
 
   // Submit flow: confirmation → loading → success → navigate back
   const handleConfirmSubmit = () => {
+    // Validate discount before submission
+    if (discount > totalBeforeDiscount) {
+      setDiscountError(`Discount cannot exceed ₹${totalBeforeDiscount.toFixed(2)}`);
+      return;
+    }
+    
     // Hide confirmation dialog
     setSubmitDialogVisible(false);
     // Show loading
     setIsSubmitting(true);
+    
     // Simulate API call for 1 second
     setTimeout(() => {
       setIsSubmitting(false);
@@ -64,7 +224,10 @@ const Billing = () => {
   const removeDialogFooter = (
     <View className="flex-row justify-end gap-2">
       <TouchableOpacity
-        onPress={() => setRemoveDialogVisible(false)}
+        onPress={() => {
+          setRemoveDialogVisible(false);
+          setPartToRemove(null);
+        }}
         className="px-4 py-2 rounded-lg bg-gray-200"
       >
         <Text className="text-gray-700 font-medium">Cancel</Text>
@@ -108,8 +271,36 @@ const Billing = () => {
     </View>
   );
 
+  // Render loading state
+  const renderLoading = () => (
+    <View className="flex-1 justify-center items-center py-10">
+      <ActivityIndicator size="large" color="#2E7D32" />
+      <Text className="text-text-secondary mt-4">Loading parts...</Text>
+    </View>
+  );
+
+  // Render error state
+  const renderError = () => (
+    <View className="flex-1 justify-center items-center py-10 px-4">
+      <Icon name="alert-circle-outline" size={50} color="#ef4444" />
+      <Text className="text-red-500 text-base mt-2 text-center">
+        {error || 'Failed to load parts'}
+      </Text>
+      <TouchableOpacity
+        onPress={fetchParts}
+        className="mt-4 bg-primary-sage600 px-6 py-2 rounded-lg"
+      >
+        <Text className="text-white font-semibold">Retry</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-white">
+      <View className="absolute inset-0 z-50 pointer-events-none">
+        <Toaster />
+      </View>
+      
       <Header
         title="Billing"
         titlePosition="left"
@@ -119,46 +310,59 @@ const Billing = () => {
         customRightIconComponent={
           <Icon name="bag-add-outline" size={24} color="#333" />
         }
-        onRightIconPress={() => navigation.navigate('AddPartBilling')}
+        onRightIconPress={() => navigation.navigate('AddPartBilling',{ complaintData })}
         containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
       />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-        {importedPart && importedPart.length > 0 ? (
-          importedPart.map((part) => (
-            <View
-              key={part.id}
-              className="flex-row items-center p-3 mx-4 mb-3 bg-gray-50 rounded-xl border border-gray-200"
-            >
-              {/* Part Image */}
-              <Image
-                source={{ uri: part.imageUrl }}
-                className="w-12 h-12 rounded-lg bg-gray-300"
-                resizeMode="cover"
-              />
-              {/* Details */}
-              <View className="flex-1 ml-3">
-                <Text className="text-text-primary font-semibold text-base">
-                  {part.name}
-                </Text>
-                <Text className="text-text-secondary text-sm">
-                  Part #: {part.partNumber}
-                </Text>
-                <Text className="text-primary-sage700 font-bold text-base mt-1">
-                  ₹{part.price.toFixed(2)}
-                </Text>
-              </View>
-              {/* Remove Icon */}
-              <TouchableOpacity
-                onPress={() => {
-                  setPartToRemove(part.id);
-                  setRemoveDialogVisible(true);
-                }}
+        {loadingParts ? (
+          renderLoading()
+        ) : error ? (
+          renderError()
+        ) : parts && parts.length > 0 ? (
+          parts.map((part) => {
+            const isRemoving = removingPartId === part.id;
+            return (
+              <View
+                key={part.id}
+                className="flex-row items-center p-3 mx-4 mb-3 bg-gray-50 rounded-xl border border-gray-200"
+                style={{ opacity: isRemoving ? 0.5 : 1 }}
               >
-                <Icon name="trash-outline" size={20} color="#ff4444" />
-              </TouchableOpacity>
-            </View>
-          ))
+                {/* Part Image */}
+                <Image
+                  source={{ uri: part.imageUrl }}
+                  className="w-12 h-12 rounded-lg bg-gray-300"
+                  resizeMode="cover"
+                  onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+                />
+                {/* Details */}
+                <View className="flex-1 ml-3">
+                  <Text className="text-text-primary font-semibold text-base">
+                    {part.name}
+                  </Text>
+                  <Text className="text-text-secondary text-sm">
+                    Part #: {part.partNumber}
+                  </Text>
+                  <Text className="text-primary-sage700 font-bold text-base mt-1">
+                    ₹{part.price.toFixed(2)}
+                  </Text>
+                </View>
+                {/* Remove Icon */}
+                {isRemoving ? (
+                  <ActivityIndicator size="small" color="#ff4444" />
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setPartToRemove(part.id);
+                      setRemoveDialogVisible(true);
+                    }}
+                  >
+                    <Icon name="trash-outline" size={20} color="#ff4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })
         ) : (
           <View className="items-center justify-center py-10">
             <Icon name="cart-outline" size={50} color="#ccc" />
@@ -184,28 +388,51 @@ const Billing = () => {
             <Text className="font-semibold">₹{SERVICE_CHARGE.toFixed(2)}</Text>
           </View>
 
+          {/* Subtotal */}
+          <View className="flex-row items-center justify-between mb-2 pt-2 border-t border-gray-200">
+            <Text className="font-medium text-md">Subtotal</Text>
+            <Text className="font-semibold">₹{totalBeforeDiscount.toFixed(2)}</Text>
+          </View>
+
           {/* Discount Input */}
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="font-medium text-md">Discount</Text>
-            <TextInput
-              className="border border-gray-300 rounded-lg px-3 py-1 w-24 text-right"
-              keyboardType="numeric"
-              value={discount.toString()}
-              onChangeText={(text) => setDiscount(parseFloat(text) || 0)}
-              placeholder="0"
-            />
+          <View className="mb-2">
+            <View className="flex-row items-center justify-between">
+              <Text className="font-medium text-md">Discount</Text>
+              <TextInput
+                className="border border-gray-300 rounded-lg px-3 py-1 w-24 text-right"
+                keyboardType="numeric"
+                value={discount.toString()}
+                onChangeText={handleDiscountChange}
+                placeholder="0"
+              />
+            </View>
+            {discountError ? (
+              <Text className="text-red-500 text-xs mt-1 text-right">
+                {discountError}
+              </Text>
+            ) : null}
           </View>
 
           {/* Total Payable */}
           <View className="flex-row items-center justify-between mt-2 pt-2 border-t border-gray-200">
             <Text className="font-medium text-md">Total Payable Amount</Text>
-            <Text className="font-bold text-lg">₹{totalPayable.toFixed(2)}</Text>
+            <Text className="font-bold text-lg text-primary-sage700">
+              ₹{totalPayable.toFixed(2)}
+            </Text>
           </View>
         </View>
 
         <TouchableOpacity
           className="bg-black py-5 rounded-xl w-full flex justify-center items-center"
-          onPress={() => setSubmitDialogVisible(true)}
+          onPress={() => {
+            if (discount > totalBeforeDiscount) {
+              setDiscountError(`Discount cannot exceed ₹${totalBeforeDiscount.toFixed(2)}`);
+              return;
+            }
+            setSubmitDialogVisible(true);
+          }}
+          disabled={parts.length === 0 || isSubmitting}
+          style={{ opacity: parts.length === 0 ? 0.5 : 1 }}
         >
           <Text className="text-white font-bold text-xl">Submit</Text>
         </TouchableOpacity>
@@ -214,7 +441,10 @@ const Billing = () => {
       {/* Remove Part Dialog */}
       <DialogBox
         visible={removeDialogVisible}
-        onClose={() => setRemoveDialogVisible(false)}
+        onClose={() => {
+          setRemoveDialogVisible(false);
+          setPartToRemove(null);
+        }}
         title="Remove Part"
         size="sm"
         footer={removeDialogFooter}
@@ -235,11 +465,10 @@ const Billing = () => {
         closeOnBackdropPress={true}
       >
         <View>
-          
-          <View className="mt-3  border-gray-200">
+          <View className="mt-3 border-gray-200">
             <Text className="text-text-primary text-base">
               Total Payable:{' '}
-              <Text className="font-bold">₹{totalPayable.toFixed(2)}</Text>
+              <Text className="font-bold text-primary-sage700">₹{totalPayable.toFixed(2)}</Text>
             </Text>
             <Text className="text-text-secondary text-sm mt-1">
               Proceed with billing?

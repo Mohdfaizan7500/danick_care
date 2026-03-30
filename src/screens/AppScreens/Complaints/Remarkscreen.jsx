@@ -8,7 +8,6 @@ import {
     Image,
     KeyboardAvoidingView,
     Platform,
-    Alert,
     ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +19,7 @@ import StatusMessage from '../../../components/StatusMessage';
 import { launchCamera } from 'react-native-image-picker';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import DialogBox from '../../../components/DilaogBox';
-import { UploadComplaintImage, deletComplaintImage, getComplaintImage } from '../../../lib/api';
+import { UploadComplaintImage, deletComplaintImage, getComplaintImage, UpdateRemark } from '../../../lib/api';
 
 const Remarkscreen = () => {
     const navigation = useNavigation();
@@ -37,6 +36,7 @@ const Remarkscreen = () => {
     const [deletingImage1, setDeletingImage1] = useState(false);
     const [deletingImage2, setDeletingImage2] = useState(false);
     const [loadingImages, setLoadingImages] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
     // State for Customer Type dropdown
     const [selectedCustomerType, setSelectedCustomerType] = useState('');
@@ -45,6 +45,10 @@ const Remarkscreen = () => {
 
     // State for remark
     const [remark, setRemark] = useState('');
+
+    // State for delete confirmation dialog
+    const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+    const [imageToDelete, setImageToDelete] = useState(null); // '1' or '2'
 
     // Compute if form is complete
     const isFormComplete =
@@ -61,6 +65,11 @@ const Remarkscreen = () => {
             fetchExistingImages();
         }
     }, [complaintData]);
+    
+    useEffect(() => {
+        setSelectedCustomerType('B');
+        setRemark('Gas refilled and thermostat replaced. Working properly.');
+    }, []);
 
     // Function to fetch existing images from server
     const fetchExistingImages = async () => {
@@ -333,15 +342,25 @@ const Remarkscreen = () => {
                     );
                 }
             } else if (permissionStatus === RESULTS.BLOCKED) {
-                Alert.alert(
-                    'Permission Blocked',
-                    'Camera permission is blocked. Please enable it in settings to take photos.',
-                    [{ text: 'OK' }]
+                toast.custom(
+                    <StatusMessage
+                        type="error"
+                        title="Camera permission is blocked. Please enable it in settings to take photos."
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
                 );
             }
         } catch (error) {
             console.log('Camera permission error:', error);
-            toast.error('Error accessing camera');
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title="Error accessing camera"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
         }
     };
 
@@ -358,7 +377,14 @@ const Remarkscreen = () => {
         launchCamera(options, async (response) => {
             if (response.didCancel) return;
             if (response.error) {
-                toast.error('Error taking photo');
+                toast.custom(
+                    <StatusMessage
+                        type="error"
+                        title="Error taking photo"
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
                 return;
             }
             if (response.assets && response.assets[0]) {
@@ -387,42 +413,47 @@ const Remarkscreen = () => {
         });
     };
 
-    // Delete image
-    const deleteImage = (imageNumber) => {
-        const imageId = imageNumber === 1 ? image1Id : image2Id;
-
-        Alert.alert(
-            "Delete Image",
-            "Are you sure you want to delete this image?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    onPress: async () => {
-                        // If image has an ID, delete from server first
-                        if (imageId) {
-                            const deleted = await deleteImageFromServer(imageId, imageNumber);
-                            if (!deleted) {
-                                return; // Stop if server deletion failed
-                            }
-                        }
-
-                        // Clear local state
-                        if (imageNumber === 1) {
-                            setImage1Uri(null);
-                            setImage1Id(null);
-                        } else {
-                            setImage2Uri(null);
-                            setImage2Id(null);
-                        }
-                    },
-                    style: "destructive"
-                }
-            ]
-        );
+    // Show delete confirmation dialog
+    const showDeleteConfirmation = (imageNumber) => {
+        setImageToDelete(imageNumber);
+        setDeleteDialogVisible(true);
     };
 
-    // Handle next button
+    // Handle delete confirmation
+    const handleDeleteConfirmed = async () => {
+        const imageNumber = imageToDelete;
+        const imageId = imageNumber === 1 ? image1Id : image2Id;
+
+        // Close dialog immediately
+        setDeleteDialogVisible(false);
+
+        // If image has an ID, delete from server first
+        if (imageId) {
+            const deleted = await deleteImageFromServer(imageId, imageNumber);
+            if (!deleted) {
+                return; // Stop if server deletion failed
+            }
+        }
+
+        // Clear local state
+        if (imageNumber === 1) {
+            setImage1Uri(null);
+            setImage1Id(null);
+        } else {
+            setImage2Uri(null);
+            setImage2Id(null);
+        }
+
+        setImageToDelete(null);
+    };
+
+    // Handle delete cancellation
+    const handleDeleteCancelled = () => {
+        setDeleteDialogVisible(false);
+        setImageToDelete(null);
+    };
+
+    // Handle next button with UpdateRemark API call
     const handleNext = async () => {
         // Check if both images are uploaded (have IDs)
         if (!image1Id || !image2Id) {
@@ -437,16 +468,58 @@ const Remarkscreen = () => {
             return;
         }
 
-        // Navigate to billing screen
-        navigation.replace('Billing', {
-            selectedCustomerType,
-            remark,
-            image1Id: image1Id,
-            image2Id: image2Id,
-            image1Uri: image1Uri,
-            image2Uri: image2Uri,
-            complaintData: complaintData
-        });
+        setSubmitting(true);
+
+        try {
+            // Prepare payload for UpdateRemark API
+            const payload = {
+                complaint_id: complaintData?.id?.toString(),
+                remark: remark,
+                review: selectedCustomerType
+            };
+
+            console.log('Updating remark with payload:', payload);
+            const response = await UpdateRemark(payload);
+            console.log('UpdateRemark response:', response);
+
+            if (response?.data?.success) {
+                toast.custom(
+                    <StatusMessage
+                        type="success"
+                        title={response.data.msg || "Remark updated successfully!"}
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 2000 }
+                );
+
+                // Navigate to billing screen after successful update
+                setTimeout(() => {
+                    navigation.navigate('Billing', {
+                        selectedCustomerType,
+                        remark,
+                        image1Id: image1Id,
+                        image2Id: image2Id,
+                        image1Uri: image1Uri,
+                        image2Uri: image2Uri,
+                        complaintData: complaintData
+                    });
+                }, 500);
+            } else {
+                throw new Error(response?.data?.msg || response?.data?.message || 'Failed to update remark');
+            }
+        } catch (error) {
+            console.error('Error updating remark:', error);
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title={error.message || 'Failed to update remark. Please try again.'}
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     // Dropdown footer buttons
@@ -457,6 +530,24 @@ const Remarkscreen = () => {
                 className="px-4 py-2 rounded-lg bg-gray-200"
             >
                 <Text className="text-gray-700 font-medium">Cancel</Text>
+            </TouchableOpacity>
+        </View>
+    );
+
+    // Delete confirmation dialog footer
+    const deleteDialogFooter = (
+        <View className="flex-row justify-end gap-2">
+            <TouchableOpacity
+                onPress={handleDeleteCancelled}
+                className="px-4 py-2 rounded-lg bg-gray-200"
+            >
+                <Text className="text-gray-700 font-medium">Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+                onPress={handleDeleteConfirmed}
+                className="px-4 py-2 rounded-lg bg-red-500"
+            >
+                <Text className="text-white font-medium">Delete</Text>
             </TouchableOpacity>
         </View>
     );
@@ -474,11 +565,9 @@ const Remarkscreen = () => {
                 showBackButton={true}
                 containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
                 rightIconContainerStyle="w-10 h-10 rounded-full b-white justify-center items-center"
-                // 👇 Add this
                 showRightIcon={true}
-
                 customRightIconComponent={
-                    <Text style={{ color: '#007AFF',width:150 , fontWeight: '600' }}>
+                    <Text style={{ color: '#007AFF', width: 150, fontWeight: '600' }}>
                         Convert to AMC
                     </Text>
                 }
@@ -554,7 +643,7 @@ const Remarkscreen = () => {
                                         resizeMode="cover"
                                     />
                                     <TouchableOpacity
-                                        onPress={() => deleteImage(1)}
+                                        onPress={() => showDeleteConfirmation(1)}
                                         disabled={deletingImage1}
                                         className="absolute top-2 right-2 bg-white/80 rounded-full p-1"
                                     >
@@ -605,7 +694,7 @@ const Remarkscreen = () => {
                                         resizeMode="cover"
                                     />
                                     <TouchableOpacity
-                                        onPress={() => deleteImage(2)}
+                                        onPress={() => showDeleteConfirmation(2)}
                                         disabled={deletingImage2}
                                         className="absolute top-2 right-2 bg-white/80 rounded-full p-1"
                                     >
@@ -649,14 +738,15 @@ const Remarkscreen = () => {
                     {/* Next Button - enabled only when all fields are filled and images uploaded */}
                     <TouchableOpacity
                         onPress={handleNext}
-                        disabled={!isFormComplete || uploadingImage1 || uploadingImage2 || deletingImage1 || deletingImage2 || loadingImages}
-                        className={`py-4 rounded-xl items-center mb-8 ${isFormComplete && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2 && !loadingImages ? 'bg-black' : 'bg-gray-400'
+                        disabled={!isFormComplete || uploadingImage1 || uploadingImage2 || deletingImage1 || deletingImage2 || loadingImages || submitting}
+                        className={`py-4 rounded-xl items-center mb-8 ${isFormComplete && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2 && !loadingImages && !submitting ? 'bg-black' : 'bg-gray-400'
                             }`}
                     >
                         <Text className="text-white font-semibold text-base">
-                            {loadingImages ? 'Loading Images...' :
-                                uploadingImage1 || uploadingImage2 ? 'Uploading Images...' :
-                                    deletingImage1 || deletingImage2 ? 'Deleting Image...' : 'Next'}
+                            {submitting ? 'Submitting...' :
+                                loadingImages ? 'Loading Images...' :
+                                    uploadingImage1 || uploadingImage2 ? 'Uploading Images...' :
+                                        deletingImage1 || deletingImage2 ? 'Deleting Image...' : 'Next'}
                         </Text>
                     </TouchableOpacity>
                 </ScrollView>
@@ -692,6 +782,25 @@ const Remarkscreen = () => {
                             </Text>
                         </TouchableOpacity>
                     ))}
+                </View>
+            </DialogBox>
+
+            {/* Delete Confirmation Dialog */}
+            <DialogBox
+                visible={deleteDialogVisible}
+                onClose={handleDeleteCancelled}
+                title="Delete Image"
+                size="sm"
+                footer={deleteDialogFooter}
+                closeOnBackdropPress={true}
+            >
+                <View className="py-4">
+                    <Text className="text-text-primary text-center">
+                        Are you sure you want to delete this image?
+                    </Text>
+                    <Text className="text-text-secondary text-center text-sm mt-2">
+                        This action cannot be undone.
+                    </Text>
                 </View>
             </DialogBox>
         </SafeAreaView>

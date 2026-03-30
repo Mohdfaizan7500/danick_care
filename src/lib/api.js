@@ -75,7 +75,7 @@ export const loginApi = async (username, password) => {
             error: errorMessage,
             status: error.response?.status,
         };
-    }
+    }                  
 };
 
 
@@ -382,6 +382,58 @@ export const getDeshBoardCount = async (payload) => {
         return response;
     } catch (error) {
         console.error('API error in getDeshBoardCount:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const fetchPartsForComplaint = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/FetchPartForComplaints', payload);
+        console.log('fetchPartsForComplaint api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in fetchPartsForComplaint:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const AttechPartWithComplaints  = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/AttechPartWithComplaints', payload);
+        console.log('AttechPartWithComplaints api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in AttechPartWithComplaints:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const FetchPartForComplaints  = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/FetchPartForComplaints', payload);
+        console.log('FetchPartForComplaints api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in FetchPartForComplaints:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const UpdateRemark  = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/UpdateRemark', payload);
+        console.log('UpdateRemark api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in UpdateRemark:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
