@@ -80,7 +80,7 @@ const AddPartBilling = () => {
                     : 'https://via.placeholder.com/150',
                 description: part.description || '',
                 transfer_by: part.transfer_by,
-                part_accept: part.part_accept,
+                part_accept: part.part_accept, // Keep as string or null
                 technician_name: part.technician_name,
                 status: part.status // '0' = not attached, '1' = attached
             }));
@@ -138,6 +138,20 @@ const AddPartBilling = () => {
 
     // Handle part attach/detach
     const handlePartToggle = async (part) => {
+        // Check if part_accept is "0" (already assigned)
+        if (part.part_accept === "0") {
+            toast.custom(
+                <StatusMessage 
+                    type='error' 
+                    title="Part Already Assigned" 
+                    message={`${part.name} is already assigned to ${part.technician_name || 'another technician'}. Please cancel it before use.`}
+                />,
+                { duration: 4000 }
+            );
+            return; // Stop execution - don't call API
+        }
+
+        // If part_accept is null, proceed normally
         const isCurrentlyAttached = selectedParts.includes(part.id);
         const newStatus = isCurrentlyAttached ? "0" : "1";
         
@@ -199,9 +213,16 @@ const AddPartBilling = () => {
     const renderPartItem = ({ item }) => {
         const isSelected = selectedParts.includes(item.id);
         const isAttaching = attachingPartId === item.id;
+        const isAssigned = item.part_accept === "0"; // Part is already assigned to technician
+        
+        // Calculate opacity - lower opacity for assigned parts
+        const cardOpacity = isAssigned ? 0.6 : 1;
+        
         const cardClasses = `flex-row items-center p-3 mb-4 rounded-2xl border ${
             isSelected
                 ? 'bg-green-50 border-primary-sage600'
+                : isAssigned
+                ? 'bg-gray-100 border-gray-300'
                 : 'bg-white border-ui-border'
         }`;
 
@@ -209,7 +230,8 @@ const AddPartBilling = () => {
             <TouchableOpacity 
                 onPress={() => handlePartToggle(item)} 
                 className={cardClasses}
-                disabled={isAttaching}
+                disabled={isAttaching || isAssigned} // Disable if part is already assigned
+                style={{ opacity: cardOpacity }}
             >
                 <Image
                     source={{ uri: item.imageUrl }}
@@ -218,20 +240,29 @@ const AddPartBilling = () => {
                     onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
                 />
                 <View className="flex-1 ml-3">
-                    <Text className="text-text-primary font-semibold text-base">
+                    <Text className={`font-semibold text-base ${isAssigned ? 'text-gray-500' : 'text-text-primary'}`}>
                         {item.name}
                     </Text>
-                    <Text className="text-text-secondary text-sm">
+                    <Text className={`text-sm ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
                         Part #: {item.partNumber}
                     </Text>
                     {item.description && (
-                        <Text className="text-text-tertiary text-xs mt-1" numberOfLines={2}>
+                        <Text className={`text-xs mt-1 ${isAssigned ? 'text-gray-400' : 'text-text-tertiary'}`} numberOfLines={2}>
                             {item.description}
                         </Text>
                     )}
-                    <Text className="text-primary-sage700 font-bold text-base mt-1">
+                    <Text className={`font-bold text-base mt-1 ${isAssigned ? 'text-gray-500' : 'text-primary-sage700'}`}>
                         ₹{item.price.toFixed(2)}
                     </Text>
+                    
+                    {/* Show assigned badge if part is already assigned */}
+                    {isAssigned && (
+                        <View className="bg-red-100 px-2 py-1 rounded-md mt-2 self-start">
+                            <Text className="text-red-600 text-xs font-medium">
+                                Assigned to {item.technician_name || 'Technician'}
+                            </Text>
+                        </View>
+                    )}
                 </View>
                 {isAttaching ? (
                     <ActivityIndicator size="small" color="#2E7D32" />
@@ -239,7 +270,7 @@ const AddPartBilling = () => {
                     <Icon
                         name={isSelected ? 'checkmark-circle' : 'add-circle-outline'}
                         size={28}
-                        color={isSelected ? '#2E7D32' : '#666'}
+                        color={isAssigned ? '#ccc' : (isSelected ? '#2E7D32' : '#666')}
                     />
                 )}
             </TouchableOpacity>

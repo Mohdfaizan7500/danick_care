@@ -429,11 +429,37 @@ export const FetchPartForComplaints  = async (payload) => {
 export const RecomplaitAttechPart  = async (payload) => {
     console.log('payload', payload)
     try {
-        const response = await apiClient.post('TechnicianAPI/RecomplaitAttachedPart', payload);
+        const response = await apiClient.post('TechnicianAPI/FetchRecomplaintAttachedPart', payload);
         console.log('RecomplaitAttechPart api  response:', response);
         return response;
     } catch (error) {
         console.error('API error in RecomplaitAttechPart:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const FetchPartsForReplaced  = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/FetchPartsForReplaced', payload);
+        console.log('FetchPartsForReplaced api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in FetchPartsForReplaced:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const ReplacedPartManagement  = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/ReplacedPartManagementt', payload);
+        console.log('ReplacedPartManagement api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in ReplacedPartManagement:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
