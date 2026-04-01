@@ -259,7 +259,7 @@ const AddPartBilling = () => {
                     {isAssigned && (
                         <View className="bg-red-100 px-2 py-1 rounded-md mt-2 self-start">
                             <Text className="text-red-600 text-xs font-medium">
-                                Assigned to {item.technician_name || 'Technician'}
+                                Transfered to {item.technician_name || 'Technician'}
                             </Text>
                         </View>
                     )}

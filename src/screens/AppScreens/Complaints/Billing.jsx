@@ -57,6 +57,10 @@ const Billing = () => {
   const [selectedReplacePart, setSelectedReplacePart] = useState(null);
   const [replacingPart, setReplacingPart] = useState(false);
 
+  // New state for replacement part removal confirmation
+  const [removeReplacementDialogVisible, setRemoveReplacementDialogVisible] = useState(false);
+  const [replacementPartToRemove, setReplacementPartToRemove] = useState(null);
+
   // Check if it's a recomplaint
   const isRecomplaint = complaintData?.recomplaint === 'Yes';
 
@@ -93,6 +97,7 @@ const Billing = () => {
       if (partsData.length > 0) {
         const formattedParts = partsData.map(part => ({
           part_accept: part?.part_accept,
+          old_part_id: part?.old_part_id || null, // Capture old_part_id
           technician_name: part?.technician_name || '',
           id: part.id?.toString(),
           name: part.part_name || 'Part',
@@ -103,7 +108,8 @@ const Billing = () => {
             : 'https://via.placeholder.com/150',
           description: part.description || '',
           transfer_by: part.transfer_by || 'market',
-          status: part.status || '0'
+          status: part.status || '0',
+          replace_part: part.replace_part || 'No'
         }));
 
         setAvailableParts(formattedParts);
@@ -142,11 +148,12 @@ const Billing = () => {
 
     try {
       if (isRecomplaint && complaintData?.oldcomp_id) {
-        // For recomplaint, use ReplacedPartManagement API
+        // For recomplaint, use the new payload structure
         const payload = {
           complaint_id: complaintData.oldcomp_id?.toString(),
-          part_id: selectedReplacePart.id,
-          status: "1"
+          old_part_id: partToReplace.id?.toString(),
+          new_part_id: selectedReplacePart.id?.toString(),
+          status: "0"
         };
 
         console.log('Calling ReplacedPartManagement with payload:', payload);
@@ -160,6 +167,7 @@ const Billing = () => {
               ? {
                 ...selectedReplacePart,
                 id: selectedReplacePart.id,
+                old_part_id: selectedReplacePart.old_part_id || null,
                 name: selectedReplacePart.name,
                 partNumber: selectedReplacePart.partNumber,
                 price: selectedReplacePart.price,
@@ -167,7 +175,8 @@ const Billing = () => {
                 description: selectedReplacePart.description,
                 transfer_by: selectedReplacePart.transfer_by,
                 status: "1",
-                part_accept: null
+                part_accept: null,
+                replace_part: selectedReplacePart.replace_part || 'No'
               }
               : part
           );
@@ -200,36 +209,26 @@ const Billing = () => {
           throw new Error(response?.data?.message || 'Failed to replace part');
         }
       } else {
-        // For regular complaints, use the existing AttechPartWithComplaints API
-        // First, remove the old part
-        const removePayload = {
-          part_id: partToReplace.id,
+        // For regular complaints, use the new payload structure with AttechPartWithComplaints
+        const payload = {
           complaint_id: complaintData?.id?.toString(),
+          old_part_id: partToReplace.id?.toString(),
+          new_part_id: selectedReplacePart.id?.toString(),
           status: "0"
         };
 
-        console.log('Removing old part:', removePayload);
-        const removeResponse = await AttechPartWithComplaints(removePayload);
-        console.log('Remove response:', removeResponse);
+        console.log('Removing and adding new part:', payload);
+        const response = await AttechPartWithComplaints(payload);
+        console.log('Replace part response:', response);
 
-        // Then, add the new part
-        const addPayload = {
-          part_id: selectedReplacePart.id,
-          complaint_id: complaintData?.id?.toString(),
-          status: "1"
-        };
-
-        console.log('Adding new part:', addPayload);
-        const addResponse = await AttechPartWithComplaints(addPayload);
-        console.log('Add response:', addResponse);
-
-        if (addResponse?.data?.success) {
+        if (response?.data?.success) {
           // Update local state
           const updatedParts = parts.map(part =>
             part.id === partToReplace.id
               ? {
                 ...selectedReplacePart,
                 id: selectedReplacePart.id,
+                old_part_id: selectedReplacePart.old_part_id || null,
                 name: selectedReplacePart.name,
                 partNumber: selectedReplacePart.partNumber,
                 price: selectedReplacePart.price,
@@ -237,7 +236,8 @@ const Billing = () => {
                 description: selectedReplacePart.description,
                 transfer_by: selectedReplacePart.transfer_by,
                 status: "1",
-                part_accept: null
+                part_accept: null,
+                replace_part: selectedReplacePart.replace_part || 'No'
               }
               : part
           );
@@ -264,7 +264,7 @@ const Billing = () => {
           setSelectedReplacePart(null);
           setAvailableParts([]);
         } else {
-          throw new Error(addResponse?.data?.message || 'Failed to replace part');
+          throw new Error(response?.data?.message || 'Failed to replace part');
         }
       }
     } catch (err) {
@@ -278,6 +278,60 @@ const Billing = () => {
     }
   };
 
+  // Function to remove a replacement part
+  const handleRemoveReplacementPart = async () => {
+    if (!replacementPartToRemove) return;
+
+    try {
+      const payload = {
+        // use old conplaint id here 
+        complaint_id: complaintData?.oldcomp_id?.toString(),
+        old_part_id: replacementPartToRemove?.old_part_id?.toString(), // This should now be properly set
+        new_part_id:  replacementPartToRemove.id?.toString(),
+        status: "1"
+      };
+      console.log('Payload for removing replacement part:', payload);
+
+      const response = await ReplacedPartManagement(payload); // Use AttechPartWithComplaints instead of RecomplaitAttechPart
+      console.log('Remove replacement part response:', response);
+
+      if (response?.data?.success) {
+        // Remove the part from the list
+        const updatedParts = parts.filter((p) => p.id !== replacementPartToRemove.id);
+        setParts(updatedParts);
+        updateImportedPart(updatedParts);
+
+        // Update total and discount
+        const newTotalPartsPrice = updatedParts.reduce((sum, p) => sum + p.price, 0);
+        const newTotalBeforeDiscount = newTotalPartsPrice + SERVICE_CHARGE;
+        if (discount > newTotalBeforeDiscount) {
+          setDiscount(newTotalBeforeDiscount);
+          setDiscountError('');
+        }
+
+        toast.custom(
+          <StatusMessage type='success' title="Replacement part removed successfully" />,
+          { duration: 1500 }
+        );
+
+        // Refresh parts list
+        await fetchParts();
+      } else {
+        throw new Error(response?.data?.message || 'Failed to remove replacement part');
+      }
+    } catch (err) {
+      console.error('Error removing replacement part:', err);
+      toast.custom(
+        <StatusMessage type='error' title={err.message || 'Failed to remove replacement part'} />,
+        { duration: 2000 }
+      );
+    } finally {
+      setRemoveReplacementDialogVisible(false);
+      setReplacementPartToRemove(null);
+    }
+  };
+
+  // Function to fetch parts based on complaint type
   // Function to fetch parts based on complaint type
   const fetchParts = async () => {
     if (!complaintData) {
@@ -347,7 +401,9 @@ const Billing = () => {
         transfer_by: part.transfer_by,
         part_accept: part.part_accept,
         technician_name: part.technician_name,
-        status: part.status
+        status: part.status,
+        replace_part: part.replace_part || 'No',
+        old_part_id: part.old_part_id || null // Capture the old_part_id
       }));
 
       console.log('Formatted parts:', formattedParts);
@@ -363,6 +419,7 @@ const Billing = () => {
       setLoadingParts(false);
     }
   };
+
 
   useEffect(() => {
     fetchParts();
@@ -400,8 +457,8 @@ const Billing = () => {
 
       try {
         const payload = {
-          part_id: partToRemove,
           complaint_id: complaintData?.id?.toString(),
+          old_part_id: partToRemove,
           status: "0"
         };
 
@@ -446,6 +503,14 @@ const Billing = () => {
   };
 
   const handlePartClick = (part) => {
+    // Check if part is a replacement part (replace_part === "Yes")
+    if (part.replace_part === "Yes") {
+      // Show confirmation dialog to remove the replacement part
+      setReplacementPartToRemove(part);
+      setRemoveReplacementDialogVisible(true);
+      return;
+    }
+
     if (part.part_accept === "0") {
       const technicianName = part?.technician_name || 'the technician';
       toast.custom(
@@ -497,6 +562,18 @@ const Billing = () => {
   const replacePartClicked = async (part) => {
     console.log('Replace part clicked:', part);
 
+    // Check if the selected replacement part itself is a replacement part
+    if (part.replace_part === "Yes") {
+      toast.custom(
+        <StatusMessage
+          type='info'
+          title={`This part is already a replacement part and cannot be used for replacement again.`}
+        />,
+        { duration: 3000 }
+      );
+      return;
+    }
+
     if (part.part_accept === "0") {
       toast.custom(
         <StatusMessage
@@ -512,8 +589,9 @@ const Billing = () => {
     if (isRecomplaint && complaintData?.oldcomp_id) {
       const payload = {
         complaint_id: complaintData.oldcomp_id?.toString(),
-        part_id: part.id,
-        status: "1"
+        old_part_id: partToReplace?.id?.toString(),
+        new_part_id: part.id?.toString(),
+        status: "0"
       };
 
       console.log('Calling ReplacedPartManagement with payload:', payload);
@@ -529,6 +607,7 @@ const Billing = () => {
               ? {
                 ...part,
                 id: part.id,
+                old_part_id: part.old_part_id || null,
                 name: part.name,
                 partNumber: part.partNumber,
                 price: part.price,
@@ -536,7 +615,8 @@ const Billing = () => {
                 description: part.description,
                 transfer_by: part.transfer_by,
                 status: "1",
-                part_accept: null
+                part_accept: null,
+                replace_part: part.replace_part || 'No'
               }
               : p
           );
@@ -607,6 +687,16 @@ const Billing = () => {
   };
 
   const getStatusBadge = (part) => {
+    if (part.replace_part === "Yes") {
+      return (
+        <View className="px-2 py-0.5 rounded-full bg-orange-200">
+          <Text className="text-xs font-medium text-orange-700">
+            Replacement Part
+          </Text>
+        </View>
+      );
+    }
+
     if (part.part_accept === "0") {
       return (
         <View className="px-2 py-0.5 rounded-full bg-gray-300">
@@ -623,10 +713,10 @@ const Billing = () => {
     <TouchableOpacity
       onPress={() => replacePartClicked(item)}
       className={`flex-row items-center p-3 mb-2 rounded-xl border border-gray-300 ${selectedReplacePart?.id === item.id
-          ? 'ring-2 ring-blue-500'
-          : ''
-        } ${item.part_accept === "0" ? 'opacity-50 bg-gray-100' : ''}`}
-      disabled={item.part_accept === "0"}
+        ? 'ring-2 ring-blue-500'
+        : ''
+        } ${item.part_accept === "0" ? 'opacity-50 bg-gray-100' : ''} ${item.replace_part === "Yes" ? 'opacity-50 bg-gray-100' : ''}`}
+      disabled={item.part_accept === "0" || item.replace_part === "Yes"}
     >
       <Image
         source={{ uri: item.imageUrl }}
@@ -661,6 +751,11 @@ const Billing = () => {
             </Text>
           )}
         </View>
+        {item.replace_part === "Yes" && (
+          <Text className="text-orange-600 text-xs mt-1">
+            This is a replacement part
+          </Text>
+        )}
         {item.part_accept === "0" && item.technician_name ? (
           <Text className="text-red-500 text-xs mt-1">
             Transferred to: {item.technician_name}
@@ -817,6 +912,27 @@ const Billing = () => {
     </View>
   );
 
+  // Footer for remove replacement dialog
+  const removeReplacementDialogFooter = (
+    <View className="flex-row justify-end gap-2">
+      <TouchableOpacity
+        onPress={() => {
+          setRemoveReplacementDialogVisible(false);
+          setReplacementPartToRemove(null);
+        }}
+        className="px-4 py-2 rounded-lg bg-gray-200"
+      >
+        <Text className="text-gray-700 font-medium">Cancel</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={handleRemoveReplacementPart}
+        className="px-4 py-2 rounded-lg bg-red-500"
+      >
+        <Text className="text-white font-medium">Confirm</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   // Footer for replace dialog
   const replaceDialogFooter = (
     <View className="flex-row justify-end gap-2">
@@ -903,6 +1019,7 @@ const Billing = () => {
           parts.map((part) => {
             const isRemoving = removingPartId === part.id;
             const isPartTransferred = part.part_accept === "0";
+            const isReplacementPart = part.replace_part === "Yes";
 
             return (
               <View
@@ -936,21 +1053,13 @@ const Billing = () => {
                   <Text className="text-text-secondary text-sm">
                     Part #: {part.partNumber}
                   </Text>
-                  {part.part_accept === "0" && part.technician_name ? (
-                    <Text className="text-gray-500 text-xs mt-1">
-                      Transferred to: {part.technician_name}
-                    </Text>
-                  ) : part.part_accept === null ? (
-                    <Text className="text-green-600 text-xs mt-1">
-                      Available for use
-                    </Text>
-                  ) : null}
+
                   <Text className={`font-bold text-base mt-1 ${isPartTransferred ? 'text-gray-400' : 'text-primary-sage700'}`}>
                     ₹{part.price.toFixed(2)}
                   </Text>
                 </TouchableOpacity>
                 <View className="flex-row">
-                  {!isRecomplaint && !isRemoving && !isPartTransferred && (
+                  {!isRecomplaint && !isRemoving && !isPartTransferred && !isReplacementPart && (
                     <TouchableOpacity
                       onPress={() => openReplaceDialog(part)}
                       className="mr-3"
@@ -958,7 +1067,7 @@ const Billing = () => {
                       <Icon name="sync-outline" size={20} color="#3b82f6" />
                     </TouchableOpacity>
                   )}
-                  {!isRecomplaint && !isRemoving && !isPartTransferred && (
+                  {!isRecomplaint && !isRemoving && !isPartTransferred && !isReplacementPart && (
                     <TouchableOpacity
                       onPress={() => {
                         setPartToRemove(part.id);
@@ -966,6 +1075,16 @@ const Billing = () => {
                       }}
                     >
                       <Icon name="trash-outline" size={20} color="#ff4444" />
+                    </TouchableOpacity>
+                  )}
+                  {isReplacementPart && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setReplacementPartToRemove(part);
+                        setRemoveReplacementDialogVisible(true);
+                      }}
+                    >
+                      <Icon name="close-circle-outline" size={24} color="#ff4444" />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -1060,6 +1179,26 @@ const Billing = () => {
       >
         <Text className="text-text-primary text-base">
           Are you sure you want to remove this part from the bill?
+        </Text>
+      </CustomModal>
+
+      {/* Remove Replacement Part Modal */}
+      <CustomModal
+        visible={removeReplacementDialogVisible}
+        onClose={() => {
+          setRemoveReplacementDialogVisible(false);
+          setReplacementPartToRemove(null);
+        }}
+        title="Remove Replacement Part"
+        size="sm"
+        footer={removeReplacementDialogFooter}
+        overlayColor="bg-black/60"
+        position="center"
+        closeOnBackdropPress={true}
+        showCloseIcon={true}
+      >
+        <Text className="text-text-primary text-base">
+          Do you want to remove this replacement part?
         </Text>
       </CustomModal>
 

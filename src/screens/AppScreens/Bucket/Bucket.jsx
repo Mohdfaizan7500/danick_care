@@ -434,6 +434,29 @@ const Bucket = () => {
     const isLoading = loadingItemId === item.id;
     const isTransferredTab = selectedTab === 'Transferred';
     const isReceivedTab = selectedTab === 'Received';
+
+    // Handle QR code icon click
+    const handleQrCodePress = () => {
+      if (item.qr_code) {
+        toast.custom(
+          <StatusMessage
+            type='info'
+            title={'QR Code Copied!'}
+            message={`QR Code: ${item.qr_code}`}
+          />
+
+        ),{duration: 100};
+      } else {
+        toast.custom(
+          <StatusMessage
+            type='warning'
+            title={'Information'}
+            message={'No QR code available for this item'}
+          />
+        ),{duration: 100};
+      }
+    };
+
     if (item?.part_accept == 0) {
       console.log("item:", item)
     }
@@ -456,8 +479,21 @@ const Bucket = () => {
               </View>
             </TouchableOpacity>
             <View className="ml-4 flex-1">
-              <Text className="text-lg font-bold text-text-primary">{item.name}</Text>
+              <View className="flex-row items-center">
+                <Text className="text-lg font-bold text-text-primary flex-1">{item.name}</Text>
+
+              </View>
               <Text className="text-sm text-text-tertiary">{item.parentName}</Text>
+              {/* QR Code Icon */}
+              <View className="flex-row items-center ">
+                <Text className='font-normal text-xs text-gray-600'>QR code : {item.qr_code || 'N/A'}</Text>
+                <TouchableOpacity
+                  onPress={handleQrCodePress}
+                  className="ml-2 p-1"
+                >
+                  <Icon name="copy-outline" size={16} color="#58A890" />
+                </TouchableOpacity>
+              </View>
               {item.description ? (
                 <Text className="text-xs w-40 text-text-tertiary mt-1" numberOfLines={2}>
                   {item.description}
@@ -465,14 +501,14 @@ const Bucket = () => {
               ) : null}
               {item.part_accept == 0 && (
                 <Text className="text-xs text-ui-info mt-1">
-                  {item.part_accept == 0 ? `Transferd To: ${item.technician_name}` : `Received From: ${item.technician_name}`}
+                  {item.part_accept == 0 ? `Transferred To: ${item.technician_name}` : `Received From: ${item.technician_name}`}
                 </Text>
               )}
             </View>
           </View>
 
           {/* Right side: price */}
-          <View className='flex-col  items-end'>
+          <View className='flex-col items-end'>
             <Text className="text-xl font-extrabold text-ui-success">
               ₹{item.price}
             </Text>
@@ -497,8 +533,6 @@ const Bucket = () => {
             )}
           </View>
         </TouchableOpacity>
-
-
 
         {isReceivedTab && (
           <View className="mt-3 flex-row justify-end space-x-2 gap-4">

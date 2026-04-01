@@ -10,42 +10,33 @@ import {
   Modal,
   Alert,
   Platform,
-  PlatformColor,
+  ActivityIndicator,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { toast } from 'sonner-native';
+import { toast, Toaster } from 'sonner-native';
 import NetInfo from '@react-native-community/netinfo';
 import Header from '../../../components/Header';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import NoInternet from '../../NoInternet';
-
-// Dummy QR code suggestions
-const DUMMY_QR_CODES = [
-  { id: '1', code: 'QR123456' },
-  { id: '2', code: 'QR789012' },
-  { id: '3', code: 'QR345678' },
-];
-
-// Dummy product data (in real app, fetched based on QR code)
-const DUMMY_PRODUCT = {
-  imageUrl: 'https://instamart-media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,h_600/NI_CATALOG/IMAGES/ciw/2026/2/20/827c49ac-3edc-43cb-90cb-59be138d6971_SD7HHGTXF2_MN_19022026.png',
-  name: 'LED Bulb 12W',
-  partNumber: 'LB-12W-B22',
-  price: 249,
-};
+import { GetPartDetailQRCode } from '../../../lib/api';
+import { useAuth } from '../../../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import StatusMessage from '../../../components/StatusMessage';
 
 const Scan = () => {
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState('A11069');
   const [searchedProduct, setSearchedProduct] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
-  const [isConnected, setIsConnected] = useState(true); // Internet connection state
+  const [isConnected, setIsConnected] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const { imagUrl } = useAuth();
+  const navigation = useNavigation();
 
   const device = useCameraDevice('back');
-  const device_os = PlatformColor.OS;
-  console.log('device:', device_os)
 
   // Monitor internet connection
   useEffect(() => {
@@ -75,6 +66,60 @@ const Scan = () => {
     }
   };
 
+  // Function to fetch part details from API
+  // Function to fetch part details from API
+  const fetchPartDetails = async (qrCode) => {
+    setLoading(true);
+    try {
+      const payload = {
+        QRCode: qrCode
+      };
+      const response = await GetPartDetailQRCode(payload);
+      console.log('API Response:', response);
+
+      if (response?.data?.success && response?.data?.data?.length > 0) {
+        const productData = response.data.data[0];
+        console.log('Product Image:', `${imagUrl}${productData.part_image}`);
+        setSearchedProduct({
+          id: productData.id,
+          imageUrl: productData.part_image
+            ? `${imagUrl}${productData.part_image}`
+            : null,
+          name: productData.part_name,
+          partNumber: productData.id?.toString() || '',
+          price: productData.part_price,
+          description: productData.description,
+          transferBy: productData.transfer_by,
+          partAccept: productData.part_accept,
+          transTech: productData.trans_tech,
+          technicianName: productData.technician_name,
+          type: productData.type,
+          complaintId: productData.complaint_id, // Adds complaint ID
+        });
+        console.log('Fetched Product Type:', productData.type);
+        console.log('Complaint ID:', productData.complaint_id);
+
+        toast.custom(
+          <StatusMessage type='success' title={`Found item for code: ${qrCode}`} />,
+          { duration: 1000 }
+        );
+      } else {
+        toast.custom(
+          <StatusMessage type='error' title={`${response?.data?.msg || 'No product found for this QR code'}`} />,
+          { duration: 1000 }
+        );
+
+        setSearchedProduct(null);
+      }
+    } catch (error) {
+      console.error('Error fetching part details:', error);
+      toast.error('Failed to fetch product details');
+      setSearchedProduct(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Code scanner handler
   const codeScanner = useCodeScanner({
     codeTypes: ['qr', 'ean-13', 'ean-8', 'code-128'],
@@ -84,8 +129,7 @@ const Scan = () => {
         setSearchText(scannedValue);
         setShowScanner(false);
         setTimeout(() => {
-          setSearchedProduct(DUMMY_PRODUCT);
-          toast.success(`Found item for code: ${scannedValue}`);
+          fetchPartDetails(scannedValue);
         }, 500);
       }
     },
@@ -100,10 +144,7 @@ const Scan = () => {
       toast.error('Please enter a QR code');
       return;
     }
-    setTimeout(() => {
-      setSearchedProduct(DUMMY_PRODUCT);
-      toast.success(`Found item for code: ${searchText}`);
-    }, 500);
+    fetchPartDetails(searchText.trim());
   };
 
   const handleClear = () => {
@@ -111,7 +152,7 @@ const Scan = () => {
     setSearchedProduct(null);
   };
 
-  // Retry connection (used by NoInternet component if it accepts onRetry)
+  // Retry connection
   const handleRetry = () => {
     NetInfo.fetch().then(state => setIsConnected(state.isConnected ?? false));
   };
@@ -132,14 +173,18 @@ const Scan = () => {
     );
   }
 
+  const handleProductPress = (product) => {
+    // Navigate to Product Details screen with product data
+    navigation.navigate('ProductDetails', { product: product });
+
+  }
+
   // Main UI when online
   return (
-    // <View className='flex-1 justify-center items-center'>
-    //   <Text className='font-bold text-2xl'>Scan screen in development</Text>
-
-
-    // </View>
     <SafeAreaView className="flex-1 bg-white">
+      <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+        <Toaster />
+      </View>
       <Header
         title="Scan QR Code"
         titlePosition="left"
@@ -157,13 +202,13 @@ const Scan = () => {
           <Icon name="scan-outline" size={30} color="#3FD298" />
           <Text className="text-primary-sage600 font-semibold text-sm mt-1">Tap to Scan QR Code</Text>
           <Text className="text-gray-500 text-xs text-center mt-0">
-            or drag and drop an image
+            or enter QR code manually
           </Text>
         </TouchableOpacity>
 
         {/* Search Input with Inline Button and Clear Icon */}
         <View className="flex-row items-center mb-4">
-          <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-xl bg-white px-3 ">
+          <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-xl bg-white px-3">
             <Icon name="qr-code-outline" size={20} color="#666" />
             <TextInput
               className="flex-1 ml-2 text-base text-gray-800 py-5"
@@ -172,6 +217,7 @@ const Scan = () => {
               onChangeText={setSearchText}
               returnKeyType="search"
               onSubmitEditing={handleSearch}
+              editable={!loading}
             />
             {searchText.length > 0 && (
               <TouchableOpacity onPress={handleClear} className="ml-2">
@@ -181,44 +227,106 @@ const Scan = () => {
           </View>
           <TouchableOpacity
             onPress={handleSearch}
-            className="bg-primary-sage600 rounded-r-xl px-5 py-5 border border-primary-sage600 items-center justify-center"
+            disabled={loading}
+            className={`rounded-r-xl px-5 py-5 border items-center justify-center ${loading
+              ? 'bg-gray-400 border-gray-400'
+              : 'bg-primary-sage600 border-primary-sage600'
+              }`}
           >
-            <Text className="text-white font-semibold text-base">Search</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text className="text-white font-semibold text-base">Search</Text>
+            )}
           </TouchableOpacity>
         </View>
 
-        {/* Dummy QR Code Suggestions */}
-        <View className="mb-6">
-          <Text className="text-gray-700 font-semibold text-base mb-2">Try these QR codes:</Text>
-          <View className="flex-row flex-wrap">
-            {DUMMY_QR_CODES.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                onPress={() => setSearchText(item.code)}
-                className="bg-gray-100 rounded-full px-4 py-2 mr-2 mb-2"
-              >
-                <Text className="text-primary-sage800">{item.code}</Text>
-              </TouchableOpacity>
-            ))}
+        {/* Loading State */}
+        {loading && (
+          <View className="bg-white border border-gray-200 rounded-xl p-8 items-center justify-center mb-6">
+            <ActivityIndicator size="large" color="#3FD298" />
+            <Text className="text-gray-600 mt-4">Searching for product...</Text>
           </View>
-        </View>
+        )}
 
         {/* Search Result */}
-        {searchedProduct && (
-          <View className="bg-white border border-gray-200 rounded-xl p-4 ">
+        {!loading && searchedProduct && (
+          <Pressable
+            onPress={() => handleProductPress(searchedProduct)}
+            className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
             <Text className="text-lg font-bold text-gray-900 mb-3">Item Found</Text>
+
+            {/* Check if type is "Yes" and show warning message */}
+            {searchedProduct.type === "Yes" && (
+              <View className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <View className="flex-row items-center mb-2">
+                  <Icon name="warning-outline" size={20} color="#eab308" />
+                  <Text className="text-yellow-700 font-semibold ml-2">
+                    Part Already in Use
+                  </Text>
+                </View>
+                <Text className="text-yellow-700 text-sm">
+                  This part is currently being used in Complaint #{searchedProduct.complaintId}
+                </Text>
+                {searchedProduct.technicianName && (
+                  <Text className="text-yellow-700 text-sm mt-1">
+                    Assigned to Technician: {searchedProduct.technicianName}
+                  </Text>
+                )}
+              </View>
+            )}
+
             <View className="flex-row">
-              <Image
-                source={{ uri: searchedProduct.imageUrl }}
-                className="w-20 h-20 rounded-lg bg-white"
-                resizeMode="cover"
-              />
-              <View className="flex-1 ml-4 justify-center">
-                <Text className="text-base font-semibold text-gray-900">{searchedProduct.name}</Text>
-                <Text className="text-sm text-gray-600 mt-1">Part #: {searchedProduct.partNumber}</Text>
-                <Text className="text-lg font-bold text-primary-sage600 mt-1">₹{searchedProduct.price}</Text>
+              {searchedProduct.imageUrl ? (
+                <Image
+                  source={{ uri: searchedProduct.imageUrl }}
+                  className="w-20 h-20 rounded-lg bg-gray-50"
+                  resizeMode="contain"
+                  onError={() => console.log('Image load error')}
+                  defaultSource={'https://nigamcommunications.com/public/images/no_product.png'}
+                />
+              ) : (
+                <View className="w-20 h-20 rounded-lg bg-gray-100 items-center justify-center">
+                  <Icon name="image-outline" size={30} color="#999" />
+                </View>
+              )}
+              <View className="flex-1 ml-4">
+                <Text className="text-base font-semibold text-gray-900">
+                  {searchedProduct.name}
+                </Text>
+                <Text className="text-sm text-gray-600 mt-1">
+                  Part #: {searchedProduct.partNumber}
+                </Text>
+                <Text className="text-lg font-bold text-primary-sage600 mt-1">
+                  ₹{parseFloat(searchedProduct.price).toFixed(2)}
+                </Text>
+                {searchedProduct.description && (
+                  <Text className="text-sm text-gray-600 mt-2">
+                    {searchedProduct.description}
+                  </Text>
+                )}
+                {searchedProduct.transferBy && (
+                  <View className="mt-2 pt-2 border-t border-gray-100">
+                    <Text className="text-xs text-gray-500">
+                      Transfer By: {searchedProduct.transferBy}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
+          </Pressable>
+        )}
+
+        {/* No Result Message */}
+        {!loading && !searchedProduct && searchText.length > 0 && (
+          <View className="bg-white border border-gray-200 rounded-xl p-8 items-center justify-center mb-6">
+            <Icon name="search-outline" size={50} color="#999" />
+            <Text className="text-gray-600 text-center mt-4">
+              No product found for QR code: {searchText}
+            </Text>
+            <Text className="text-gray-400 text-center text-sm mt-2">
+              Please check the QR code and try again
+            </Text>
           </View>
         )}
       </ScrollView>

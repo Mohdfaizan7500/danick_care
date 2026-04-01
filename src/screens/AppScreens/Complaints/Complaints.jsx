@@ -7,6 +7,8 @@ import {
   FlatList,
   ScrollView,
   LayoutAnimation,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -20,7 +22,7 @@ const TABS = ['All', 'Assigned', 'On Progress', 'Complete', 'Cancel'];
 
 // Skeleton component for loading state
 const SkeletonCard = () => (
-  <View className="bg-ui-card border border-ui-border rounded-xl p-4 mb-3 animate-pulse">
+  <View className="bg-ui-card border border-ui-border rounded-xl p-4 mb-3">
     <View className="flex-row justify-between items-center mb-2">
       <View className="h-3 w-16 bg-gray-200 rounded" />
       <View className="h-5 w-16 bg-gray-200 rounded-full" />
@@ -39,13 +41,26 @@ const SkeletonCard = () => (
   </View>
 );
 
+// Loading footer component
+const LoadingFooter = () => (
+  <View className="py-4 items-center justify-center">
+    <ActivityIndicator size="small" color="#666666" />
+    <Text className="text-text-tertiary text-xs mt-2">Loading more...</Text>
+  </View>
+);
+
 const Complaints = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState('All');
   const [tabPositions, setTabPositions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [complaintsData, setComplaintsData] = useState([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [dashboardCounts, setDashboardCounts] = useState({
     all: 0,
     assign: 0,
@@ -57,8 +72,10 @@ const Complaints = () => {
     prebooking: 0,
     payout: 0,
   });
+  
   const scrollViewRef = useRef(null);
   const timeoutRef = useRef(null);
+  const flatListRef = useRef(null);
   const { user } = useAuth();
   const technicianId = user?.id || '1';
 
@@ -88,31 +105,157 @@ const Complaints = () => {
     }
   };
 
-  // Fetch complaints from API
-  const fetchComplaints = async (tab) => {
+  // Get count for each tab from dashboard data
+  const getTabCount = (tab) => {
+    switch (tab) {
+      case 'All':
+        return dashboardCounts.all;
+      case 'Assigned':
+        return dashboardCounts.assign;
+      case 'On Progress':
+        return dashboardCounts.onworking;
+      case 'Complete':
+        return dashboardCounts.completed;
+      case 'Cancel':
+        return dashboardCounts.cancel;
+      default:
+        return 0;
+    }
+  };
+
+  // Fetch complaints from API with pagination
+  const fetchComplaints = async (tab, page = 1, isLoadMore = false, isRefresh = false) => {
     const apiStatus = getApiStatus(tab);
-    setLoading(true);
+    
+    if (!isLoadMore && !isRefresh) {
+      setLoading(true);
+      setComplaintsData([]);
+      setCurrentPage(1);
+      setHasMore(true);
+      setTotalPages(1);
+    } else if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoadingMore(true);
+    }
+    
     try {
-      const response = await getComplaints(technicianId, apiStatus);
-      console.log('API Response for', tab, ':', response);
-      // Handle different response structures
+      const response = await getComplaints(technicianId, apiStatus, page);
+      console.log('API Response for', tab, 'page', page, ':', response);
+      
+      // Handle response structure based on your API
       let result = [];
-      if (response?.data?.result) {
-        result = response.data.result;
-      } else if (response?.data?.data) {
-        result = response.data.data;
+      let currentPageNum = 1;
+      let itemsPerPage = 10;
+      let totalItems = 0;
+      
+      if (response?.data?.success) {
+        // Your API response structure: { success: true, result: [], page: "1", limit: 10 }
+        result = response.data.result || [];
+        currentPageNum = parseInt(response.data.page) || 1;
+        itemsPerPage = parseInt(response.data.limit) || 10;
+        
+        // Calculate total pages based on dashboard counts
+        const totalCount = getTabCount(tab);
+        if (totalCount > 0) {
+          totalItems = totalCount;
+          const calculatedTotalPages = Math.ceil(totalItems / itemsPerPage);
+          setTotalPages(calculatedTotalPages);
+          
+          // Check if there are more pages
+          const hasMorePages = currentPageNum < calculatedTotalPages;
+          setHasMore(hasMorePages);
+          
+          console.log(`Page ${currentPageNum} of ${calculatedTotalPages}, Has more: ${hasMorePages}, Items loaded: ${result.length}`);
+        } else {
+          // If no total count from dashboard, determine based on result length
+          if (result.length === itemsPerPage) {
+            setHasMore(true);
+            setTotalPages(currentPageNum + 1);
+          } else {
+            setHasMore(false);
+            setTotalPages(currentPageNum);
+          }
+        }
       } else if (Array.isArray(response?.data)) {
         result = response.data;
+        setHasMore(false);
+        setTotalPages(1);
       } else if (response?.data) {
         result = [response.data];
+        setHasMore(false);
+        setTotalPages(1);
       }
-      setComplaintsData(Array.isArray(result) ? result : []);
+      
+      const newData = Array.isArray(result) ? result : [];
+      
+      if (isLoadMore) {
+        // Append new data to existing list
+        setComplaintsData(prev => {
+          // Avoid duplicates by filtering out items that already exist
+          const existingIds = new Set(prev.map(item => item?.id));
+          const uniqueNewData = newData.filter(item => !existingIds.has(item.id));
+          return [...prev, ...uniqueNewData];
+        });
+        setCurrentPage(currentPageNum);
+      } else if (isRefresh) {
+        // Refresh - replace data
+        setComplaintsData(newData);
+        setCurrentPage(currentPageNum);
+      } else {
+        setComplaintsData(newData);
+        setCurrentPage(currentPageNum);
+      }
+      
     } catch (error) {
       console.error('Error fetching complaints:', error);
-      setComplaintsData([]);
+      if (!isLoadMore && !isRefresh) {
+        setComplaintsData([]);
+      }
+      setHasMore(false);
     } finally {
-      setLoading(false);
+      if (!isLoadMore && !isRefresh) {
+        setLoading(false);
+      } else if (isRefresh) {
+        setRefreshing(false);
+      } else {
+        setLoadingMore(false);
+      }
     }
+  };
+
+  // Load more data when reaching the end
+  const loadMoreComplaints = () => {
+    // Prevent multiple calls while loading
+    if (loadingMore || loading || refreshing) {
+      console.log('Skipping load more - already loading');
+      return;
+    }
+    
+    // Check if there are more pages to load
+    if (!hasMore) {
+      console.log('No more pages to load');
+      return;
+    }
+    
+    // Calculate next page number
+    const nextPage = currentPage + 1;
+    
+    // Check if next page exceeds total pages
+    if (nextPage > totalPages) {
+      console.log(`Next page ${nextPage} exceeds total pages ${totalPages}`);
+      setHasMore(false);
+      return;
+    }
+    
+    console.log(`Loading more complaints: Page ${nextPage} of ${totalPages}`);
+    fetchComplaints(selectedTab, nextPage, true, false);
+  };
+
+  // Refresh data
+  const onRefresh = () => {
+    console.log('Refreshing complaints');
+    fetchComplaints(selectedTab, 1, false, true);
   };
 
   // Fetch dashboard counts from API
@@ -148,71 +291,50 @@ const Complaints = () => {
     }
   };
 
-  // Format payout amount to k format
-  const formatPayout = (amount) => {
-    if (!amount) return '0';
-    const number = parseFloat(amount);
-    if (number >= 1000) {
-      return `${(number / 1000).toFixed(1)}k`;
-    }
-    return number.toString();
-  };
-
   // Initial fetch based on route param (if any)
   useEffect(() => {
-    fetchTabCount();
+    const initializeData = async () => {
+      await fetchTabCount();
+      
+      // Small delay to ensure dashboard counts are loaded
+      setTimeout(() => {
+        if (status === 'Complete' || status === 'Cancel') {
+          if (scrollViewRef.current) {
+            scrollViewRef.current.scrollTo({
+              x: 200,
+              animated: true,
+            });
+          }
+        }
 
-    if (status === 'Complete' || status === 'Cancel') {
-      if (scrollViewRef.current) {
-        scrollViewRef.current.scrollTo({
-          x: 200,
-          animated: true,
-        });
-      }
-    }
-
-    if (status) {
-      if (status === 'All') {
-        setSelectedTab('All');
-        fetchComplaints('All');
-      } else if (status === 'Assign') {
-        setSelectedTab('Assigned');
-        fetchComplaints('Assigned');
-      } else if (status === 'Onworking') {
-        setSelectedTab('On Progress');
-        fetchComplaints('On Progress');
-      } else if (status === 'Complete') {
-        setSelectedTab('Complete');
-        fetchComplaints('Complete');
-      } else if (status === 'Cancel') {
-        setSelectedTab('Cancel');
-        fetchComplaints('Cancel');
-      }
-    } else {
-      // Default: fetch for 'All' tab when no route param
-      fetchComplaints('All');
-    }
+        if (status) {
+          if (status === 'All') {
+            setSelectedTab('All');
+            fetchComplaints('All', 1, false, false);
+          } else if (status === 'Assign') {
+            setSelectedTab('Assigned');
+            fetchComplaints('Assigned', 1, false, false);
+          } else if (status === 'Onworking') {
+            setSelectedTab('On Progress');
+            fetchComplaints('On Progress', 1, false, false);
+          } else if (status === 'Complete') {
+            setSelectedTab('Complete');
+            fetchComplaints('Complete', 1, false, false);
+          } else if (status === 'Cancel') {
+            setSelectedTab('Cancel');
+            fetchComplaints('Cancel', 1, false, false);
+          }
+        } else {
+          // Default: fetch for 'All' tab when no route param
+          fetchComplaints('All', 1, false, false);
+        }
+      }, 100);
+    };
+    
+    initializeData();
   }, []);
 
-  // Get count for each tab from dashboard data
-  const getTabCount = (tab) => {
-    switch (tab) {
-      case 'All':
-        return dashboardCounts.all;
-      case 'Assigned':
-        return dashboardCounts.assign;
-      case 'On Progress':
-        return dashboardCounts.onworking;
-      case 'Complete':
-        return dashboardCounts.completed;
-      case 'Cancel':
-        return dashboardCounts.cancel;
-      default:
-        return 0;
-    }
-  };
-
-  // Filter complaints based on selected tab and search query - FIXED with null checks
+  // Filter complaints based on selected tab and search query
   const filteredComplaints = complaintsData.filter((complaint) => {
     // First check if complaint exists
     if (!complaint) return false;
@@ -244,7 +366,7 @@ const Complaints = () => {
 
     setSelectedTab(tab);
     setLoading(true);
-    fetchComplaints(tab);
+    fetchComplaints(tab, 1, false, false);
 
     timeoutRef.current = setTimeout(() => { }, 500);
 
@@ -255,6 +377,11 @@ const Complaints = () => {
       });
     }
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    
+    // Scroll to top when changing tabs
+    if (flatListRef.current) {
+      flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+    }
   };
 
   const handleComplaintPress = (complaint) => {
@@ -298,7 +425,8 @@ const Complaints = () => {
             {item.service_name || 'Service'}
           </Text>
           <View
-            className={`px-3 py-1 rounded-full ${displayStatus === 'Assigned'
+            className={`px-3 py-1 rounded-full ${
+              displayStatus === 'Assigned'
                 ? 'bg-primary-sage100'
                 : displayStatus === 'On Progress'
                   ? 'bg-ui-warning/20'
@@ -307,10 +435,11 @@ const Complaints = () => {
                     : displayStatus === 'Cancel'
                       ? 'bg-ui-error/20'
                       : 'bg-gray-100'
-              }`}
+            }`}
           >
             <Text
-              className={`text-xs font-medium ${displayStatus === 'Assigned'
+              className={`text-xs font-medium ${
+                displayStatus === 'Assigned'
                   ? 'text-primary-sage700'
                   : displayStatus === 'On Progress'
                     ? 'text-ui-warning'
@@ -319,7 +448,7 @@ const Complaints = () => {
                       : displayStatus === 'Cancel'
                         ? 'text-ui-error'
                         : 'text-text-tertiary'
-                }`}
+              }`}
             >
               {displayStatus}
             </Text>
@@ -331,23 +460,27 @@ const Complaints = () => {
           <Text className="text-text-primary text-sm font-medium">
             {item.customer_name || 'Customer'}
           </Text>
-          <Text className="text-text-tertiary text-xs">{item.service_address || 'Address not available'}</Text>
-          <Text className="text-text-tertiary text-xs">{item.customer_mobile || 'Mobile not available'}</Text>
+          <Text className="text-text-tertiary text-xs">
+            {item.service_address || 'Address not available'}
+          </Text>
+          <Text className="text-text-tertiary text-xs">
+            {item.customer_mobile || 'Mobile not available'}
+          </Text>
         </View>
 
         {/* Amount and date */}
         <Text className="text-text-secondary text-sm mt-2" numberOfLines={2}>
           Amount: ₹{parseFloat(item.tot_amt || 0).toFixed(2)}
         </Text>
-        <Text className="text-text-tertiary text-xs mt-1">{item.slot_date || 'Date not available'}</Text>
+        <Text className="text-text-tertiary text-xs mt-1">
+          {item.slot_date || 'Date not available'}
+        </Text>
         
         {/* Recomplaint/New Badge - positioned at bottom right */}
         <View className="absolute bottom-2 right-2">
           <View
             className={`px-2 py-1 rounded-full ${
-              recomplaint 
-                ? 'bg-orange-500' 
-                : 'bg-blue-500'
+              recomplaint ? 'bg-orange-500' : 'bg-blue-500'
             }`}
           >
             <Text className="text-white text-xs font-bold">
@@ -366,6 +499,21 @@ const Complaints = () => {
       ))}
     </View>
   );
+
+  // Render footer for FlatList
+  const renderFooter = () => {
+    if (!hasMore && complaintsData.length > 0) {
+      return (
+        <View className="py-4 items-center justify-center">
+          <Text className="text-text-tertiary text-xs">No more complaints to load</Text>
+        </View>
+      );
+    }
+    if (loadingMore) {
+      return <LoadingFooter />;
+    }
+    return null;
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background-primary">
@@ -422,28 +570,32 @@ const Complaints = () => {
                 className="mr-3"
               >
                 <View
-                  className={`px-4 py-1.5 rounded-full flex-row items-center ${selectedTab === tab
-                    ? 'bg-primary-sage600'
-                    : 'bg-background-tertiary'
-                    }`}
+                  className={`px-4 py-1.5 rounded-full flex-row items-center ${
+                    selectedTab === tab
+                      ? 'bg-primary-sage600'
+                      : 'bg-background-tertiary'
+                  }`}
                 >
                   <Text
-                    className={`text-sm font-medium ${selectedTab === tab
-                      ? 'text-text-inverse'
-                      : 'text-text-secondary'
-                      }`}
+                    className={`text-sm font-medium ${
+                      selectedTab === tab
+                        ? 'text-text-inverse'
+                        : 'text-text-secondary'
+                    }`}
                   >
                     {tab}
                   </Text>
                   <View
-                    className={`ml-2 px-2 py-0.5 rounded-full ${selectedTab === tab ? 'bg-white/30' : 'bg-ui-border'
-                      }`}
+                    className={`ml-2 px-2 py-0.5 rounded-full ${
+                      selectedTab === tab ? 'bg-white/30' : 'bg-ui-border'
+                    }`}
                   >
                     <Text
-                      className={`text-xs ${selectedTab === tab
-                        ? 'text-text-inverse'
-                        : 'text-text-tertiary'
-                        }`}
+                      className={`text-xs ${
+                        selectedTab === tab
+                          ? 'text-text-inverse'
+                          : 'text-text-tertiary'
+                      }`}
                     >
                       {count}
                     </Text>
@@ -460,11 +612,25 @@ const Complaints = () => {
         renderSkeleton()
       ) : (
         <FlatList
+          ref={flatListRef}
           data={filteredComplaints}
           renderItem={renderComplaintCard}
-          keyExtractor={(item, index) => item?.id?.toString() || item?.csn?.toString() || index.toString()}
+          keyExtractor={(item, index) => 
+            item?.id?.toString() || item?.csn?.toString() || index.toString()
+          }
           contentContainerStyle={{ padding: 16 }}
           showsVerticalScrollIndicator={false}
+          onEndReached={loadMoreComplaints}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={renderFooter}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#4A6FA5']}
+              tintColor="#4A6FA5"
+            />
+          }
           ListEmptyComponent={
             <View className="flex-1 justify-center items-center mt-10">
               <Icon name="document-text-outline" size={48} color="#DDDDDD" />

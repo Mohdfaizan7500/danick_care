@@ -147,18 +147,18 @@ export const MarkAttandance = async (city_id, id, slot_date, month) => {
     }
 };
 
-export const getComplaints = async (id, status) => {
-    const payload = {
-        id: id,
-        status: status,
-    }
-    console.log("payload:", payload)
+export const getComplaints = async (id, status, page = 1) => {
+    console.log("getComplaints called with:", { technician_id: id, status: status, page: page });
     try {
-        const response = await apiClient.post('TechnicianAPI/TechnicianComplaints', {
-            technician_id: id,
-            status: status
+        // Send parameters as query parameters in URL
+        const response = await apiClient.post('TechnicianAPI/TechnicianComplaints', null, {
+            params: {
+                technician_id: id,
+                status: status,
+                page: page
+            }
         });
-        // console.log('Get complaints response:', response);
+        console.log('Get complaints response:', response);
         return response;
     } catch (error) {
         console.error('API error in getComplaints:', error);
@@ -166,7 +166,6 @@ export const getComplaints = async (id, status) => {
         throw new Error(errorMessage);
     }
 };
-
 export const getProfile = async (id) => {
     const payload = {
         id: id,
@@ -455,7 +454,7 @@ export const FetchPartsForReplaced  = async (payload) => {
 export const ReplacedPartManagement  = async (payload) => {
     console.log('payload', payload)
     try {
-        const response = await apiClient.post('TechnicianAPI/ReplacedPartManagementt', payload);
+        const response = await apiClient.post('TechnicianAPI/ReplacedPartManagement', payload);
         console.log('ReplacedPartManagement api  response:', response);
         return response;
     } catch (error) {
@@ -478,6 +477,31 @@ export const UpdateRemark  = async (payload) => {
     }
 };
 
+export const GetPartDetailQRCode = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/GetPartDetailQRCode', payload);
+        console.log('GetPartDetailQRCode api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in GetPartDetailQRCode:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const PurchaseMarketPart = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/PurchaseMarketPart', payload);
+        console.log('PurchaseMarketPart api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in PurchaseMarketPart:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
 
 
 
