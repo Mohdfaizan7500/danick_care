@@ -8,10 +8,10 @@ import {
   Image,
   ScrollView,
   Modal,
-  Alert,
   Platform,
   ActivityIndicator,
   Pressable,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -19,7 +19,7 @@ import { toast, Toaster } from 'sonner-native';
 import NetInfo from '@react-native-community/netinfo';
 import Header from '../../../components/Header';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
-import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import { request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
 import NoInternet from '../../NoInternet';
 import { GetPartDetailQRCode } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
@@ -33,6 +33,7 @@ const Scan = () => {
   const [hasPermission, setHasPermission] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
   const { imagUrl } = useAuth();
   const navigation = useNavigation();
 
@@ -49,9 +50,31 @@ const Scan = () => {
   // Request camera permission on mount or when opening scanner
   useEffect(() => {
     if (showScanner) {
-      requestCameraPermission();
+      checkCameraPermission();
     }
   }, [showScanner]);
+
+  const checkCameraPermission = async () => {
+    const permission = Platform.OS === 'ios'
+      ? PERMISSIONS.IOS.CAMERA
+      : PERMISSIONS.ANDROID.CAMERA;
+
+    const result = await request(permission);
+    setHasPermission(result === RESULTS.GRANTED);
+
+    if (result !== RESULTS.GRANTED) {
+      setShowScanner(false);
+      setShowPermissionModal(true);
+      toast.custom(
+        <StatusMessage
+          type='error'
+          title='Camera Permission Required'
+          description='Camera access is needed to scan QR codes'
+        />,
+        { duration: 3000 }
+      );
+    }
+  };
 
   const requestCameraPermission = async () => {
     const permission = Platform.OS === 'ios'
@@ -60,13 +83,36 @@ const Scan = () => {
 
     const result = await request(permission);
     setHasPermission(result === RESULTS.GRANTED);
-    if (result !== RESULTS.GRANTED) {
-      Alert.alert('Permission Denied', 'Camera permission is required to scan QR codes.');
-      setShowScanner(false);
+
+    if (result === RESULTS.GRANTED) {
+      setShowPermissionModal(false);
+      setShowScanner(true);
+      toast.custom(
+        <StatusMessage type='success' title='Camera Permission Granted' />,
+        { duration: 1500 }
+      );
+    } else {
+      setShowPermissionModal(true);
+      toast.custom(
+        <StatusMessage
+          type='error'
+          title='Permission Denied'
+          description='Please enable camera permission in settings'
+        />,
+        { duration: 3000 }
+      );
     }
   };
 
-  // Function to fetch part details from API
+  const openAppSettings = () => {
+    openSettings().catch(() => {
+      // Fallback for older Android versions
+      if (Platform.OS === 'android') {
+        Linking.openSettings();
+      }
+    });
+  };
+
   // Function to fetch part details from API
   const fetchPartDetails = async (qrCode) => {
     setLoading(true);
@@ -94,7 +140,7 @@ const Scan = () => {
           transTech: productData.trans_tech,
           technicianName: productData.technician_name,
           type: productData.type,
-          complaintId: productData.complaint_id, // Adds complaint ID
+          complaintId: productData.complaint_id,
         });
         console.log('Fetched Product Type:', productData.type);
         console.log('Complaint ID:', productData.complaint_id);
@@ -108,12 +154,14 @@ const Scan = () => {
           <StatusMessage type='error' title={`${response?.data?.msg || 'No product found for this QR code'}`} />,
           { duration: 1000 }
         );
-
         setSearchedProduct(null);
       }
     } catch (error) {
       console.error('Error fetching part details:', error);
-      toast.error('Failed to fetch product details');
+      toast.custom(
+        <StatusMessage type='error' title='Failed to fetch product details' />,
+        { duration: 2000 }
+      );
       setSearchedProduct(null);
     } finally {
       setLoading(false);
@@ -136,12 +184,19 @@ const Scan = () => {
   });
 
   const handleScan = () => {
-    setShowScanner(true);
+    if (hasPermission) {
+      setShowScanner(true);
+    } else {
+      requestCameraPermission();
+    }
   };
 
   const handleSearch = () => {
     if (!searchText.trim()) {
-      toast.error('Please enter a QR code');
+      toast.custom(
+        <StatusMessage type='error' title='Please enter a QR code' />,
+        { duration: 1500 }
+      );
       return;
     }
     fetchPartDetails(searchText.trim());
@@ -174,15 +229,16 @@ const Scan = () => {
   }
 
   const handleProductPress = (product) => {
-    // Navigate to Product Details screen with product data
-    navigation.navigate('ProductDetails', { product: product });
+    if (product.type === "Yes") {
+      navigation.navigate('ProductDetails', { product: product });
 
+    }
   }
 
   // Main UI when online
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+      <View className="absolute inset-0 z-50 pointer-events-none">
         <Toaster />
       </View>
       <Header
@@ -213,6 +269,7 @@ const Scan = () => {
             <TextInput
               className="flex-1 ml-2 text-base text-gray-800 py-5"
               placeholder="Enter QR code number"
+              placeholderTextColor={'gray'}
               value={searchText}
               onChangeText={setSearchText}
               returnKeyType="search"
@@ -316,6 +373,16 @@ const Scan = () => {
             </View>
           </Pressable>
         )}
+         {/* No Result Message */}
+        {!loading && !searchedProduct && searchText.length == 0 && (
+          <View className="bg-white border border-gray-200 rounded-xl p-8 items-center justify-center mb-6">
+            <Icon name="search-outline" size={50} color="#999" />
+            <Text className="text-gray-600 text-center mt-4">
+              Enter QR code to search for a product
+            </Text>
+            
+          </View>
+        )}
 
         {/* No Result Message */}
         {!loading && !searchedProduct && searchText.length > 0 && (
@@ -331,6 +398,58 @@ const Scan = () => {
         )}
       </ScrollView>
 
+      {/* Permission Modal */}
+      <Modal
+        visible={showPermissionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPermissionModal(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black/50">
+          <View className="bg-white rounded-2xl p-6 mx-6 w-80">
+            <View className="items-center mb-4">
+              <Icon name="camera-outline" size={50} color="#3FD298" />
+              <Text className="text-xl font-bold text-gray-900 mt-3">
+                Camera Permission Required
+              </Text>
+            </View>
+
+            <Text className="text-gray-600 text-center mb-6">
+              Camera permission is needed to scan QR codes. Please grant permission to continue.
+            </Text>
+
+            <View className="flex-row space-x-3">
+              <TouchableOpacity
+                onPress={() => setShowPermissionModal(false)}
+                className="flex-1 bg-gray-200 rounded-xl py-3 mr-2"
+              >
+                <Text className="text-gray-700 text-center font-medium">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={openAppSettings}
+                className="flex-1 bg-primary-sage600 rounded-xl py-3 ml-2"
+              >
+                <Text className="text-white text-center font-medium">
+                  Open Settings
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              onPress={requestCameraPermission}
+              className="mt-3 py-2"
+            >
+              <Text className="text-primary-sage600 text-center">
+                Try Again
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Scanner Modal */}
       <Modal visible={showScanner} animationType="slide" onRequestClose={() => setShowScanner(false)}>
         <View style={StyleSheet.absoluteFillObject}>
@@ -343,7 +462,13 @@ const Scan = () => {
             />
           ) : (
             <View className="flex-1 justify-center items-center bg-black">
-              <Text className="text-white">Camera not available or permission denied</Text>
+              <Text className="text-white mb-4">Camera not available or permission denied</Text>
+              <TouchableOpacity
+                onPress={requestCameraPermission}
+                className="bg-white px-6 py-3 rounded-lg"
+              >
+                <Text className="text-black font-medium">Grant Permission</Text>
+              </TouchableOpacity>
             </View>
           )}
           {/* Close Button */}

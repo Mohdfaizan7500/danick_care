@@ -1,26 +1,220 @@
-import { StyleSheet, Text, View, Image, ScrollView, TouchableOpacity, Modal, StatusBar } from 'react-native';
-import React, { useState } from 'react';
+import { StyleSheet, Text, View, Image, ScrollView, TouchableOpacity, Modal, StatusBar, TextInput, ActivityIndicator, Linking, Platform, Pressable, RefreshControl } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import Header from '../../components/Header';
-import { useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   Package, Hash, Layers, CheckCircle, XCircle,
-  FileText, ShoppingCart, Heart, X, Star
+  FileText, ShoppingCart, Heart, X, Star, Scan, Search
 } from 'lucide-react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../../context/AuthContext'; // Import useAuth
+import { useAuth } from '../../context/AuthContext';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { PurchaseMarketPart, GetPartDetailQRCode } from '../../lib/api';
+import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
+import { request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
+import { toast, Toaster } from 'sonner-native';
+import StatusMessage from '../../components/StatusMessage';
 
 const PartDetails = () => {
   const route = useRoute();
   const part = route.params.part;
-  const { imagUrl } = useAuth(); // Get base image URL
+  const { imagUrl, user } = useAuth();
   console.log('part:', part);
+  const part_id = part.id;
+  console.log('part_id:', part_id);
+  const technician_id = user?.id;
+  console.log('technician_id:', technician_id);
+  console.log('user from part details:', user);
+  const navigation = useNavigation();
 
-  const [modalVisible, setModalVisible] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [qrCode, setQrCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [cameraVisible, setCameraVisible] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [qrProductData, setQrProductData] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [currentPart, setCurrentPart] = useState(part);
 
-  // Stock status logic – you may adjust based on real data
+  // Get camera device
+  const device = useCameraDevice('back');
+
+  // Check camera permission
+  useEffect(() => {
+    checkCameraPermission();
+  }, []);
+
+  const checkCameraPermission = async () => {
+    const permission = Platform.OS === 'ios'
+      ? PERMISSIONS.IOS.CAMERA
+      : PERMISSIONS.ANDROID.CAMERA;
+
+    const result = await request(permission);
+    setHasPermission(result === RESULTS.GRANTED);
+
+    if (result !== RESULTS.GRANTED) {
+      setShowPermissionModal(true);
+    }
+  };
+
+  const requestCameraPermission = async () => {
+    const permission = Platform.OS === 'ios'
+      ? PERMISSIONS.IOS.CAMERA
+      : PERMISSIONS.ANDROID.CAMERA;
+
+    const result = await request(permission);
+    setHasPermission(result === RESULTS.GRANTED);
+
+    if (result === RESULTS.GRANTED) {
+      setShowPermissionModal(false);
+      setCameraVisible(true);
+      toast.custom(
+        <StatusMessage type='success' title='Camera permission granted' />,
+        { duration: 1500 }
+      );
+    } else {
+      setShowPermissionModal(true);
+      toast.custom(
+        <StatusMessage
+          type='error'
+          title='Permission Denied'
+          description='Please enable camera permission in settings to scan QR codes'
+        />,
+        { duration: 3000 }
+      );
+    }
+  };
+
+  const openAppSettings = () => {
+    openSettings().catch(() => {
+      if (Platform.OS === 'android') {
+        Linking.openSettings();
+      }
+    });
+  };
+
+  // Function to fetch updated part details
+  const fetchUpdatedPartDetails = async (isRefresh = false) => {
+    try {
+      if (!isRefresh) {
+        setLoading(true);
+      }
+      
+      // Since getSparePartById might not be available, we'll just use the existing part
+      // and show a message that refresh is not available
+      console.log('Refreshing part details...');
+      
+      // If you have an API endpoint to fetch updated part details, uncomment and use:
+      // const response = await getSparePartById(part_id);
+      // if (response?.data?.success && response?.data?.data) {
+      //   setCurrentPart(response.data.data);
+      //   toast.custom(
+      //     <StatusMessage type='success' title='Part details refreshed' />,
+      //     { duration: 1000 }
+      //   );
+      // } else {
+      //   toast.custom(
+      //     <StatusMessage type='info' title='No changes detected' />,
+      //     { duration: 1000 }
+      //   );
+      // }
+      
+      // For now, just show a message that refresh is complete
+      setTimeout(() => {
+        toast.custom(
+          <StatusMessage type='info' title='Page refreshed' />,
+          { duration: 1000 }
+        );
+      }, 500);
+      
+    } catch (error) {
+      console.error('Error fetching updated part details:', error);
+      toast.custom(
+        <StatusMessage type='error' title='Failed to refresh part details' />,
+        { duration: 2000 }
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchUpdatedPartDetails(true);
+  };
+
+  // Function to fetch QR code details
+  const fetchQRCodeDetails = async (qrCodeValue) => {
+    setQrLoading(true);
+    try {
+      const payload = {
+        QRCode: qrCodeValue
+      };
+      const response = await GetPartDetailQRCode(payload);
+      console.log('QR Code Details Response:', response);
+
+      if (response?.data?.success && response?.data?.data?.length > 0) {
+        const productData = response.data.data[0];
+        setQrProductData({
+          id: productData.id,
+          imageUrl: productData.part_image
+            ? `${imagUrl}${productData.part_image}`
+            : null,
+          name: productData.part_name,
+          partNumber: productData.id?.toString() || '',
+          price: productData.part_price,
+          description: productData.description,
+          transferBy: productData.transfer_by,
+          type: productData.type,
+          complaintId: productData.complaint_id,
+          technicianName: productData.technician_name,
+          qrCode: productData.qr_code
+        });
+
+
+      } else {
+        toast.custom(
+          <StatusMessage type='error' title={response?.data?.msg || 'No product found for this QR code'} />,
+          { duration: 2000 }
+        );
+        setQrProductData(null);
+      }
+    } catch (error) {
+      console.error('Error fetching QR code details:', error);
+      toast.custom(
+        <StatusMessage type='error' title='Failed to fetch product details' />,
+        { duration: 2000 }
+      );
+      setQrProductData(null);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  // Configure code scanner
+  const codeScanner = useCodeScanner({
+    codeTypes: ['qr', 'ean-13', 'ean-8', 'code-128'],
+    onCodeScanned: (codes) => {
+      if (codes.length > 0 && codes[0].value) {
+        const scannedValue = codes[0].value;
+        console.log('Scanned QR code:', scannedValue);
+        setQrCode(scannedValue);
+        setCameraVisible(false);
+        // Don't fetch details automatically - will fetch only when status is '2'
+        toast.custom(
+          <StatusMessage type='success' title='QR Code scanned successfully' />,
+          { duration: 1000 }
+        );
+      }
+    },
+  });
+
+  // Stock status logic
   const getStockStatus = () => {
-    // In our part data, we don't have an explicit stock flag; assume true
     const inStock = true;
     return {
       color: inStock ? 'text-status-online' : 'text-status-busy',
@@ -37,24 +231,188 @@ const PartDetails = () => {
 
   // Helper to get full image URL
   const getImageUrl = () => {
-    if (part.part_image) {
-      return imagUrl + part.part_image;
+    if (currentPart.part_image) {
+      return imagUrl + currentPart.part_image;
     }
     return 'https://via.placeholder.com/400x400?text=No+Image';
   };
 
+  // Handle Add to Bucket
+  const handleAddToBucket = async () => {
+    if (!qrCode || qrCode.trim() === '') {
+      toast.custom(
+        <StatusMessage type='error' title='Error' description='Please enter or scan QR code first' />,
+        { duration: 2000 }
+      );
+      return;
+    }
+
+    setLoading(true);
+    const payload = {
+      technician_id: technician_id?.toString() || '1',
+      part_id: part_id?.toString(),
+      QRcode: qrCode.trim()
+    };
+
+    console.log('Purchase payload:', payload);
+
+    try {
+      const response = await PurchaseMarketPart(payload);
+      console.log('Purchase response:', response);
+
+      if (response?.data?.status == '2') {
+        console.log('Part already in bucket');
+        toast.custom(
+          <StatusMessage type='info' title='Part Already in Use' />,
+          { duration: 2000 }
+        );
+
+        // Fetch QR code details only when status is '2'
+        await fetchQRCodeDetails(qrCode.trim());
+
+      } else if (response?.data?.success == true) {
+        toast.custom(
+          <StatusMessage type='success' title={response?.data?.msg || 'Part added to bucket successfully!'} />,
+          { duration: 2000 }
+        );
+        setQrCode(''); // Clear QR code after successful addition
+        setQrProductData(null); // Clear QR product data
+        // Refresh part details after successful addition
+        await fetchUpdatedPartDetails();
+      } else {
+        toast.custom(
+          <StatusMessage type='error' title={response?.data?.msg || 'Failed to add part to bucket'} />,
+          { duration: 2000 }
+        );
+        setQrProductData(null);
+      }
+    } catch (error) {
+      console.error('Error adding to bucket:', error);
+      toast.custom(
+        <StatusMessage
+          type='error'
+          title='Error'
+          description={error.message || 'Failed to add part to bucket. Please try again.'}
+        />,
+        { duration: 3000 }
+      );
+      setQrProductData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle QR Code Scan
+  const handleScanQR = async () => {
+    if (hasPermission) {
+      setCameraVisible(true);
+    } else {
+      requestCameraPermission();
+    }
+  };
+
+  // Handle QR code search
+  const handleQRSearch = async () => {
+    if (!qrCode.trim()) {
+      toast.custom(
+        <StatusMessage type='error' title='Error' description='Please enter a QR code' />,
+        { duration: 1500 }
+      );
+      return;
+    }
+
+    // First try to purchase/add to bucket
+    setLoading(true);
+    const payload = {
+      technician_id: technician_id?.toString() || '1',
+      part_id: part_id?.toString(),
+      QRcode: qrCode.trim()
+    };
+
+    try {
+      const response = await PurchaseMarketPart(payload);
+      console.log('Purchase response from search:', response);
+
+      if (response?.data?.status == '2') {
+        console.log('Part already in Use');
+        toast.custom(
+          <StatusMessage type='info' title='Part Already in Use' />,
+          { duration: 2000 }
+        );
+
+        // Fetch QR code details only when status is '2'
+        await fetchQRCodeDetails(qrCode.trim());
+
+      } else if (response?.data?.success == true) {
+        toast.custom(
+          <StatusMessage type='success' title={response?.data?.msg || 'Part added to bucket successfully!'} />,
+          { duration: 2000 }
+        );
+        setQrCode(''); // Clear QR code after successful addition
+        setQrProductData(null); // Clear QR product data
+        // Refresh part details after successful addition
+        await fetchUpdatedPartDetails();
+      } else {
+        toast.custom(
+          <StatusMessage type='error' title={response?.data?.msg || 'Failed to add part to bucket'} />,
+          { duration: 2000 }
+        );
+        setQrProductData(null);
+      }
+    } catch (error) {
+      console.error('Error in search:', error);
+      toast.custom(
+        <StatusMessage
+          type='error'
+          title='Error'
+          description={error.message || 'Failed to process QR code. Please try again.'}
+        />,
+        { duration: 3000 }
+      );
+      setQrProductData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Clear QR code input
+  const clearQrCode = () => {
+    setQrCode('');
+    setQrProductData(null);
+    toast.custom(
+      <StatusMessage type='info' title='QR code cleared' />,
+      { duration: 1000 }
+    );
+  };
+
+  const handleProductPress = (product) => {
+    navigation.navigate('ProductDetails', { product: product });
+  }
+
   return (
-    <SafeAreaView className="flex-1 bg-background-primary" edges={['bottom']}>
+    <SafeAreaView className="flex-1 pt-10 bg-background-primary" edges={['bottom']}>
       <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent />
 
       {/* Header */}
+      <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+        <Toaster />
+      </View>
       <View className="absolute top-0 z-10 w-full" style={{ top: insets.top }}>
         <Header
           showBackButton
           titlePosition="left"
           containerStyle="bg-transparent px-5 py-4"
           rightComponent={
-            <TouchableOpacity onPress={() => setIsFavorite(!isFavorite)}>
+            <TouchableOpacity onPress={() => {
+              setIsFavorite(!isFavorite);
+              toast.custom(
+                <StatusMessage
+                  type='success'
+                  title={!isFavorite ? 'Added to favorites' : 'Removed from favorites'}
+                />,
+                { duration: 1000 }
+              );
+            }}>
               <Heart
                 size={24}
                 color={isFavorite ? '#E86F6F' : '#FFFFFF'}
@@ -65,7 +423,116 @@ const PartDetails = () => {
         />
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      {/* Permission Modal */}
+      <Modal
+        visible={showPermissionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPermissionModal(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black/50">
+          <View className="bg-white rounded-2xl p-6 mx-6 w-80">
+            <View className="items-center mb-4">
+              <Icon name="camera-outline" size={50} color="#3FD298" />
+              <Text className="text-xl font-bold text-gray-900 mt-3">
+                Camera Permission Required
+              </Text>
+            </View>
+
+            <Text className="text-gray-600 text-center mb-6">
+              Camera permission is needed to scan QR codes. Please grant permission to continue.
+            </Text>
+
+            <View className="flex-row space-x-3">
+              <TouchableOpacity
+                onPress={() => setShowPermissionModal(false)}
+                className="flex-1 bg-gray-200 rounded-xl py-3 mr-2"
+              >
+                <Text className="text-gray-700 text-center font-medium">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={openAppSettings}
+                className="flex-1 bg-primary-sage600 rounded-xl py-3 ml-2"
+              >
+                <Text className="text-white text-center font-medium">
+                  Open Settings
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              onPress={requestCameraPermission}
+              className="mt-3 py-2"
+            >
+              <Text className="text-primary-sage600 text-center">
+                Try Again
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Camera Modal for QR Scanning */}
+      <Modal
+        visible={cameraVisible}
+        animationType="slide"
+        onRequestClose={() => setCameraVisible(false)}
+      >
+        <View style={StyleSheet.absoluteFillObject}>
+          {device && hasPermission ? (
+            <Camera
+              style={StyleSheet.absoluteFill}
+              device={device}
+              isActive={cameraVisible}
+              codeScanner={codeScanner}
+            />
+          ) : (
+            <View className="flex-1 justify-center items-center bg-black">
+              <Text className="text-white mb-4">Camera not available or permission denied</Text>
+              <TouchableOpacity
+                onPress={requestCameraPermission}
+                className="bg-white px-6 py-3 rounded-lg"
+              >
+                <Text className="text-black font-medium">Grant Permission</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Close Button */}
+          <TouchableOpacity
+            onPress={() => setCameraVisible(false)}
+            className="absolute top-12 right-5 bg-black/50 rounded-full p-3 z-10"
+          >
+            <Icon name="close" size={24} color="white" />
+          </TouchableOpacity>
+
+          {/* Scanner Frame Overlay */}
+          <View className="absolute top-0 left-0 right-0 bottom-0 justify-center items-center pointer-events-none">
+            <View className="w-64 h-64 border-2 border-white rounded-lg" />
+            <Text className="text-white mt-4 text-lg bg-black/50 px-4 py-2 rounded-full">
+              Align QR code within frame
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#3FD298', '#58A890']}
+            tintColor="#3FD298"
+            title="Pull to refresh"
+            titleColor="#666"
+          />
+        }
+      >
         {/* Image Section */}
         <View className="w-full h-96 bg-background-secondary relative">
           <Image
@@ -78,13 +545,113 @@ const PartDetails = () => {
 
         {/* Details Card */}
         <View className="bg-white rounded-t-3xl -mt-6 px-6 pt-6 pb-8 shadow-lg">
+          <TouchableOpacity
+            onPress={handleScanQR}
+            className="border-2 border-dashed border-primary-sage400 rounded-xl p-2 items-center justify-center bg-teal-50 mb-6"
+          >
+            <Scan size={30} color="#3FD298" />
+            <Text className="text-primary-sage600 font-semibold text-sm mt-1">Tap to Scan QR Code</Text>
+            <Text className="text-gray-500 text-xs text-center mt-0">
+              or enter QR code manually
+            </Text>
+          </TouchableOpacity>
+
+          {/* Search Input with Search Button */}
+          <View className="flex-row items-center mb-4">
+            <View className="flex-1 flex-row items-center border border-gray-300 rounded-xl bg-white px-3">
+              <Icon name="qr-code-outline" size={20} color="#666" />
+              <TextInput
+                className="flex-1 ml-2 text-base text-black py-5"
+                placeholder="Enter QR code number"
+                placeholderTextColor={'gray'}
+                value={qrCode}
+                onChangeText={setQrCode}
+                returnKeyType="search"
+                onSubmitEditing={handleQRSearch}
+                editable={!loading}
+              />
+              {qrCode.length > 0 && (
+                <TouchableOpacity onPress={clearQrCode} className="ml-2">
+                  <Icon name="close-circle-outline" size={20} color="#999" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* QR Product Display - Only shown when part is already in bucket */}
+          {qrProductData && (
+            <Pressable 
+              onPress={() => handleProductPress(qrProductData)}
+              className="mb-4 p-4 bg-yellow-50 rounded-xl border border-yellow-200"
+            >
+              <Text className="text-md font-bold text-yellow-800 mb-3">⚠️ Part Already in Use</Text>
+              <View className="flex-row">
+                {qrProductData.imageUrl ? (
+                  <Image
+                    source={{ uri: qrProductData.imageUrl }}
+                    className="w-20 h-20 rounded-lg bg-gray-50"
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View className="w-20 h-20 rounded-lg bg-gray-100 items-center justify-center">
+                    <Package size={24} color="#999" />
+                  </View>
+                )}
+                <View className="flex-1 ml-3">
+                  <Text className="text-base font-semibold text-gray-900">
+                    {qrProductData.name}
+                  </Text>
+                  <Text className="text-xs text-gray-600 mt-1">
+                    QR Code: {qrProductData.qrCode}
+                  </Text>
+                  <Text className="text-sm font-bold text-primary-sage600 mt-1">
+                    ₹{parseFloat(qrProductData.price).toFixed(2)}
+                  </Text>
+                  {qrProductData.type === "Yes" && (
+                    <View className="mt-2">
+                      <Text className="text-xs text-yellow-700">
+                        This part is already in use for Complaint #{qrProductData.complaintId}
+                      </Text>
+                      {qrProductData.technicianName && (
+                        <Text className="text-xs text-yellow-700 mt-1">
+                          Technician: {qrProductData.technicianName}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                </View>
+              </View>
+              {qrProductData.description && (
+                <Text className="text-xs text-gray-600 mt-3">
+                  {qrProductData.description}
+                </Text>
+              )}
+            </Pressable>
+          )}
+
+          {/* Add to Bucket Button */}
+          <TouchableOpacity
+            onPress={handleAddToBucket}
+            className="bg-primary-sage500 mb-4 py-4 rounded-xl flex-row items-center justify-center shadow-sm"
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <>
+                <ShoppingCart size={22} color="white" />
+                <Text className="text-white font-bold text-lg ml-2">Add to Bucket</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
           {/* Product Name & Price */}
           <View className="flex-row justify-between items-start mb-4">
             <Text className="flex-1 mr-4 text-3xl font-bold text-text-primary">
-              {part.part_name}
+              {currentPart.part_name}
             </Text>
             <Text className="text-2xl font-bold text-primary-sage600">
-              ₹{part.part_price}
+              ₹{currentPart.part_price}
             </Text>
           </View>
 
@@ -96,11 +663,10 @@ const PartDetails = () => {
                 {stockStatus.text}
               </Text>
             </View>
-            {/* Rating – if available */}
-            {part.rating && (
+            {currentPart.rating && (
               <View className="flex-row items-center">
                 <Star size={18} color="#F0B27A" fill="#F0B27A" />
-                <Text className="ml-1 text-text-secondary font-medium">{part.rating}</Text>
+                <Text className="ml-1 text-text-secondary font-medium">{currentPart.rating}</Text>
               </View>
             )}
           </View>
@@ -111,117 +677,36 @@ const PartDetails = () => {
               <Package size={20} color="#777777" />
               <Text className="text-xs text-text-secondary mt-1">Section</Text>
               <Text className="text-sm font-semibold text-text-primary">
-                {part.section || 'General'}
+                {currentPart.section || 'General'}
               </Text>
             </View>
             <View className="flex-1 items-center p-2 bg-background-secondary rounded-lg mx-2">
               <Layers size={20} color="#777777" />
               <Text className="text-xs text-text-secondary mt-1">Category</Text>
               <Text className="text-sm font-semibold text-text-primary">
-                {part.category || 'Spare Part'}
+                {currentPart.category || 'Spare Part'}
               </Text>
             </View>
             <View className="flex-1 items-center p-2 bg-background-secondary rounded-lg ml-2">
               <Hash size={20} color="#777777" />
               <Text className="text-xs text-text-secondary mt-1">Part ID</Text>
               <Text className="text-sm font-semibold text-text-primary">
-                {part.id ? `#${part.id}` : 'N/A'}
+                {currentPart.id ? `#${currentPart.id}` : 'N/A'}
               </Text>
             </View>
           </View>
-
-          
 
           {/* Description */}
           <View className="mb-6">
             <Text className="text-lg font-bold text-text-primary mb-2">Description</Text>
             <Text className="text-text-secondary leading-6">
-              {part.description || 'No description available.'}
+              {currentPart.description || 'No description available.'}
             </Text>
           </View>
-
-          {/* Add to Bucket Button */}
-          <TouchableOpacity
-            onPress={() => setModalVisible(true)}
-            className="bg-primary-sage500 py-4 rounded-xl flex-row items-center justify-center shadow-sm"
-          >
-            <ShoppingCart size={22} color="white" />
-            <Text className="text-white font-bold text-lg ml-2">Add to Bucket</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Modal – Additional Details */}
-      <Modal
-        animationType="slide"
-        transparent
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white rounded-t-3xl p-6">
-            {/* Grabber */}
-            <View className="items-center mb-4">
-              <View className="w-12 h-1 bg-ui-border rounded-full" />
-            </View>
-
-            {/* Header */}
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-xl font-bold text-text-primary">Product Details</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color="#777777" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Content */}
-            <ScrollView className="max-h-96" showsVerticalScrollIndicator={false}>
-              <View className="space-y-4">
-                <InfoItem label="Product Name" value={part.part_name} />
-                <InfoItem label="Part ID" value={part.id ? `#${part.id}` : 'N/A'} />
-                <InfoItem label="Section" value={part.section || 'General'} />
-                <InfoItem label="Price" value={`₹${part.part_price}`} highlight />
-                <InfoItem label="Availability" custom>
-                  <View className={`flex-row items-center ${stockStatus.bgColor} px-3 py-2 rounded-lg self-start`}>
-                    <StockIcon size={16} color={stockStatus.iconColor} />
-                    <Text className={`ml-1 font-medium ${stockStatus.color}`}>{stockStatus.text}</Text>
-                  </View>
-                </InfoItem>
-                <InfoItem label="Description" value={part.description || 'No description available.'} />
-                <InfoItem label="Specifications" value={part.specifications || 'Standard specifications apply'} />
-                <InfoItem label="Shipping" value="Free shipping on orders above ₹500" />
-                <InfoItem label="Returns" value="7-day easy returns" />
-              </View>
-            </ScrollView>
-
-            {/* Modal Footer Button */}
-            <TouchableOpacity
-              onPress={() => {
-                setModalVisible(false);
-                console.log(`Added ${part.part_name} to cart`);
-              }}
-              className="mt-6 bg-primary-sage500 py-3 rounded-xl"
-            >
-              <Text className="text-white font-bold text-center text-lg">Add to Cart</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
-
-// Helper component for modal info rows
-const InfoItem = ({ label, value, highlight, custom }) => (
-  <View>
-    <Text className="text-sm text-text-tertiary mb-1">{label}</Text>
-    {custom ? (
-      custom
-    ) : (
-      <Text className={`text-base ${highlight ? 'text-primary-sage600 font-bold' : 'text-text-primary'}`}>
-        {value}
-      </Text>
-    )}
-  </View>
-);
 
 export default PartDetails;

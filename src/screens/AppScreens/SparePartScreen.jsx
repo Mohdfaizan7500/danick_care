@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, FlatList, Image, TextInput, TouchableOpacity, Pressable, Dimensions, Platform, ActivityIndicator } from 'react-native'
+import { StyleSheet, Text, View, FlatList, Image, TextInput, TouchableOpacity, Pressable, Dimensions, Platform, ActivityIndicator, RefreshControl } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import Header from '../../components/Header'
 import { useNavigation, useRoute } from '@react-navigation/native'
@@ -9,13 +9,16 @@ import { useAuth } from '../../context/AuthContext'
 
 const { width: screenWidth } = Dimensions.get('window')
 
-// Skeleton card component – replace animate-pulse with static gray if needed
+// Skeleton card component with proper styling
 const SkeletonCard = ({ width, margin }) => (
     <View style={{ width, margin }} className="p-2 bg-white rounded-3xl border border-gray-200 overflow-hidden">
-        <View className="bg-gray-200 w-full h-[70] rounded-3xl" /> 
+        {/* Image skeleton */}
+        <View className="bg-gray-200 w-full h-[70] rounded-3xl" />
+        
+        {/* Content skeleton */}
         <View className="px-4 py-3">
-            <View className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-            <View className="h-6 bg-gray-200 rounded w-1/2" />
+            <View className="h-3 bg-gray-200 rounded w-3/4 mb-2" />
+            <View className="h-5 bg-gray-200 rounded w-1/2" />
         </View>
     </View>
 )
@@ -27,16 +30,19 @@ const SparePartScreen = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [partsData, setPartsData] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null); // new state for error
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState(null);
     const navigation = useNavigation();
     const { user, imagUrl } = useAuth();
 
     const device = Platform.OS;
     console.log('device:', device)
 
-    const fetchSpareParts = async () => {
+    const fetchSpareParts = async (isRefresh = false) => {
         try {
-            setLoading(true);
+            if (!isRefresh) {
+                setLoading(true);
+            }
             setError(null);
             const response = await getAllSparePart(product_id);
             console.log('API Response:', response);
@@ -48,12 +54,19 @@ const SparePartScreen = () => {
             setPartsData([]);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     }
 
     useEffect(() => {
         fetchSpareParts();
     }, [])
+
+    // Pull to refresh handler
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchSpareParts(true);
+    };
 
     // Filter parts based on search query (search in part_name)
     const filteredParts = partsData.filter(item =>
@@ -78,7 +91,7 @@ const SparePartScreen = () => {
         <Pressable
             onPress={() => handleClickedProduct(item)}
             style={{ width: itemWidth, margin }}
-            className="p-2 bg-white flex justify-between rounded-3xl border border-gray-200 overflow-hidden"
+            className="p-2 bg-white rounded-3xl border border-gray-200 overflow-hidden"
         >
             <View className='bg-white w-full h-[70] rounded-3xl'>
                 <Image
@@ -98,27 +111,45 @@ const SparePartScreen = () => {
         </Pressable>
     );
 
-    const renderSkeleton = () => (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: containerPadding }}>
-            {Array(6).fill().map((_, index) => (
-                <SkeletonCard key={index} width={itemWidth} margin={margin} />
-            ))}
-        </View>
-    );
+    // Skeleton loader using FlatList
+    const renderSkeletonLoader = () => {
+        // Create skeleton data array with 12 items (4 rows of 3 cards)
+        const skeletonData = Array(9).fill().map((_, index) => ({ id: `skeleton-${index}` }));
+        
+        return (
+            <FlatList
+                data={skeletonData}
+                renderItem={({ item }) => (
+                    <SkeletonCard width={itemWidth} margin={margin} />
+                )}
+                keyExtractor={item => item.id}
+                numColumns={numColumns}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ padding: containerPadding }}
+                scrollEnabled={false}
+            />
+        );
+    };
 
     const renderError = () => (
         <View className="flex-1 items-center justify-center py-10">
             <Text className="text-red-500 text-sm mb-2">{error}</Text>
-            <TouchableOpacity onPress={fetchSpareParts} className="bg-blue-500 px-4 py-2 rounded-lg">
-                <Text className="text-white">Retry</Text>
+            <TouchableOpacity onPress={() => fetchSpareParts()} className="bg-primary-sage500 px-6 py-3 rounded-lg">
+                <Text className="text-white font-medium">Retry</Text>
             </TouchableOpacity>
+        </View>
+    );
+
+    const renderEmpty = () => (
+        <View className="flex-1 items-center justify-center py-10">
+            <Text className="text-gray-500 text-sm">No spare parts found</Text>
         </View>
     );
 
     return (
         <SafeAreaView className='flex-1 bg-white'>
             <Header
-                title={`${product.name} - Spare Parts`}
+                title={`${product?.name || 'Spare'} - Spare Parts`}
                 titleStyle={'text-2xl font-bold'}
                 showBackButton={true}
                 titlePosition="left"
@@ -145,21 +176,27 @@ const SparePartScreen = () => {
             </View>
 
             {loading ? (
-                renderSkeleton()
+                renderSkeletonLoader()
             ) : error ? (
                 renderError()
             ) : (
                 <FlatList
                     data={filteredParts}
                     renderItem={renderItem}
-                    keyExtractor={item => item.id.toString()}
+                    keyExtractor={item => item.id?.toString() || Math.random().toString()}
                     numColumns={numColumns}
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ padding: containerPadding }}
-                    ListEmptyComponent={
-                        <View className="flex-1 items-center justify-center py-10">
-                            <Text className="text-gray-500 text-sm">No spare parts found</Text>
-                        </View>
+                    contentContainerStyle={{ padding: containerPadding, flexGrow: 1 }}
+                    ListEmptyComponent={renderEmpty}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={['#3FD298', '#58A890']}
+                            tintColor="#3FD298"
+                            title="Pull to refresh"
+                            titleColor="#666"
+                        />
                     }
                 />
             )}

@@ -9,21 +9,21 @@ import { useNavigation } from '@react-navigation/native';
 import DialogBox from '../../../components/DilaogBox';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import NetInfo from '@react-native-community/netinfo'; // Import NetInfo
+import NetInfo from '@react-native-community/netinfo';
 import { MaterialIcons } from '@react-native-vector-icons/material-icons';
+
 const Profile = () => {
   const { user, logout, profileData, imagUrl } = useAuth();
-  const tech_id = user?.id
-  console.log('id:', tech_id)
+  const tech_id = user?.id;
+  console.log('id:', tech_id);
   const navigation = useNavigation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogLoggingOut, setIsDialogLoggingOut] = useState(false);
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
-  const [isConnected, setIsConnected] = useState(true); // Internet connectivity state
-
+  const [isConnected, setIsConnected] = useState(true);
 
   const device = Platform.OS == 'ios';
-  console.log('device:', device)
+  console.log('device:', device);
 
   // Monitor internet connection
   useEffect(() => {
@@ -32,7 +32,6 @@ const Profile = () => {
     });
     return () => unsubscribe();
   }, []);
-
 
   const menuItems = [
     {
@@ -82,8 +81,7 @@ const Profile = () => {
   // Check internet before showing logout dialog
   const handleLogoutPress = () => {
     if (!isConnected) {
-      // toast.error('You are offline. Please check your internet connection.');
-      toast.custom(<StatusMessage type='error' title={'You are offline. Please check your internet connection.'} />, { duration: 300 })
+      toast.custom(<StatusMessage type='error' title={'You are offline. Please check your internet connection.'} />, { duration: 300 });
       return;
     }
     setLogoutDialogVisible(true);
@@ -92,10 +90,7 @@ const Profile = () => {
   const handleLogout = async () => {
     // Extra safety: if offline, don't proceed
     if (!isConnected) {
-      // toast.error('Cannot logout while offline.');
-      toast.custom(<StatusMessage type='error' title={'Cannot logout while offline.'} />, { duration: 300 })
-
-
+      toast.custom(<StatusMessage type='error' title={'Cannot logout while offline.'} />, { duration: 300 });
       setLogoutDialogVisible(false);
       return;
     }
@@ -107,9 +102,7 @@ const Profile = () => {
       await logout();
       setLogoutDialogVisible(false);
     } catch (error) {
-      toast.custom(<StatusMessage type='error' title={'CFailed to logout. Please try again.'} />, { duration: 300 })
-
-      // Alert.alert('Error', 'Failed to logout. Please try again.');
+      toast.custom(<StatusMessage type='error' title={'Failed to logout. Please try again.'} />, { duration: 300 });
       setLogoutDialogVisible(false);
     } finally {
       setIsDialogLoggingOut(false);
@@ -119,15 +112,10 @@ const Profile = () => {
 
   const handleNavigation = (route) => {
     if (!isConnected) {
-      // toast.error('You are offline. Please check your internet connection.');
-      toast.custom(<StatusMessage type='error' title={'You are offline. Please check your internet connection.'} />, { duration: 300 })
+      toast.custom(<StatusMessage type='error' title={'You are offline. Please check your internet connection.'} />, { duration: 300 });
       return;
-    }
-    else {
+    } else {
       navigation.navigate(route);
-
-      
-
     }
   };
 
@@ -144,7 +132,6 @@ const Profile = () => {
         <Text className="text-xs text-gray-500 mt-0.5">{item.subtitle}</Text>
       </View>
       <Icon name="chevron-right" size={24} color="#9ca3af" />
-      {/* <MaterialIcons name="house" color="#ff0000" size={20} /> */}
     </TouchableOpacity>
   );
 
@@ -176,14 +163,25 @@ const Profile = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flex: 1, paddingBottom: 0, }}>
-        <View className="absolute inset-0 z-50 w-90% pointer-events-none">
-          <Toaster />
-        </View>
+      <View className="absolute inset-0 z-50 pointer-events-none">
+        <Toaster />
+      </View>
 
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ 
+          flexGrow: 1,
+          paddingBottom: 20 
+        }}
+      >
+        {/* Profile Header Section */}
         <View className="bg-white p-5 items-center border-b border-gray-200">
           <Image
-            source={profileData?.profile_photo ? { uri: `${imagUrl}${profileData.profile_photo}` } : require('../../../assets/images/profileImage.jpg')}
+            source={
+              profileData?.profile_photo 
+                ? { uri: `${imagUrl}${profileData.profile_photo}` } 
+                : require('../../../assets/images/profileImage.jpg')
+            }
             className="w-24 h-24 rounded-full mb-4 border-3 border-white shadow-md"
           />
 
@@ -195,12 +193,16 @@ const Profile = () => {
 
           <View className="flex-row items-center mt-1 gap-2">
             <Phone size={14} color="gray" />
-            <Text className="text-xs text-gray-500 font-medium">+91 {profileData?.technician_mobile || '+91 98765 43210'}</Text>
+            <Text className="text-xs text-gray-500 font-medium">
+              +91 {profileData?.technician_mobile || '+91 98765 43210'}
+            </Text>
           </View>
 
           <View className="flex-row items-center gap-2">
             <Mail size={14} color="gray" />
-            <Text className="text-xs text-gray-500 font-medium">{profileData?.email || 'No email provided'}</Text>
+            <Text className="text-xs text-gray-500 font-medium">
+              {profileData?.email || 'No email provided'}
+            </Text>
           </View>
 
           {user?.username && (user?.firstName || user?.lastName) && (
@@ -208,6 +210,7 @@ const Profile = () => {
           )}
         </View>
 
+        {/* Menu Items Section */}
         <View className="mt-6">
           <View className={`bg-white mx-5 rounded-xl px-4 shadow-md ${device ? 'shadow-sm' : 'shadow-md'}`}>
             {menuItems.map((item, index) => (
@@ -220,8 +223,8 @@ const Profile = () => {
           </View>
         </View>
 
-        {/* Logout Button - Now checks connectivity before showing dialog */}
-        <View className="mt-8 mx-5 mb-5">
+        {/* Logout Button */}
+        <View className="mt-8 mx-5">
           <TouchableOpacity
             className="bg-red-500 p-4 rounded-xl flex-row items-center justify-center shadow-md"
             onPress={handleLogoutPress}
@@ -232,9 +235,13 @@ const Profile = () => {
           </TouchableOpacity>
         </View>
 
-        <Text className="text-center mt-2.5 mb-5 text-gray-400 text-xs">Version 1.0.0</Text>
+        {/* Version Text */}
+        <Text className="text-center mt-2.5 mb-5 text-gray-400 text-xs">
+          Version 1.0.0
+        </Text>
       </ScrollView>
 
+      {/* Logout Dialog */}
       <DialogBox
         visible={logoutDialogVisible}
         onClose={() => {

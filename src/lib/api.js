@@ -503,6 +503,19 @@ export const PurchaseMarketPart = async (payload) => {
     }
 };
 
+export const GetComplaintsDetails = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/GetComplaintsDetails', payload);
+        console.log('GetComplaintsDetails api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in GetComplaintsDetails:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
 
 
 
