@@ -127,7 +127,7 @@ const AMCDetails = () => {
                     {service?.parts && service.parts.length > 0 && (
                         <View className="mb-6">
                             <Text className="text-text-primary text-lg font-bold mb-4">
-                                Parts Covered:
+                                Parts Covered ({service.parts.length}):
                             </Text>
                             <View className="flex-row flex-wrap">
                                 {service.parts.map((part, index) => (

@@ -66,10 +66,7 @@ const Remarkscreen = () => {
         }
     }, [complaintData]);
     
-    useEffect(() => {
-        setSelectedCustomerType('B');
-        setRemark('Gas refilled and thermostat replaced. Working properly.');
-    }, []);
+   
 
     // Function to fetch existing images from server
     const fetchExistingImages = async () => {

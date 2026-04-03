@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ScrollView, Image, ActivityIndicator, TouchableOpacity, Linking } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Image, ActivityIndicator, TouchableOpacity, Linking, StatusBar } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,7 +11,10 @@ import { useAuth } from '../../../context/AuthContext';
 
 const QRCodeDetails = () => {
   const route = useRoute();
-  const qrCode = route.params.qrData;
+  const status = route.params?.status || 'qrcode';
+  console.log('Status in QRCodeDetails:', status);
+  const qrCode = route.params.qrData || route.params.complaint || route.params.qrCode || {};
+  console.log('Route params in QRCodeDetails:', qrCode);
   const { imagUrl } = useAuth();
   
   const [loading, setLoading] = useState(false);
@@ -19,7 +22,7 @@ const QRCodeDetails = () => {
   const [expandedParts, setExpandedParts] = useState(false);
 
   console.log('Received QR Code:', qrCode);
-  const complaint_id = qrCode.complaintId || qrCode.complaint_id || 'N/A';
+  const complaint_id = qrCode.complaintId || qrCode.complaint_id || qrCode.id || 'N/A';
   console.log('Complaint ID:', complaint_id);
 
   // Fetch complaint details on mount
@@ -82,15 +85,24 @@ const QRCodeDetails = () => {
     return 'text-red-600';
   };
 
+  // Get header title based on status
+  const getHeaderTitle = () => {
+    if (status === 'complaint') {
+      return 'Complaint Details';
+    }
+    return 'QR Code Details';
+  };
+
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-background-primary">
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <StatusBar backgroundColor="white" barStyle="dark-content" translucent={true} />
         <Header
-          title="QR Code Details"
+          title={getHeaderTitle()}
           titlePosition="left"
           titleStyle="font-bold text-2xl ml-5"
           showBackButton={true}
-          containerStyle='flex-row pt-3 py-2 px-4'
+          containerStyle='flex-row bg-white pt-3 py-2 px-4'
         />
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#58A890" />
@@ -102,13 +114,14 @@ const QRCodeDetails = () => {
 
   if (complaint_id === 'N/A' || !complaintDetails) {
     return (
-      <SafeAreaView className="flex-1 bg-background-primary">
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <StatusBar backgroundColor="white" barStyle="dark-content" translucent={true} />
         <Header
-          title="QR Code Details"
+          title={getHeaderTitle()}
           titlePosition="left"
           titleStyle="font-bold text-2xl ml-5"
           showBackButton={true}
-          containerStyle='flex-row pt-3 py-2 px-4'
+          containerStyle='flex-row bg-white pt-3 py-2 px-4'
         />
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="document-text-outline" size={80} color="#CCCCCC" />
@@ -126,13 +139,14 @@ const QRCodeDetails = () => {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background-primary">
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <StatusBar backgroundColor="white" barStyle="dark-content" translucent={true} />
       <Header
-        title="QR Code Details"
+        title={getHeaderTitle()}
         titlePosition="left"
         titleStyle="font-bold text-2xl ml-5"
         showBackButton={true}
-        containerStyle='flex-row pt-3 py-2 px-4'
+        containerStyle='flex-row bg-white pt-3 py-2 px-4'
       />
       <View className="absolute inset-0 z-50 w-90% pointer-events-none">
         <Toaster />
@@ -143,46 +157,49 @@ const QRCodeDetails = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 30 }}
       >
-        {/* QR Code Information Card */}
-        <View className="bg-white rounded-2xl p-4 mb-4 mt-4 shadow-sm border border-gray-200">
-          <Text className="text-lg font-bold text-text-primary mb-3">QR Code Information</Text>
-          <View className="flex-row justify-between items-center mb-2">
-            <Text className="text-text-secondary">QR Code Number</Text>
-            <View className="flex-row items-center">
-              <Text className="text-text-primary font-semibold">{qrCode?.qrCodeNumber || qrCode?.qr_id || 'N/A'}</Text>
-              <TouchableOpacity 
-                onPress={() => {
-                  // Copy QR code
-                  toast.custom(<StatusMessage type='info' title='QR Code Copied!' />);
-                }}
-                className="ml-2"
-              >
-                <Icon name="copy-outline" size={18} color="#58A890" />
-              </TouchableOpacity>
+        {/* QR Code Information Card - Only show when coming from QR code */}
+        {status === 'qrcode' && (
+          <View className="bg-white rounded-2xl p-4  mt-4 shadow-sm border border-gray-200">
+            <Text className="text-lg font-bold text-text-primary mb-3">QR Code Information</Text>
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="text-text-secondary">QR Code Number</Text>
+              <View className="flex-row items-center">
+                <Text className="text-text-primary font-semibold">{qrCode?.qrCodeNumber || qrCode?.qr_id || 'N/A'}</Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    toast.custom(<StatusMessage type='info' title='QR Code Copied!' />);
+                  }}
+                  className="ml-2"
+                >
+                  <Icon name="copy-outline" size={18} color="#58A890" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View className="flex-row justify-between">
+              <Text className="text-text-secondary">Status</Text>
+              <View className={`px-2 py-1 rounded-full ${complaintDetails?.status === 'success' ? 'bg-green-100' : 'bg-gray-100'}`}>
+                <Text className={`text-xs font-semibold ${complaintDetails?.status === 'success' ? 'text-green-600' : 'text-gray-600'}`}>
+                  {complaintDetails?.status === 'success' ? 'Used' : 'Fresh'}
+                </Text>
+              </View>
             </View>
           </View>
-          <View className="flex-row justify-between">
-            <Text className="text-text-secondary">Status</Text>
-            <View className={`px-2 py-1 rounded-full ${complaintDetails?.status === 'success' ? 'bg-green-100' : 'bg-gray-100'}`}>
-              <Text className={`text-xs font-semibold ${complaintDetails?.status === 'success' ? 'text-green-600' : 'text-gray-600'}`}>
-                {complaintDetails?.status === 'success' ? 'Used' : 'Fresh'}
-              </Text>
-            </View>
-          </View>
-        </View>
+        )}
 
         {/* Complaint Details Card */}
-        <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-gray-200">
+        <View className="bg-white rounded-2xl p-4 mb-4 mt-4 shadow-sm border border-gray-200">
           <Text className="text-lg font-bold text-text-primary mb-3">Complaint Details</Text>
           
-          <View className="mb-3">
-            <Text className="text-text-secondary text-sm">Complaint ID</Text>
-            <Text className="text-text-primary font-semibold text-base">#{complaintDetails.id}</Text>
-          </View>
-
-          <View className="mb-3">
-            <Text className="text-text-secondary text-sm">CSN Number</Text>
-            <Text className="text-text-primary font-semibold text-base">{complaintDetails.csn || 'N/A'}</Text>
+          {/* Row 1: Complaint ID and CSN Number */}
+          <View className="flex-row justify-between mb-3">
+            <View className="flex-1 mr-2">
+              <Text className="text-text-secondary text-sm">Complaint ID</Text>
+              <Text className="text-text-primary font-semibold text-base">#{complaintDetails.id}</Text>
+            </View>
+            <View className="flex-1 ml-2">
+              <Text className="text-text-secondary text-sm">CSN Number</Text>
+              <Text className="text-text-primary font-semibold text-base">{complaintDetails.csn || 'N/A'}</Text>
+            </View>
           </View>
 
           <View className="mb-3">
@@ -190,20 +207,22 @@ const QRCodeDetails = () => {
             <Text className="text-text-primary font-semibold text-base">{complaintDetails.service_name || complaintDetails.service || 'N/A'}</Text>
           </View>
 
-          <View className="mb-3">
-            <Text className="text-text-secondary text-sm">Customer Name</Text>
-            <Text className="text-text-primary font-semibold text-base">{complaintDetails.customer_name || 'N/A'}</Text>
-          </View>
-
-          <View className="mb-3">
-            <Text className="text-text-secondary text-sm">Customer Mobile</Text>
-            <TouchableOpacity 
-              onPress={() => handleCallPress(complaintDetails.customer_mobile)}
-              className="flex-row items-center"
-            >
-              <Text className="text-primary-sage600 font-semibold text-base">{complaintDetails.customer_mobile || 'N/A'}</Text>
-              <Icon name="call-outline" size={16} color="#58A890" className="ml-2" />
-            </TouchableOpacity>
+          {/* Row 2: Customer Name and Customer Mobile */}
+          <View className="flex-row justify-between mb-3">
+            <View className="flex-1 mr-2">
+              <Text className="text-text-secondary text-sm">Customer Name</Text>
+              <Text className="text-text-primary font-semibold text-base">{complaintDetails.customer_name || 'N/A'}</Text>
+            </View>
+            <View className="flex-1 ml-2">
+              <Text className="text-text-secondary text-sm">Customer Mobile</Text>
+              <TouchableOpacity 
+                onPress={() => handleCallPress(complaintDetails.customer_mobile)}
+                className="flex-row items-center"
+              >
+                <Icon name="call-outline" size={16} color="#58A890" />
+                <Text className="text-primary-sage600 ml-2 font-semibold text-base">{complaintDetails.customer_mobile || 'N/A'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View className="mb-3">
@@ -211,6 +230,7 @@ const QRCodeDetails = () => {
             <Text className="text-text-primary text-base">{complaintDetails.service_address || 'N/A'}</Text>
           </View>
 
+          {/* Row 3: Slot Date and Slot Time */}
           <View className="flex-row justify-between mb-3">
             <View className="flex-1 mr-2">
               <Text className="text-text-secondary text-sm">Slot Date</Text>
@@ -222,6 +242,7 @@ const QRCodeDetails = () => {
             </View>
           </View>
 
+          {/* Row 4: Total Paid and Days */}
           <View className="flex-row justify-between mb-3">
             <View className="flex-1 mr-2">
               <Text className="text-text-secondary text-sm">Total Paid</Text>
@@ -233,29 +254,34 @@ const QRCodeDetails = () => {
             </View>
           </View>
 
-          {complaintDetails.rating && (
-            <View className="mb-3">
+          {/* Row 5: Rating and Remark */}
+          <View className="flex-row justify-between mb-3">
+            <View className="flex-1 mr-2">
               <Text className="text-text-secondary text-sm">Rating</Text>
-              <View className="flex-row items-center">
-                <Text className={`font-semibold text-base ${getRatingColor(complaintDetails.rating)}`}>
-                  {complaintDetails.rating}
-                </Text>
-                <Icon name="star" size={16} color="#F0B27A" className="ml-1" />
-              </View>
+              {complaintDetails.rating ? (
+                <View className="flex-row items-center">
+                  <Text className={`font-semibold text-base ${getRatingColor(complaintDetails.rating)}`}>
+                    {complaintDetails.rating}
+                  </Text>
+                  <Icon name="star" size={16} color="#F0B27A" className="ml-1" />
+                </View>
+              ) : (
+                <Text className="text-text-primary">N/A</Text>
+              )}
             </View>
-          )}
+            <View className="flex-1 ml-2">
+              <Text className="text-text-secondary text-sm">Remark</Text>
+              <Text className="text-text-primary italic" numberOfLines={2}>
+                {complaintDetails.remark || 'No remarks'}
+              </Text>
+            </View>
+          </View>
 
+          {/* Review Section - Full Width */}
           {complaintDetails.review && complaintDetails.review !== 'A' && (
             <View className="mb-3">
               <Text className="text-text-secondary text-sm">Review</Text>
               <Text className="text-text-primary">{complaintDetails.review}</Text>
-            </View>
-          )}
-
-          {complaintDetails.remark && (
-            <View className="mb-3">
-              <Text className="text-text-secondary text-sm">Remark</Text>
-              <Text className="text-text-primary italic">{complaintDetails.remark}</Text>
             </View>
           )}
         </View>

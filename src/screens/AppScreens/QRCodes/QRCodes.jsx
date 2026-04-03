@@ -262,7 +262,7 @@ const QRCodes = () => {
 
     const handleCardPress = (item) => {
         if (item.complaintId && item.complaintId !== 'N/A') {
-            navigation.navigate('QRCodeDetails', { qrData: item });
+            navigation.navigate('QRCodeDetails', { qrData: item,status:"qrcode" });
         }
         else {
             toast.custom(
@@ -665,7 +665,7 @@ const QRCodes = () => {
                     activeOpacity={1}
                     onPress={() => setModalVisible(false)}
                 >
-                    <View className="w-11/12 h-5/6 bg-white rounded-xl overflow-hidden">
+                    <View className="w-10/12 h-3/6 bg-white rounded-xl overflow-hidden">
                         {selectedImage && (
                             <Image
                                 source={{ uri: selectedImage }}

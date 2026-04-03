@@ -72,7 +72,7 @@ const Complaints = () => {
     prebooking: 0,
     payout: 0,
   });
-  
+
   const scrollViewRef = useRef(null);
   const timeoutRef = useRef(null);
   const flatListRef = useRef(null);
@@ -126,7 +126,7 @@ const Complaints = () => {
   // Fetch complaints from API with pagination
   const fetchComplaints = async (tab, page = 1, isLoadMore = false, isRefresh = false) => {
     const apiStatus = getApiStatus(tab);
-    
+
     if (!isLoadMore && !isRefresh) {
       setLoading(true);
       setComplaintsData([]);
@@ -138,34 +138,34 @@ const Complaints = () => {
     } else {
       setLoadingMore(true);
     }
-    
+
     try {
       const response = await getComplaints(technicianId, apiStatus, page);
       console.log('API Response for', tab, 'page', page, ':', response);
-      
+
       // Handle response structure based on your API
       let result = [];
       let currentPageNum = 1;
       let itemsPerPage = 10;
       let totalItems = 0;
-      
+
       if (response?.data?.success) {
         // Your API response structure: { success: true, result: [], page: "1", limit: 10 }
         result = response.data.result || [];
         currentPageNum = parseInt(response.data.page) || 1;
         itemsPerPage = parseInt(response.data.limit) || 10;
-        
+
         // Calculate total pages based on dashboard counts
         const totalCount = getTabCount(tab);
         if (totalCount > 0) {
           totalItems = totalCount;
           const calculatedTotalPages = Math.ceil(totalItems / itemsPerPage);
           setTotalPages(calculatedTotalPages);
-          
+
           // Check if there are more pages
           const hasMorePages = currentPageNum < calculatedTotalPages;
           setHasMore(hasMorePages);
-          
+
           console.log(`Page ${currentPageNum} of ${calculatedTotalPages}, Has more: ${hasMorePages}, Items loaded: ${result.length}`);
         } else {
           // If no total count from dashboard, determine based on result length
@@ -186,9 +186,9 @@ const Complaints = () => {
         setHasMore(false);
         setTotalPages(1);
       }
-      
+
       const newData = Array.isArray(result) ? result : [];
-      
+
       if (isLoadMore) {
         // Append new data to existing list
         setComplaintsData(prev => {
@@ -206,7 +206,7 @@ const Complaints = () => {
         setComplaintsData(newData);
         setCurrentPage(currentPageNum);
       }
-      
+
     } catch (error) {
       console.error('Error fetching complaints:', error);
       if (!isLoadMore && !isRefresh) {
@@ -231,23 +231,23 @@ const Complaints = () => {
       console.log('Skipping load more - already loading');
       return;
     }
-    
+
     // Check if there are more pages to load
     if (!hasMore) {
       console.log('No more pages to load');
       return;
     }
-    
+
     // Calculate next page number
     const nextPage = currentPage + 1;
-    
+
     // Check if next page exceeds total pages
     if (nextPage > totalPages) {
       console.log(`Next page ${nextPage} exceeds total pages ${totalPages}`);
       setHasMore(false);
       return;
     }
-    
+
     console.log(`Loading more complaints: Page ${nextPage} of ${totalPages}`);
     fetchComplaints(selectedTab, nextPage, true, false);
   };
@@ -295,7 +295,7 @@ const Complaints = () => {
   useEffect(() => {
     const initializeData = async () => {
       await fetchTabCount();
-      
+
       // Small delay to ensure dashboard counts are loaded
       setTimeout(() => {
         if (status === 'Complete' || status === 'Cancel') {
@@ -330,7 +330,7 @@ const Complaints = () => {
         }
       }, 100);
     };
-    
+
     initializeData();
   }, []);
 
@@ -377,7 +377,7 @@ const Complaints = () => {
       });
     }
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    
+
     // Scroll to top when changing tabs
     if (flatListRef.current) {
       flatListRef.current.scrollToOffset({ offset: 0, animated: true });
@@ -385,7 +385,14 @@ const Complaints = () => {
   };
 
   const handleComplaintPress = (complaint) => {
-    navigation.navigate('ComplaintDetail', { complaint });
+    console.log('Selected complaint:', complaint);
+    if (complaint?.status === 'success') {
+      navigation.navigate('QRCodeDetails', { complaint, status: "complaint" });
+    }
+    else {
+      navigation.navigate('ComplaintDetail', { complaint, status: "complaint" });
+
+    }
   };
 
   // Function to determine if it's a recomplaint
@@ -425,30 +432,28 @@ const Complaints = () => {
             {item.service_name || 'Service'}
           </Text>
           <View
-            className={`px-3 py-1 rounded-full ${
-              displayStatus === 'Assigned'
-                ? 'bg-primary-sage100'
-                : displayStatus === 'On Progress'
-                  ? 'bg-ui-warning/20'
-                  : displayStatus === 'Complete'
-                    ? 'bg-ui-success/20'
-                    : displayStatus === 'Cancel'
-                      ? 'bg-ui-error/20'
-                      : 'bg-gray-100'
-            }`}
+            className={`px-3 py-1 rounded-full ${displayStatus === 'Assigned'
+              ? 'bg-primary-sage100'
+              : displayStatus === 'On Progress'
+                ? 'bg-ui-warning/20'
+                : displayStatus === 'Complete'
+                  ? 'bg-ui-success/20'
+                  : displayStatus === 'Cancel'
+                    ? 'bg-ui-error/20'
+                    : 'bg-gray-100'
+              }`}
           >
             <Text
-              className={`text-xs font-medium ${
-                displayStatus === 'Assigned'
-                  ? 'text-primary-sage700'
-                  : displayStatus === 'On Progress'
-                    ? 'text-ui-warning'
-                    : displayStatus === 'Complete'
-                      ? 'text-ui-success'
-                      : displayStatus === 'Cancel'
-                        ? 'text-ui-error'
-                        : 'text-text-tertiary'
-              }`}
+              className={`text-xs font-medium ${displayStatus === 'Assigned'
+                ? 'text-primary-sage700'
+                : displayStatus === 'On Progress'
+                  ? 'text-ui-warning'
+                  : displayStatus === 'Complete'
+                    ? 'text-ui-success'
+                    : displayStatus === 'Cancel'
+                      ? 'text-ui-error'
+                      : 'text-text-tertiary'
+                }`}
             >
               {displayStatus}
             </Text>
@@ -475,13 +480,12 @@ const Complaints = () => {
         <Text className="text-text-tertiary text-xs mt-1">
           {item.slot_date || 'Date not available'}
         </Text>
-        
+
         {/* Recomplaint/New Badge - positioned at bottom right */}
         <View className="absolute bottom-2 right-2">
           <View
-            className={`px-2 py-1 rounded-full ${
-              recomplaint ? 'bg-orange-500' : 'bg-blue-500'
-            }`}
+            className={`px-2 py-1 rounded-full ${recomplaint ? 'bg-orange-500' : 'bg-blue-500'
+              }`}
           >
             <Text className="text-white text-xs font-bold">
               {recomplaint ? 'Recomplaint' : 'New'}
@@ -570,32 +574,28 @@ const Complaints = () => {
                 className="mr-3"
               >
                 <View
-                  className={`px-4 py-1.5 rounded-full flex-row items-center ${
-                    selectedTab === tab
-                      ? 'bg-primary-sage600'
-                      : 'bg-background-tertiary'
-                  }`}
+                  className={`px-4 py-1.5 rounded-full flex-row items-center ${selectedTab === tab
+                    ? 'bg-primary-sage600'
+                    : 'bg-background-tertiary'
+                    }`}
                 >
                   <Text
-                    className={`text-sm font-medium ${
-                      selectedTab === tab
-                        ? 'text-text-inverse'
-                        : 'text-text-secondary'
-                    }`}
+                    className={`text-sm font-medium ${selectedTab === tab
+                      ? 'text-text-inverse'
+                      : 'text-text-secondary'
+                      }`}
                   >
                     {tab}
                   </Text>
                   <View
-                    className={`ml-2 px-2 py-0.5 rounded-full ${
-                      selectedTab === tab ? 'bg-white/30' : 'bg-ui-border'
-                    }`}
+                    className={`ml-2 px-2 py-0.5 rounded-full ${selectedTab === tab ? 'bg-white/30' : 'bg-ui-border'
+                      }`}
                   >
                     <Text
-                      className={`text-xs ${
-                        selectedTab === tab
-                          ? 'text-text-inverse'
-                          : 'text-text-tertiary'
-                      }`}
+                      className={`text-xs ${selectedTab === tab
+                        ? 'text-text-inverse'
+                        : 'text-text-tertiary'
+                        }`}
                     >
                       {count}
                     </Text>
@@ -615,7 +615,7 @@ const Complaints = () => {
           ref={flatListRef}
           data={filteredComplaints}
           renderItem={renderComplaintCard}
-          keyExtractor={(item, index) => 
+          keyExtractor={(item, index) =>
             item?.id?.toString() || item?.csn?.toString() || index.toString()
           }
           contentContainerStyle={{ padding: 16 }}

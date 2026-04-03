@@ -75,11 +75,7 @@ const Home = () => {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [count, setCount] = useState(null);
-  const [qrCodeCount, setQrCodeCount] = useState({
-    all: 0,
-    unused: 0,
-    used: 0
-  });
+ 
   const flatListRef = useRef(null);
   const navigation = useNavigation();
   const { IsOnline, user, imagUrl, profileData, updateProfileData } = useAuth();
@@ -145,33 +141,7 @@ const Home = () => {
     }
   };
 
-  // ---------- Fetch QR Code counts ----------
-  const fetchQrCodeCounts = async () => {
-    if (!user?.id) {
-      console.log('No user ID available for QR count');
-      return;
-    }
 
-    try {
-      const payload = {
-        technician_id: user?.id.toString(),
-      };
-      const response = await AssignQRCodeCount(payload);
-      const data = response?.data;
-      
-      if (data?.success) {
-        console.log('QR Code counts:', data);
-        setQrCodeCount({
-          all: data.all || 0,
-          unused: data.unused || 0,
-          used: data.used || 0
-        });
-      }
-    } catch (error) {
-      console.log('Fetch QR code counts error:', error);
-      console.error('Fetch QR code counts error:', error);
-    }
-  };
 
   // ---------- Refresh function for pull-to-refresh ----------
   const onRefresh = async () => {
@@ -181,7 +151,6 @@ const Home = () => {
       await Promise.all([
         fetchProfile(),
         fetchDashboardCount(),
-        fetchQrCodeCounts()
       ]);
       toast.custom(
         <StatusMessage type='success' title={"Data refreshed successfully"} />,
@@ -203,7 +172,6 @@ const Home = () => {
     if (user?.id) {
       fetchProfile();
       fetchDashboardCount();
-      fetchQrCodeCounts();
     }
   }, [user?.id]);
 
@@ -557,7 +525,7 @@ const Home = () => {
                     <View className="bg-purple-100 p-2 rounded-full mb-1">
                       <Icon name="qrcode-scan" size={24} color="#8B5CF6" />
                     </View>
-                    <Text className="text-lg font-bold text-gray-800">{qrCodeCount.all}</Text>
+                    <Text className="text-lg font-bold text-gray-800">{count?.allQr || '0'}</Text>
                     <Text className="text-xs text-gray-500 text-center">All QR codes</Text>
                   </Pressable>
 
@@ -570,7 +538,7 @@ const Home = () => {
                     <View className="bg-orange-100 p-2 rounded-full mb-1">
                       <UsedQrCodeIcon width={24} height={24} fill="#F97316" />
                     </View>
-                    <Text className="text-lg font-bold text-gray-800">{qrCodeCount.used}</Text>
+                    <Text className="text-lg font-bold text-gray-800">{count?.unusedQr || '0'}</Text>
                     <Text className="text-xs text-gray-500 text-center">Used QR codes</Text>
                   </Pressable>
 
@@ -583,7 +551,7 @@ const Home = () => {
                     <View className="bg-teal-100 p-2 rounded-full mb-1">
                       <FreshQrCodeIcon width={24} height={24} fill="#14B8A6" />
                     </View>
-                    <Text className="text-lg font-bold text-gray-800">{qrCodeCount.unused}</Text>
+                    <Text className="text-lg font-bold text-gray-800">{count?.usedQr || '0'}</Text>
                     <Text className="text-xs text-gray-500 text-center">Fresh QR codes</Text>
                   </Pressable>
                 </View>
