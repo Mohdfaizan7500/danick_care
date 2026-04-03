@@ -60,15 +60,27 @@ export const loginApi = async (username, password) => {
         });
         console.log('responce:', response)
         // console.log('data:',response.data)
-
-
-        return {
-            success: true,
+        if(response.data.success){
+            return {
+            success: response.data.success,
             data: response.data,
             accessToken: response.data.accessToken,
             refreshToken: response.data.refreshToken,
         };
+       
+
+        }
+         else{
+            return {
+                success: response.data.success,
+                data: response.data
+            };
+        }
+
+
+        
     } catch (error) {
+        console.error('API error in loginApi:', error);
         const errorMessage = getErrorMessage(error);
         return {
             success: false,

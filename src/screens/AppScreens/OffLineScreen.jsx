@@ -1,42 +1,153 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Linking } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { getProfile } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
+import DialogBox from '../../components/DilaogBox'; // Reuse your dialog component
 
-const OffLineScreen = () => {
-    // Replace with your actual service center number
+const OffLineScreen = ({ navigation }) => {
     const serviceNumber = '1800-123-4567';
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [dialogVisible, setDialogVisible] = useState(false);
+    const [dialogMessage, setDialogMessage] = useState('');
+    const [dialogType, setDialogType] = useState('info');
+    
+    const { user, setIsOnline, setAuthData } = useAuth();
+
+    const showDialog = (type, message) => {
+        setDialogType(type);
+        setDialogMessage(message);
+        setDialogVisible(true);
+    };
 
     const handleCallPress = () => {
-        // Remove any non-digit characters for the tel: URL
         const phoneNumber = serviceNumber.replace(/-/g, '');
         Linking.openURL(`tel:${phoneNumber}`);
     };
 
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            const technicianId = user?.technician_id || user?.id;
+            
+            if (!technicianId) {
+                showDialog('error', 'User information not found. Please login again.');
+                return;
+            }
+
+            const response = await getProfile(technicianId);
+            console.log('Profile refresh response:', response);
+            
+            // Adjust based on your actual response structure
+            const responseData = response?.data?.data || response?.data;
+            const isOnline = responseData?.login_status === 'Online';
+            
+            if (response?.success === false) {
+                showDialog('error', responseData?.msg || 'Failed to refresh status');
+                return;
+            }
+            
+            if (isOnline) {
+                await setIsOnline(true);
+                
+                // Update user data if needed
+                if (responseData) {
+                    await setAuthData(
+                        { ...user, ...responseData },
+                        user?.accessToken,
+                        user?.refreshToken
+                    );
+                }
+                
+                showDialog('success', 'You are now online! Redirecting...');
+                setTimeout(() => {
+                    navigation.replace('Home');
+                }, 1500);
+            } else {
+                showDialog('info', 'You are still offline. Please contact service center.');
+            }
+            
+        } catch (error) {
+            console.error('Refresh error:', error);
+            showDialog('error', error.message || 'Failed to refresh status. Please try again.');
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
+    const dialogFooter = (
+        <TouchableOpacity
+            className={`py-3 rounded-lg ${dialogType === 'error' ? 'bg-red-500' : 'bg-teal-500'}`}
+            onPress={() => setDialogVisible(false)}
+        >
+            <Text className="text-white text-center font-semibold">OK</Text>
+        </TouchableOpacity>
+    );
+
     return (
-        <View className="flex-1 bg-background-primary items-center justify-center px-6">
-            <View className="w-24 h-24 rounded-full bg-status-inactive items-center justify-center mb-6">
-                <Icon name="app-blocking" size={50} color="#999999" /> 
+        <>
+            <View className="flex-1 bg-background-primary items-center justify-center px-6">
+                <View className="w-24 h-24 rounded-full bg-status-inactive items-center justify-center mb-6">
+                    <Icon name="app-blocking" size={50} color="#999999" />
+                </View>
+
+                <Text className="text-text-primary text-xl font-bold text-center mb-3">
+                    You are offline by admin
+                </Text>
+                <Text className="text-text-secondary text-base text-center mb-6">
+                    Contact your service center for assistance.
+                </Text>
+
+                <Text className="text-primary-sage600 text-lg font-semibold mb-8">
+                    {serviceNumber}
+                </Text>
+
+                <View className='flex-row gap-4'>
+                    <TouchableOpacity
+                        onPress={handleCallPress}
+                        className="bg-primary-sage500 py-3 px-8 rounded-xl flex-row items-center"
+                        disabled={isRefreshing}
+                    >
+                        <Icon name="phone" size={20} color="white" />
+                        <Text className="text-white font-semibold text-base ml-2">Call Now</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                        onPress={handleRefresh}
+                        className="bg-primary-sage500 py-3 px-8 rounded-xl flex-row items-center"
+                        disabled={isRefreshing}
+                    >
+                        {isRefreshing ? (
+                            <ActivityIndicator color="white" size="small" />
+                        ) : (
+                            <>
+                                <Icon name="refresh" size={20} color="white" />
+                                <Text className="text-white font-semibold text-base ml-2">Refresh</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </View>
             </View>
 
-            <Text className="text-text-primary text-xl font-bold text-center mb-3">
-                You are offline by admin
-            </Text>
-            <Text className="text-text-secondary text-base text-center mb-6">
-                Contact your service center for assistance.
-            </Text>
-
-            <Text className="text-primary-sage600 text-lg font-semibold mb-8">
-                {serviceNumber}
-            </Text>
-
-            <TouchableOpacity
-                onPress={handleCallPress}
-                className="bg-primary-sage500 py-3 px-8 rounded-xl flex-row items-center"
+            <DialogBox
+                visible={dialogVisible}
+                onClose={() => setDialogVisible(false)}
+                title={dialogType === 'error' ? 'Error' : dialogType === 'success' ? 'Success' : 'Info'}
+                size="sm"
+                showCloseButton={false}
+                closeOnBackdropPress={false}
+                footer={dialogFooter}
             >
-                <Icon name="phone" size={20} color="white" />
-                <Text className="text-white font-semibold text-base ml-2">Call Now</Text>
-            </TouchableOpacity>
-        </View>
+                <View className="py-4 items-center">
+                    <Icon 
+                        name={dialogType === 'error' ? 'error' : dialogType === 'success' ? 'check-circle' : 'info'} 
+                        size={50} 
+                        color={dialogType === 'error' ? '#F44336' : dialogType === 'success' ? '#4CAF50' : '#2196F3'} 
+                    />
+                    <Text className="text-gray-600 text-center mt-4 text-base">{dialogMessage}</Text>
+                </View>
+            </DialogBox>
+        </>
     );
 };
 

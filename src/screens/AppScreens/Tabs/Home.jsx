@@ -290,7 +290,7 @@ const Home = () => {
               className="w-12 h-12 rounded-full border-2 border-white"
             />
             <View
-              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${userProfile.isActive ? 'bg-green-500' : 'bg-gray-400'
+              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${userProfile.IsOnline ? 'bg-green-500' : 'bg-gray-400'
                 }`}
             />
           </View>
@@ -302,10 +302,10 @@ const Home = () => {
               </Text>
             </View>
             <Text
-              className={`text-xs font-medium ${userProfile.isActive ? 'text-green-600' : 'text-gray-500'
+              className={`text-xs font-medium ${userProfile.IsOnline ? 'text-green-600' : 'text-gray-500'
                 }`}
             >
-              {userProfile.isActive ? '● Active' : '● Inactive'}
+              {userProfile.IsOnline ? '● Active' : '● Inactive'}
             </Text>
           </View>
         </View>

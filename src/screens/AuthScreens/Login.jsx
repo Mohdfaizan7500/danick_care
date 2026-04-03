@@ -44,63 +44,50 @@ const Login = ({ navigation }) => {
         setIsLoading(true);
         try {
             const result = await loginApi(email, password);
-            // console.log('API response:', result);
+            console.log('Login API response:', result);
 
-            // -------- TOKEN EXTRACTION LOGIC --------
-            // The API response structure may vary. Adjust the extraction below
-            // based on your actual backend.
-
-            // Try to find accessToken at different levels
-            let accessToken = result?.accessToken || result?.data.data?.accessToken || result?.token;
-            let refreshToken = result?.refreshToken || result?.data?.refreshToken;
-            let userData = result?.data?.data
-
-            // If still no token, maybe the response is directly the user object (like your log shows)
-            // In that case, there is no token – you'll need to handle accordingly.
-            if (!accessToken && (result?.id || result?.technician_id)) {
-                // The response is the user object without token – this is unusual.
-                // You may need to request a token separately or accept that this is a demo.
-                console.warn('No token received from API; proceeding without token (demo mode)');
-                // For demo purposes, we create a dummy token.
-                accessToken = 'demo-token-' + Date.now();
-                userData = result;
+            // Check if API call was successful (based on your response structure)
+            if (!result || result.success === false) {
+                const errorMsg = result?.data?.msg || 'Login failed. Please try again.';
+                throw new Error(errorMsg);
             }
+
+            // Extract tokens and user data
+            let accessToken = result?.accessToken || result?.data?.accessToken || result?.data?.data?.accessToken;
+            let refreshToken = result?.refreshToken || result?.data?.refreshToken || result?.data?.data?.refreshToken;
+            let userData = result?.data?.user || result?.data?.data || result?.data;
 
             // Validate token presence
             if (!accessToken) {
                 throw new Error('No access token received from server');
             }
 
-            // Ensure userData is an object
+            // Validate user data
             if (!userData || typeof userData !== 'object') {
                 throw new Error('Invalid user data received');
             }
 
-            // Normalize user object fields (map backend fields to app fields)
+            // Normalize user object
             const user = {
-                id: userData.id,
+                id: userData.id || userData.technician_id,
                 city_id: userData.city_id,
-
                 technician_id: userData.technician_id,
-
-                ...userData, // keep any extra fields
+                ...userData,
             };
-            console.log('user:', user)
 
-            // Save to AuthContext (which will store in AsyncStorage)
+            console.log('user:', user);
+
+            // Save to AuthContext
             await setAuthData(user, accessToken, refreshToken);
-            console.log('login status :', userData?.data?.login_status)
-            if (userData?.data?.data?.login_status === 'Online') {
-                await setIsOnline(true);
-            }
-            else {
-                await setIsOnline(true);
-            }
+
+            // Set online status based on response or default to true
+            const isOnline = userData?.login_status === 'Online';
+            await setIsOnline(isOnline);
 
             showDialog('success', 'Success!', 'Logged in successfully!', () => {
-                // Navigate to main screen
-                navigation.replace('Home'); // or navigation.navigate('Home')
+                navigation.replace('Home');
             });
+
         } catch (error) {
             console.error('Login error:', error);
             showDialog('error', 'Login Failed', error.message || 'Login failed. Please try again.');
