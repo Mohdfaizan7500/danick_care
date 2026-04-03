@@ -25,6 +25,7 @@ const Remarkscreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { complaintData, isVerified, isImageUploaded } = route.params || {};
+    console.log('Complaint Data received in Remarkscreen:', complaintData);
 
     // State for images
     const [image1Uri, setImage1Uri] = useState(null);
@@ -65,8 +66,8 @@ const Remarkscreen = () => {
             fetchExistingImages();
         }
     }, [complaintData]);
-    
-   
+
+
 
     // Function to fetch existing images from server
     const fetchExistingImages = async () => {
@@ -549,6 +550,11 @@ const Remarkscreen = () => {
         </View>
     );
 
+    const handleConvertToAMC = () => {
+       navigation.navigate('AMCList');
+
+    }
+
     return (
         <SafeAreaView className="flex-1 bg-white">
             <View className="absolute inset-0 z-50 pointer-events-none">
@@ -569,14 +575,7 @@ const Remarkscreen = () => {
                     </Text>
                 }
                 onRightIconPress={() => {
-                    toast.custom(
-                        <StatusMessage
-                            type="info"
-                            title="This feature is in development 🚧"
-                            className="mx-4 mb-6"
-                        />,
-                        { duration: 2000 }
-                    );
+                    handleConvertToAMC();
                 }}
             />
             <KeyboardAvoidingView
