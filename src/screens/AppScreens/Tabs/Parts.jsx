@@ -193,7 +193,7 @@ const Parts = () => {
         containerStyle="bg-white flex-row items-center justify-between px-4 py-5 border-b border-gray-200"
       />
 
-      <View className="flex-1 bg-red-50">
+      <View className="flex-1 bg-gray-50">
         {isLoading ? (
           <SkeletonLoader />
         ) : categories.length === 0 ? (

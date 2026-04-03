@@ -22,6 +22,8 @@ import AddPartBilling from '../../screens/AppScreens/Complaints/AddPartBilling';
 import Remarkscreen from '../../screens/AppScreens/Complaints/Remarkscreen';
 import AMCDetails from '../../screens/AppScreens/AMCDetails';
 import ProductDetails from '../../screens/AppScreens/Scan/ProductDetails';
+import QRCodes from '../../screens/AppScreens/QRCodes/QRCodes';
+import QRCodeDetails from '../../screens/AppScreens/QRCodes/QRCodeDetails';
 // import BottomTabs from 
 const Stack = createNativeStackNavigator();
 
@@ -109,6 +111,9 @@ const AppStack = () => {
       <Stack.Screen name="Remarkscreen" component={Remarkscreen} />
       <Stack.Screen name="AMCDetails" component={AMCDetails} />
       <Stack.Screen name="ProductDetails" component={ProductDetails} />
+      <Stack.Screen name="QRCodes" component={QRCodes} />
+      <Stack.Screen name="QRCodeDetails" component={QRCodeDetails} />
+
 
 
 

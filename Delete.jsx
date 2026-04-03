@@ -21,8 +21,8 @@ const TermsConditions = () => {
     {
       title: 'Service Agreement',
       points: [
-        'Provide accurate AC nit information Provide accurate AC unit information',
-        'Allow technician access to the unit bdfhejnhsdhdhh',
+        'Provide accurate AC unit information',
+        'Allow technician access to the unit',
         'Payment due upon service completion'
       ]
     },

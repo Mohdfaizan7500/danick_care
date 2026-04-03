@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { toast, Toaster } from 'sonner-native';
 import DialogBox from '../../../components/DilaogBox';
 import { useAuth } from '../../../context/AuthContext';
+import Clipboard from '@react-native-clipboard/clipboard';
 import {
   getPartCount,
   technicianAssignPart,
@@ -117,7 +118,7 @@ const Bucket = () => {
             item.transfer_by === 'admin' ? 'Admin' :
               item.transfer_by === 'replace' ? 'Replace' : 'Unknown',
         price: item.part_price,
-        imageUrl: item.part_image ? imagUrl + item.part_image : 'https://via.placeholder.com/100',
+        imageUrl: item.part_image ,
         parentType: item.transfer_by,
         addedDate: item.created_at || new Date().toLocaleDateString(),
         description: item.description,
@@ -438,6 +439,8 @@ const Bucket = () => {
     // Handle QR code icon click
     const handleQrCodePress = () => {
       if (item.qr_code) {
+
+        Clipboard.setString(item.qr_code);
         toast.custom(
           <StatusMessage
             type='info'

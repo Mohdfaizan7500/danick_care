@@ -3,7 +3,7 @@ import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // const BASE_URL = 'https://dummyjson.com/';
-const BASE_URL = 'http://192.168.1.6:5001/';
+const BASE_URL = 'http://192.168.1.7:5001/';
 // const BASE_URL = 'http://api.dainikcare.com/';
 
 
@@ -75,7 +75,7 @@ export const loginApi = async (username, password) => {
             error: errorMessage,
             status: error.response?.status,
         };
-    }                  
+    }
 };
 
 
@@ -399,7 +399,7 @@ export const fetchPartsForComplaint = async (payload) => {
     }
 };
 
-export const AttechPartWithComplaints  = async (payload) => {
+export const AttechPartWithComplaints = async (payload) => {
     console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AttachedPartWithComplaints', payload);
@@ -412,7 +412,7 @@ export const AttechPartWithComplaints  = async (payload) => {
     }
 };
 
-export const FetchPartForComplaints  = async (payload) => {
+export const FetchPartForComplaints = async (payload) => {
     console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/FetchComplaintsParts', payload);
@@ -425,7 +425,7 @@ export const FetchPartForComplaints  = async (payload) => {
     }
 };
 
-export const RecomplaitAttechPart  = async (payload) => {
+export const RecomplaitAttechPart = async (payload) => {
     console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/FetchRecomplaintAttachedPart', payload);
@@ -438,7 +438,7 @@ export const RecomplaitAttechPart  = async (payload) => {
     }
 };
 
-export const FetchPartsForReplaced  = async (payload) => {
+export const FetchPartsForReplaced = async (payload) => {
     console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/FetchPartsForReplaced', payload);
@@ -451,7 +451,7 @@ export const FetchPartsForReplaced  = async (payload) => {
     }
 };
 
-export const ReplacedPartManagement  = async (payload) => {
+export const ReplacedPartManagement = async (payload) => {
     console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/ReplacedPartManagement', payload);
@@ -464,7 +464,7 @@ export const ReplacedPartManagement  = async (payload) => {
     }
 };
 
-export const UpdateRemark  = async (payload) => {
+export const UpdateRemark = async (payload) => {
     console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/UpdateRemark', payload);
@@ -490,10 +490,15 @@ export const GetPartDetailQRCode = async (payload) => {
     }
 };
 
-export const PurchaseMarketPart = async (payload) => {
-    console.log('payload', payload)
+export const PurchaseMarketPart = async (formData) => {
+    console.log('formData', formData)
     try {
-        const response = await apiClient.post('TechnicianAPI/PurchaseMarketPart', payload);
+        const response = await apiClient.post('TechnicianAPI/PurchaseMarketPart', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                'Accept': 'application/json',
+            },
+        });
         console.log('PurchaseMarketPart api  response:', response);
         return response;
     } catch (error) {
@@ -511,6 +516,32 @@ export const GetComplaintsDetails = async (payload) => {
         return response;
     } catch (error) {
         console.error('API error in GetComplaintsDetails:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const AssignQRCodeList = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/AssignQRCodeList', payload);
+        console.log('AssignQRCodeList api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in AssignQRCodeList:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const AssignQRCodeCount = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/AssignQRCodeCount', payload);
+        console.log('AssignQRCodeCount api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in AssignQRCodeCount:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }

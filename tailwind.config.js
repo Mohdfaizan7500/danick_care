@@ -9,7 +9,7 @@ module.exports = {
         // Primary Brand Color - Sage/Mint
         primary: {
           DEFAULT: '#88D8C0',
-          sage: '#88D8C0',
+          sage: 'bg-teal500',
           sage50: '#E6F7F0',
           sage100: '#D1F0E5',
           sage200: '#B8E8D8',

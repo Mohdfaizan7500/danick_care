@@ -7,14 +7,7 @@ import Header from '../../components/Header'
 
 const Support = () => {
   const supportOptions = [
-    {
-      id: '1',
-      title: 'FAQ',
-      description: 'Find answers to common questions',
-      icon: 'help',
-      iconColor: '#88D8C0', // primary.sage
-      route: 'FAQ'
-    },
+    
     {
       id: '2',
       title: 'Contact Us',
@@ -23,43 +16,28 @@ const Support = () => {
       iconColor: '#58A890', // primary.sage600
       route: 'Contact'
     },
-    {
-      id: '3',
-      title: 'Live Chat',
-      description: 'Chat with a support agent',
-      icon: 'chat',
-      iconColor: '#70C0A8', // primary.sage500
-      route: 'Chat'
-    },
-    {
-      id: '4',
-      title: 'Report a Problem',
-      description: 'Report technical issues or bugs',
-      icon: 'bug-report',
-      iconColor: '#E86F6F', // ui.error
-      route: 'Report'
-    }
+    
   ]
 
   const contactInfo = [
     {
       id: '1',
       type: 'email',
-      value: 'support@example.com',
+      value: 'dainikcare@gmail.com',
       icon: 'email',
       color: '#88D8C0'
     },
     {
       id: '2',
       type: 'phone',
-      value: '+1 (555) 123-4567',
+      value: '+91 7055880880',
       icon: 'phone',
       color: '#58A890'
     },
     {
       id: '3',
       type: 'website',
-      value: 'www.example.com/support',
+      value: 'https://dainikcare.com/',
       icon: 'language',
       color: '#70C0A8'
     },
@@ -152,13 +130,7 @@ const Support = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
       >
 
-        {/* Support Options */}
-        <View className="mt-4">
-          <Text className="text-gray-800 text-lg font-semibold mb-3">How can we help?</Text>
-          {supportOptions.map(item => (
-            <SupportCard key={item.id} item={item} />
-          ))}
-        </View>
+       
 
         {/* Contact Information */}
         <View className="mt-6 bg-white rounded-2xl p-5 border border-gray-100">

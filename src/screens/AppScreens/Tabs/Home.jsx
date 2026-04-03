@@ -26,6 +26,8 @@ import {
   ComplaintsIcon,
   CompleteIcon,
   FileIcon,
+  FreshQrCodeIcon,
+  UsedQrCodeIcon,
 } from '../../../assets/svgIcons/SVGIcons';
 import { useNavigation } from '@react-navigation/native';
 import NetInfo from '@react-native-community/netinfo';
@@ -34,7 +36,7 @@ import NoInternet from '../../NoInternet';
 import OffLineScreen from '../OffLineScreen';
 import { toast } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import { getDeshBoardCount, getProfile } from '../../../lib/api';
+import { getDeshBoardCount, getProfile, AssignQRCodeCount } from '../../../lib/api';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -73,6 +75,11 @@ const Home = () => {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [count, setCount] = useState(null);
+  const [qrCodeCount, setQrCodeCount] = useState({
+    all: 0,
+    unused: 0,
+    used: 0
+  });
   const flatListRef = useRef(null);
   const navigation = useNavigation();
   const { IsOnline, user, imagUrl, profileData, updateProfileData } = useAuth();
@@ -138,14 +145,43 @@ const Home = () => {
     }
   };
 
+  // ---------- Fetch QR Code counts ----------
+  const fetchQrCodeCounts = async () => {
+    if (!user?.id) {
+      console.log('No user ID available for QR count');
+      return;
+    }
+
+    try {
+      const payload = {
+        technician_id: user?.id.toString(),
+      };
+      const response = await AssignQRCodeCount(payload);
+      const data = response?.data;
+      
+      if (data?.success) {
+        console.log('QR Code counts:', data);
+        setQrCodeCount({
+          all: data.all || 0,
+          unused: data.unused || 0,
+          used: data.used || 0
+        });
+      }
+    } catch (error) {
+      console.log('Fetch QR code counts error:', error);
+      console.error('Fetch QR code counts error:', error);
+    }
+  };
+
   // ---------- Refresh function for pull-to-refresh ----------
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      // Fetch both profile and dashboard data simultaneously
+      // Fetch all data simultaneously
       await Promise.all([
         fetchProfile(),
-        fetchDashboardCount()
+        fetchDashboardCount(),
+        fetchQrCodeCounts()
       ]);
       toast.custom(
         <StatusMessage type='success' title={"Data refreshed successfully"} />,
@@ -163,10 +199,11 @@ const Home = () => {
   };
 
   useEffect(() => {
-    // Fetch profile when component mounts and user is available
+    // Fetch data when component mounts and user is available
     if (user?.id) {
       fetchProfile();
       fetchDashboardCount();
+      fetchQrCodeCounts();
     }
   }, [user?.id]);
 
@@ -215,6 +252,9 @@ const Home = () => {
     else if (cardName === 'AMC') navigation.navigate('AMC');
     else if (cardName === 'Pre-Booking') navigation.navigate('PreBooking');
     else if (cardName === 'Payout') navigation.navigate('PayOut');
+    else if (cardName === 'AllQRCodes') navigation.navigate('QRCodes', { status: "AllQRCodes" });
+    else if (cardName === 'Used') navigation.navigate('QRCodes', { status: "Used" });
+    else if (cardName === 'Fresh') navigation.navigate('QRCodes', { status: "Fresh" });
   };
 
   // ---------- Carousel helpers ----------
@@ -245,13 +285,13 @@ const Home = () => {
   const formatNumberToK = (num) => {
     // Convert to number if it's a string
     const number = parseFloat(num);
-    
+
     // Check if it's a valid number
     if (isNaN(number)) return '0';
-    
+
     // Divide by 1000 to get thousands
     const thousands = number / 1000;
-    
+
     // Format to 1 decimal place and add 'k'
     return `${thousands.toFixed(1)}k`;
   };
@@ -347,42 +387,6 @@ const Home = () => {
               />
             }
           >
-            {/* Carousel */}
-            <View className="mt-2">
-              <FlatList
-                ref={flatListRef}
-                data={carouselImages}
-                renderItem={renderCarouselItem}
-                keyExtractor={item => item.id.toString()}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                pagingEnabled
-                onScroll={handleScroll}
-                scrollEventThrottle={16}
-                getItemLayout={getItemLayout}
-                initialScrollIndex={activeIndex}
-              />
-              <View className="flex-row justify-center mt-3">
-                {carouselImages.map((_, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => {
-                      flatListRef.current?.scrollToIndex({
-                        index,
-                        animated: true,
-                      });
-                      setActiveIndex(index);
-                    }}
-                  >
-                    <View
-                      className={`w-2 h-2 rounded-full mx-1 ${index === activeIndex ? 'bg-blue-500 w-4' : 'bg-gray-300'
-                        }`}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
             {/* Cards Section */}
             <View className="px-4 py-4">
               {/* Status Overview */}
@@ -497,7 +501,7 @@ const Home = () => {
                       <BucketIcon width={24} height={24} fill="#f97316" />
                     </View>
                     <Text className="text-2xl font-bold text-gray-800">
-                       {count?.bucket || 0}
+                      {count?.bucket || 0}
                     </Text>
                     <Text className="text-xs text-gray-500 text-center">
                       Bucket
@@ -534,6 +538,54 @@ const Home = () => {
                       Payout
                     </Text>
                   </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* QR Code Section - UPDATED WITH CORRECT COUNTS */}
+              <View className="mb-6">
+                <Text className="text-gray-800 font-bold text-lg mt-3 mb-3">
+                  QR Code Section
+                </Text>
+
+                <View className="flex-row justify-between">
+                  {/* All QR codes - Purple theme */}
+                  <Pressable
+                    onPress={() => handleCardPress('AllQRCodes')}
+                    className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mr-1"
+                    style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                  >
+                    <View className="bg-purple-100 p-2 rounded-full mb-1">
+                      <Icon name="qrcode-scan" size={24} color="#8B5CF6" />
+                    </View>
+                    <Text className="text-lg font-bold text-gray-800">{qrCodeCount.all}</Text>
+                    <Text className="text-xs text-gray-500 text-center">All QR codes</Text>
+                  </Pressable>
+
+                  {/* Used QR codes - Orange theme */}
+                  <Pressable
+                    onPress={() => handleCardPress('Used')}
+                    className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mx-1"
+                    style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                  >
+                    <View className="bg-orange-100 p-2 rounded-full mb-1">
+                      <UsedQrCodeIcon width={24} height={24} fill="#F97316" />
+                    </View>
+                    <Text className="text-lg font-bold text-gray-800">{qrCodeCount.used}</Text>
+                    <Text className="text-xs text-gray-500 text-center">Used QR codes</Text>
+                  </Pressable>
+
+                  {/* Fresh QR codes (Unused) - Teal theme */}
+                  <Pressable
+                    onPress={() => handleCardPress('Fresh')}
+                    className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 ml-1"
+                    style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                  >
+                    <View className="bg-teal-100 p-2 rounded-full mb-1">
+                      <FreshQrCodeIcon width={24} height={24} fill="#14B8A6" />
+                    </View>
+                    <Text className="text-lg font-bold text-gray-800">{qrCodeCount.unused}</Text>
+                    <Text className="text-xs text-gray-500 text-center">Fresh QR codes</Text>
+                  </Pressable>
                 </View>
               </View>
             </View>

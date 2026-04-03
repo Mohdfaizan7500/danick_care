@@ -16,6 +16,7 @@ export default function App() {
           <View className="absolute inset-0 z-50 w-90% pointer-events-none">
             <Toaster />
           </View>
+          {/* <Complaints /> */}
           <AppNavigation />
         </SafeAreaProvider>
       </GestureHandlerRootView>
