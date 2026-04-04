@@ -20,6 +20,7 @@ import { launchCamera } from 'react-native-image-picker';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import DialogBox from '../../../components/DilaogBox';
 import { UploadComplaintImage, deletComplaintImage, getComplaintImage, UpdateRemark } from '../../../lib/api';
+import ToggleSwitch from 'toggle-switch-react-native';
 
 const Remarkscreen = () => {
     const navigation = useNavigation();
@@ -51,6 +52,9 @@ const Remarkscreen = () => {
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
     const [imageToDelete, setImageToDelete] = useState(null); // '1' or '2'
 
+    // State for Convert to AMC toggle
+    const [convertToAMC, setConvertToAMC] = useState(false);
+
     // Compute if form is complete
     const isFormComplete =
         selectedCustomerType.trim() !== '' &&
@@ -67,7 +71,15 @@ const Remarkscreen = () => {
         }
     }, [complaintData]);
 
+    useEffect(() => {
+        if (complaintData.remark !== '') {
+            setRemark(complaintData.remark);
+        }
+        if (complaintData.review !== '') {
+            setSelectedCustomerType(complaintData.review);
+        }
 
+    }, []);
 
     // Function to fetch existing images from server
     const fetchExistingImages = async () => {
@@ -466,9 +478,14 @@ const Remarkscreen = () => {
             return;
         }
 
-        setSubmitting(true);
+        if (convertToAMC) {
+            navigation.navigate('AMCList');
+            return;
+        }
 
         try {
+            setSubmitting(true);
+
             // Prepare payload for UpdateRemark API
             const payload = {
                 complaint_id: complaintData?.id?.toString(),
@@ -499,7 +516,8 @@ const Remarkscreen = () => {
                         image2Id: image2Id,
                         image1Uri: image1Uri,
                         image2Uri: image2Uri,
-                        complaintData: complaintData
+                        complaintData: complaintData,
+                        convertToAMC: convertToAMC // Pass the AMC toggle state
                     });
                 }, 500);
             } else {
@@ -551,8 +569,7 @@ const Remarkscreen = () => {
     );
 
     const handleConvertToAMC = () => {
-       navigation.navigate('AMCList');
-
+        navigation.navigate('AMCList');
     }
 
     return (
@@ -590,6 +607,30 @@ const Remarkscreen = () => {
                             <Text className="text-text-primary mt-2">Loading existing images...</Text>
                         </View>
                     )}
+
+                    {/* Convert to AMC with Toggle Switch - Inline */}
+                    <View className="flex-row justify-between items-center mb-4 p-3 bg-gray-50 rounded-xl">
+                        <View>
+                            <Text className="text-text-primary font-semibold text-base">
+                                Convert to AMC
+                            </Text>
+                            <Text className="text-text-tertiary text-xs mt-1">
+                                {convertToAMC ? 'Yes, convert to AMC' : 'No, regular service'}
+                            </Text>
+                        </View>
+                        <ToggleSwitch
+                            isOn={convertToAMC}
+                            onToggle={setConvertToAMC}
+                            onColor="#14B8A6"
+                            offColor="#D1D5DB"
+                            size="medium"
+                            thumbOnStyle={{ backgroundColor: '#FFFFFF' }}
+                            thumbOffStyle={{ backgroundColor: '#FFFFFF' }}
+                            thumbOnStyleCustom={{ backgroundColor: '#FFFFFF' }}
+                            thumbOffStyleCustom={{ backgroundColor: '#FFFFFF' }}
+                            animationSpeed={200}
+                        />
+                    </View>
 
                     {/* Customer Type Dropdown */}
                     <View className="mb-4">

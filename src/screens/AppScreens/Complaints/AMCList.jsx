@@ -3,14 +3,14 @@ import React from 'react'
 import Header from '../../../components/Header'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
-
+import Icon from 'react-native-vector-icons/Ionicons';
 const AMCList = () => {
     const navigation = useNavigation();
 
     const handleAMCPress = (amc) => {
         navigation.navigate('ComplaintAMCDetails', { amc });
     }
-    
+
     const amcData = [
         {
             id: '1',
@@ -68,20 +68,32 @@ const AMCList = () => {
 
     const renderItem = ({ item }) => (
         <TouchableOpacity
-        onPress={()=>handleAMCPress(item)}
+            onPress={() => handleAMCPress(item)}
             className="bg-white rounded-xl mb-5 overflow-hidden shadow-lg"
             style={{ elevation: 3 }}
             activeOpacity={0.7}
         >
+
             <View className="relative h-[150px]">
-                <Image
-                    source={{ uri: item.imageUrl }}
-                    className="w-full h-full"
-                    resizeMode="stretch"
-                />
-                <View className="absolute top-2.5 right-2.5 bg-orange-500 px-2.5 py-1 rounded-full">
-                    <Text className="text-white text-xs font-bold">Warranty: {item.warrantyLimit}</Text>
-                </View>
+                {
+                    item?.imageUrl ? (
+                        <>
+                            <Image
+                                source={{ uri: item.imageUrl }}
+                                className="w-full h-full"
+                                resizeMode="stretch"
+                            />
+                            <View className="absolute top-2.5 right-2.5 bg-orange-500 px-2.5 py-1 rounded-full">
+                                <Text className="text-white text-xs font-bold">Warranty: {item.warrantyLimit}</Text>
+                            </View>
+                        </>
+                    ) : (
+                        <View className="w-full h-full bg-teal-100 flex items-center justify-center">
+                            <Icon name="cube-outline" size={80} color="#10b981" />
+                        </View>
+                    )
+                }
+
             </View>
 
             <View className="p-4">

@@ -75,9 +75,8 @@ const AddPartBilling = () => {
                 name: part.part_name || 'Part',
                 partNumber: part.id?.toString() || '',
                 price: parseFloat(part.part_price) || 0,
-                imageUrl: part.part_image
-                    ? `${imagUrl}${part.part_image}`
-                    : 'https://via.placeholder.com/150',
+                imageUrl: part.part_image,
+
                 description: part.description || '',
                 transfer_by: part.transfer_by,
                 part_accept: part.part_accept, // Keep as string or null
@@ -141,9 +140,9 @@ const AddPartBilling = () => {
         // Check if part_accept is "0" (already assigned)
         if (part.part_accept === "0") {
             toast.custom(
-                <StatusMessage 
-                    type='error' 
-                    title="Part Already Assigned" 
+                <StatusMessage
+                    type='error'
+                    title="Part Already Assigned"
                     message={`${part.name} is already assigned to ${part.technician_name || 'another technician'}. Please cancel it before use.`}
                 />,
                 { duration: 4000 }
@@ -154,20 +153,20 @@ const AddPartBilling = () => {
         // If part_accept is null, proceed normally
         const isCurrentlyAttached = selectedParts.includes(part.id);
         const newStatus = isCurrentlyAttached ? "0" : "1";
-        
+
         setAttachingPartId(part.id);
-        
+
         try {
             const payload = {
                 part_id: part.id,
                 complaint_id: complaintData?.id?.toString(),
                 status: newStatus
             };
-            
+
             console.log('Attaching/Detaching part with payload:', payload);
             const response = await AttechPartWithComplaints(payload);
             console.log('Attach/Detach response:', response);
-            
+
             if (response?.data?.success) {
                 // Update the part's status in the parts array
                 const updatedParts = parts.map(p => {
@@ -176,10 +175,10 @@ const AddPartBilling = () => {
                     }
                     return p;
                 });
-                
+
                 setParts(updatedParts);
                 setFilteredParts(updatedParts);
-                
+
                 // Update selected parts state
                 if (newStatus === "1") {
                     // Add to selected parts
@@ -188,11 +187,11 @@ const AddPartBilling = () => {
                     // Remove from selected parts
                     setSelectedParts(prev => prev.filter(id => id !== part.id));
                 }
-                
+
                 toast.custom(
-                    <StatusMessage 
-                        type='success' 
-                        title={newStatus === "1" ? "Part attached successfully" : "Part detached successfully"} 
+                    <StatusMessage
+                        type='success'
+                        title={newStatus === "1" ? "Part attached successfully" : "Part detached successfully"}
                     />,
                     { duration: 1500 }
                 );
@@ -214,31 +213,39 @@ const AddPartBilling = () => {
         const isSelected = selectedParts.includes(item.id);
         const isAttaching = attachingPartId === item.id;
         const isAssigned = item.part_accept === "0"; // Part is already assigned to technician
-        
+
         // Calculate opacity - lower opacity for assigned parts
         const cardOpacity = isAssigned ? 0.6 : 1;
-        
-        const cardClasses = `flex-row items-center p-3 mb-4 rounded-2xl border ${
-            isSelected
+
+        const cardClasses = `flex-row items-center p-3 mb-4 rounded-2xl border ${isSelected
                 ? 'bg-green-50 border-primary-sage600'
                 : isAssigned
-                ? 'bg-gray-100 border-gray-300'
-                : 'bg-white border-ui-border'
-        }`;
+                    ? 'bg-gray-100 border-gray-300'
+                    : 'bg-white border-ui-border'
+            }`;
 
         return (
-            <TouchableOpacity 
-                onPress={() => handlePartToggle(item)} 
+            <TouchableOpacity
+                onPress={() => handlePartToggle(item)}
                 className={cardClasses}
                 disabled={isAttaching || isAssigned} // Disable if part is already assigned
                 style={{ opacity: cardOpacity }}
             >
-                <Image
-                    source={{ uri: item.imageUrl }}
-                    className="w-16 h-16 rounded-lg bg-gray-200"
-                    resizeMode="contain"
-                    onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-                />
+                {
+                    item?.imageUrl ? (
+                        <Image
+                            source={{ uri: item.imageUrl }}
+                            className="w-16 h-16 rounded-lg bg-gray-200"
+                            resizeMode="contain"
+                            onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+                        />
+                    ) : (
+                        <View className="w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center">
+                            <Icon name="cube-outline" size={28} color="#10b981" />
+                        </View>
+                    )
+                }
+               
                 <View className="flex-1 ml-3">
                     <Text className={`font-semibold text-base ${isAssigned ? 'text-gray-500' : 'text-text-primary'}`}>
                         {item.name}
@@ -254,7 +261,7 @@ const AddPartBilling = () => {
                     <Text className={`font-bold text-base mt-1 ${isAssigned ? 'text-gray-500' : 'text-primary-sage700'}`}>
                         ₹{item.price.toFixed(2)}
                     </Text>
-                    
+
                     {/* Show assigned badge if part is already assigned */}
                     {isAssigned && (
                         <View className="bg-red-100 px-2 py-1 rounded-md mt-2 self-start">

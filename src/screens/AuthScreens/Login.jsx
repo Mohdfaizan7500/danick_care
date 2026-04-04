@@ -82,7 +82,7 @@ const Login = ({ navigation }) => {
 
             // Set online status based on response or default to true
             const isOnline = userData?.login_status === 'Online';
-            await setIsOnline(isOnline);
+            await setIsOnline(!isOnline);
 
             showDialog('success', 'Success!', 'Logged in successfully!', () => {
                 navigation.replace('Home');

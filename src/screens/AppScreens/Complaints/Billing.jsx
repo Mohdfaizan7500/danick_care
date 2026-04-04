@@ -103,9 +103,8 @@ const Billing = () => {
           name: part.part_name || 'Part',
           partNumber: part.id?.toString() || '',
           price: parseFloat(part.part_price) || 0,
-          imageUrl: part?.part_image || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAMAAAAJbSJIAAAAkFBMVEX///9VYIBDTG1zg7/Dxs/Iy9U0P2RJVXlMVnc/SGlSXX1BSmx1hcJtfr16ib9xgb739/lncppyfaRnebtIUXCxtcOrrrtaZIOrtNdeaIa3v93r7fXx8/mFk8fIzuXk5/LQ1emYo8+Om8vY3OykrtTDyeKcp9HN0+e4wN2wuNqJlsnb3eV6h7vW2N46RGm5vck7cFMyAAAF0klEQVR4nO3di3aiSBAG4Ci7A0tsYZdk4iY6GjUXM3t5/7dbhLgRhKaru6qr8dT/AsN3uoouypwzNzf+slk95h7/Oe/ZrFSmssUT93NQZfehsiiKSuP+Ko3r2hdVRvV6dcb1tjj5qqjiec39TJhZP6uGrzrI4nnH/VxYeXpVqu2ri3V7Fcblvuj01cbV6I3LRff5fdXq6o37GV2SHzKt79P4g/s5rfMYXb5gOmt1/sL9qDbJX5SRr4rK3kc3zL3MzX3VOUbvS+5nhuTHfLD/OoyH0Rg3sPP7MqrFKIy7VWHjq6KK8Ify3dbeVxnVPuiBdb21qs+WMdyhfP3sdn6nZMU2SOPTHsf3aQxuYF3u9QMo2Ki2G27TefIFYIAxNq423K5T8kOB7quN8yCG8vw9Qq3PRsqhnH1gfZmRnN8p5Tm+8/oIz+8UlfFtkd/mBbkvqgZWnqH8beXFVxsZNuW7FWn/dRj3Xs/R5QPC2lj425RjDaDQlEYvA2vXBtubUdFvyp9e+XzHUG/KdRtsb8aCblM+tMH2lUx9kGzKjxts1gI9S/nhgT6U54/4H0guydQMdVN+/IAIyVelNKINrMANtreoGc5QbrHB9hYVHZyNm4B9UTXMuW3Kdx88AxokStlvyncIG14fUcpuYMXYYPuKzaac6wPCNtA/X+EesG0C2ZRjb7B9pRxYN0a+Bc2G10cyNR80Lg/jPL9ThjblueGfiIScTLcp/xnoAApMafzZI/zl2+/zGffzOWc2/yP5tVf4293YjaXvIY37hdPpuI3Z0TeZaIWlcTpWY3l+k9I3KBzrOc7q8zMSjtF45jMSjq1Ws3OfoXBMxv/7DygcS63OmucHEo7BmF36QMLQa/WiPi2EIRt7fGDh9DbMWu3oP1thkP3Y2X8OwtBqtbc+HYQhnaOmPp2EoRi19ekoDKFWDXxOQm7jQP+hCDlrdbD/kIRcRqP6RBJy1KphfaIJfRuN6xNR6LNWgT40oS8joP/QhT5qFdR/BELqcwTXJ4GQ0mhRnyRCqlq1qk8iIYXRsj7JhNi16uQjEmIarfuPWIhVqw79Ry7EOEfH+iQXuhpRfMRCF6Nz/3kS2vYjQv95E9qcI1J9ehNCjWj16VEIqVXE+vQqNDWi+zwKTX7TQe0//8LpUD8i9x+LUFerBPXJIuw7R5L6ZBJ2GQl9LMK2kaj/WIXn/UjWf8zC0zmS1iezsDL+Re5jFZbGhNzHLJwm9EARilCEIhShCEUoQhGKUIQiFKEIRShCEYpQhCIUoQhFKEIRilCEIhShCEUoQhGKUIQiFKEIRShCEYpQhCIUoQhFKEIRilCEIhShCEUoQhGKUIQiFKEIMYV/3367vQJhGk/6/t+1m/z7HbmRXBj/ea/7T4Lz71PiUiUWxg9aX238h/QcKYVpnAz6qpDWKp0wTR7uTXjU/UgmNKjPppHqvUokjCcgX12rNEYKYXk/GNdn8xwTAiO+MB24H/TGO/S7A10I7L9LI/bdgStME8P7QRfk9yqmMI3N7wf9OWIaEYWO9dk04s1yaEKb+0FrxOpHHGEap6i+Kkh3B4bweD9g847B6UcEIWL/XRrd5xxnYUJQn+cp3zluRjeh7XwGiess5yJ0mc9gRpdZzkFI2H+XRvu7w1aYxrE3XxXr96qdkOp+0MX27rASeqzPptFmlrMQIs9noFjcj1DhcT7j4tVG6N0BE3L0XzvQuwMkZOq/dmB3h7kwpZ7PIAHMcqZCrO93rJjPcmZCX/MZJKb9aCQMpP/aMevHYaHx7yscMZhzhoRpwn8/6DI8yw0IA63P8wztAbRCzvkMEq2xX+jj+x0rurujTxjCfAZJ/93RIxxB/7XTd3d0CVF+X+FI53v1UhjafAZJVz+2hSHOZ5Bc7gFawhH2Xzvtfkwa5zfS/munUatJoz65Hw0r57NcckX1eZ6vWe5TSPH7H3c+9wDJyOYzSOq7Ixn9/aDLsR+TK+u/dvL7h389+/4DQJ5jdhbhxFUAAAAASUVORK5CYII=',
-            // ? `${imagUrl}${part.part_image}`
-            // : 'https://via.placeholder.com/150',
+          imageUrl: part?.part_image ,
+           
           description: part.description || '',
           transfer_by: part.transfer_by || 'market',
           status: part.status || '0',
@@ -394,9 +393,8 @@ const Billing = () => {
         technician_name: part?.technician_name || '',
         partNumber: part.id?.toString() || '',
         price: parseFloat(part.part_price || part.price) || 0,
-        imageUrl: part.part_image
-          ? `${imagUrl}${part.part_image}`
-          : 'https://via.placeholder.com/150',
+        imageUrl: part.part_image,
+         
         description: part.description || '',
         transfer_by: part.transfer_by,
         part_accept: part.part_accept,
@@ -1032,12 +1030,21 @@ const Billing = () => {
                   onPress={() => handlePartClick(part)}
                   disabled={isPartTransferred}
                 >
-                  <Image
-                    source={{ uri: part.imageUrl }}
-                    className="w-12 h-12 rounded-lg bg-gray-300"
-                    resizeMode="cover"
-                    onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-                  />
+                  {
+                    !part.imageUrl ? (
+                      <Image
+                        source={{ uri: part.imageUrl }}
+                        className="w-12 h-12 rounded-lg bg-gray-300"
+                        resizeMode="cover"
+                        onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+                      />
+                    ) : (
+                      <View className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+                        <Icon name="cube-outline" size={20} color="#10b981" />
+                      </View>
+                    )
+                  }
+                  
                 </TouchableOpacity>
                 <TouchableOpacity
                   className="flex-1 ml-3"
