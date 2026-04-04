@@ -10,6 +10,7 @@ import {
   LayoutAnimation,
   ActivityIndicator,
   TextInput,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../../components/Header';
@@ -26,6 +27,8 @@ import {
   partTransferReceive
 } from '../../../lib/api';
 import StatusMessage from '../../../components/StatusMessage';
+import NetInfo from '@react-native-community/netinfo';
+import NoInternet from '../../NoInternet';
 
 // Tabs
 const TABS = ['All', 'Technician', 'Market', 'Admin', 'Transferred', 'Received'];
@@ -49,6 +52,11 @@ const SkeletonCard = () => (
 
 const Bucket = () => {
   const navigation = useNavigation();
+
+  // Internet connection state
+  const [isConnected, setIsConnected] = useState(true);
+  const [checkingConnection, setCheckingConnection] = useState(false);
+
   const [selectedTab, setSelectedTab] = useState('All');
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -57,6 +65,7 @@ const Bucket = () => {
   const [loadingItemId, setLoadingItemId] = useState(null);
   const [products, setProducts] = useState([]);
   const [isTabLoading, setIsTabLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [partCounts, setPartCounts] = useState({
     all: 0,
     technician: 0,
@@ -66,12 +75,20 @@ const Bucket = () => {
     received: 0
   });
   const tabTimeoutRef = useRef(null);
-  const { user, imagUrl } = useAuth();
+  const { user } = useAuth();
   const technician_id = user?.id;
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Monitor internet connection
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected ?? false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Map tab to transfer_by parameter
   const getTransferByParam = (tab) => {
@@ -93,9 +110,18 @@ const Bucket = () => {
     }
   };
 
-  const fetchParts = async (transfer_by) => {
+  const fetchParts = async (transfer_by, isRefresh = false) => {
+    // Don't fetch if offline
+    if (!isConnected) {
+      setIsTabLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
-      setIsTabLoading(true);
+      if (!isRefresh) {
+        setIsTabLoading(true);
+      }
       const payload = {
         technician_id: technician_id?.toString(),
         transfer_by: transfer_by
@@ -118,7 +144,7 @@ const Bucket = () => {
             item.transfer_by === 'admin' ? 'Admin' :
               item.transfer_by === 'replace' ? 'Replace' : 'Unknown',
         price: item.part_price,
-        imageUrl: item.part_image ,
+        imageUrl: item.part_image,
         parentType: item.transfer_by,
         addedDate: item.created_at || new Date().toLocaleDateString(),
         description: item.description,
@@ -127,21 +153,39 @@ const Bucket = () => {
         toPartner: item.to_partner,
         fromPartner: item.from_partner,
         part_accept: item.part_accept,
+        qr_code: item.qr_code,
+        technician_name: item.technician_name,
         ...item
       })) : [];
 
       setProducts(formattedProducts);
+
+      if (isRefresh) {
+        toast.custom(
+          <StatusMessage type='success' title='Bucket refreshed successfully' />,
+          { duration: 1000 }
+        );
+      }
     } catch (error) {
       console.log('fetch part error:', error);
       console.error('fetch part error:', error);
-      toast.error('Failed to load items');
+      if (!isRefresh) {
+        toast.custom(
+          <StatusMessage type='error' title='Failed to load items' />,
+          { duration: 1500 }
+        );
+      }
       setProducts([]);
     } finally {
       setIsTabLoading(false);
+      setRefreshing(false);
     }
   };
 
   const fetchPartCount = async () => {
+    // Don't fetch if offline
+    if (!isConnected) return;
+
     try {
       const payload = {
         technician_id: technician_id?.toString(),
@@ -176,13 +220,16 @@ const Bucket = () => {
       item.id?.toString().toLowerCase().includes(query) ||
       item.parentName?.toLowerCase().includes(query) ||
       item.description?.toLowerCase().includes(query) ||
-      item.price?.toString().includes(query)
+      item.price?.toString().includes(query) ||
+      item.qr_code?.toLowerCase().includes(query)
     );
   }, [products, searchQuery]);
 
   useEffect(() => {
-    fetchPartCount();
-  }, []);
+    if (isConnected) {
+      fetchPartCount();
+    }
+  }, [isConnected]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -193,20 +240,77 @@ const Bucket = () => {
 
   // Fetch data when tab changes
   useEffect(() => {
-    const transferBy = getTransferByParam(selectedTab);
-    fetchParts(transferBy);
+    if (isConnected) {
+      const transferBy = getTransferByParam(selectedTab);
+      fetchParts(transferBy);
+    }
     // Clear search when changing tabs
     setSearchQuery('');
-  }, [selectedTab]);
+  }, [selectedTab, isConnected]);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      const transferBy = getTransferByParam(selectedTab);
-      fetchParts(transferBy);
-      fetchPartCount();
-    }, [selectedTab])
+      if (isConnected) {
+        const transferBy = getTransferByParam(selectedTab);
+        fetchParts(transferBy);
+        fetchPartCount();
+      }
+    }, [selectedTab, isConnected])
   );
+
+  // Pull to refresh handler
+  const onRefresh = useCallback(async () => {
+    if (!isConnected) {
+      // If offline, just check connection again
+      const state = await NetInfo.fetch();
+      setIsConnected(state.isConnected ?? false);
+      setRefreshing(false);
+      return;
+    }
+
+    setRefreshing(true);
+    const transferBy = getTransferByParam(selectedTab);
+    await Promise.all([
+      fetchParts(transferBy, true),
+      fetchPartCount()
+    ]);
+  }, [selectedTab, isConnected]);
+
+  // Retry connection handler
+  const handleRetryConnection = async () => {
+    // Show checking connection message
+    setCheckingConnection(true);
+
+    // Wait for 2 seconds while checking connection
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Check actual connection
+    const state = await NetInfo.fetch();
+    const connected = state.isConnected ?? false;
+
+    if (connected) {
+      setIsConnected(true);
+      toast.custom(
+        <StatusMessage type='success' title='Connection Restored' />,
+        { duration: 1500 }
+      );
+      // Refresh data when connection is restored
+      const transferBy = getTransferByParam(selectedTab);
+      await Promise.all([
+        fetchParts(transferBy, true),
+        fetchPartCount()
+      ]);
+    } else {
+      toast.custom(
+        <StatusMessage type='error' title='Still offline. Please check your connection.' />,
+        { duration: 2000 }
+      );
+    }
+
+    // Hide checking connection message
+    setCheckingConnection(false);
+  };
 
   // Confirmation dialog state
   const [confirmVisible, setConfirmVisible] = useState(false);
@@ -234,7 +338,9 @@ const Bucket = () => {
   };
 
   const handleCardPress = (item) => {
-    console.log(item)
+    if (!isConnected) return;
+
+    console.log(item);
     if (item?.part_accept == 0) {
       toast.custom(<StatusMessage type='warning' title={'Information'} message={`This part is transferred to ${item.technician_name} technician. Please cancel first for use.`} />);
     } else {
@@ -335,7 +441,9 @@ const Bucket = () => {
 
     } catch (error) {
       console.log(`${confirmAction} error:`, error);
-      toast.error(error.message || 'Action failed. Please try again.');
+      toast.custom(
+        <StatusMessage type='error' title={error.message || 'Action failed. Please try again.'} />
+      );
     } finally {
       setLoadingItemId(null);
       setConfirmItem(null);
@@ -439,30 +547,26 @@ const Bucket = () => {
     // Handle QR code icon click
     const handleQrCodePress = () => {
       if (item.qr_code) {
-
         Clipboard.setString(item.qr_code);
         toast.custom(
           <StatusMessage
             type='info'
             title={'QR Code Copied!'}
             message={`QR Code: ${item.qr_code}`}
-          />
-
-        ),{duration: 100};
+          />,
+          { duration: 1000 }
+        );
       } else {
         toast.custom(
           <StatusMessage
             type='warning'
             title={'Information'}
             message={'No QR code available for this item'}
-          />
-        ),{duration: 100};
+          />,
+          { duration: 1000 }
+        );
       }
     };
-
-    if (item?.part_accept == 0) {
-      console.log("item:", item)
-    }
 
     return (
       <View
@@ -474,22 +578,27 @@ const Bucket = () => {
           <View className="flex-row items-center flex-1">
             <TouchableOpacity onPress={() => openImageModal(item.imageUrl)}>
               <View className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
-                <Image
-                  source={{ uri: item.imageUrl }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
+                {item.imageUrl ? (
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View className="w-full h-full items-center justify-center">
+                    <Icon name="image-outline" size={30} color="#999" />
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
             <View className="ml-4 flex-1">
               <View className="flex-row items-center">
                 <Text className="text-lg font-bold text-text-primary flex-1">{item.name}</Text>
-
               </View>
               <Text className="text-sm text-text-tertiary">{item.parentName}</Text>
               {/* QR Code Icon */}
-              <View className="flex-row items-center ">
-                <Text className='font-normal text-xs text-gray-600'>QR code : {item.qr_code || 'N/A'}</Text>
+              <View className="flex-row items-center mt-1">
+                <Text className='font-normal text-xs text-gray-600'>QR code: {item.qr_code || 'N/A'}</Text>
                 <TouchableOpacity
                   onPress={handleQrCodePress}
                   className="ml-2 p-1"
@@ -550,7 +659,7 @@ const Bucket = () => {
               ) : (
                 <>
                   <Icon name="close-circle-outline" size={18} color="#fff" />
-                  <Text className="text-white font-medium ml-1">Cancel</Text>
+                  <Text className="text-white font-medium ml-1">Reject</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -584,14 +693,125 @@ const Bucket = () => {
     </View>
   );
 
+  // If offline, show NoInternet screen
+  if (!isConnected && !isTabLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-background-primary">
+        <Header
+          title="Bucket"
+          titlePosition="left"
+          titleStyle="font-bold text-2xl ml-5"
+          showRightIcon={true}
+          containerStyle='flex-row pt-3 py-2 px-4'
+          customRightIconComponent={
+            <Icon name="bag-add-outline" size={24} color="#999" />
+          }
+          onRightIconPress={() => {
+            if (isConnected) navigation.navigate('AddPart');
+          }}
+        />
+        {/* Search Bar */}
+        <View className="px-4 py-0 bg-background-primary">
+          <View className={`flex-row items-center bg-background-secondary rounded-xl px-3 py-0 border ${isSearchFocused ? 'border-primary-sage500' : 'border-ui-border'}`}>
+            <Icon name="search-outline" size={20} color="#999999" />
+            <TextInput
+              className="flex-1 ml-2 text-base text-text-primary"
+              placeholder="Search by name, ID, type, or price..."
+              placeholderTextColor="#999999"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Icon name="close-circle" size={20} color="#999999" />
+              </TouchableOpacity>
+            )}
+          </View>
+          {searchQuery.length > 0 && (
+            <Text className="text-xs text-text-tertiary mt-1 ml-1">
+              Found {filteredProducts.length} result(s)
+            </Text>
+          )}
+        </View>
+
+        {/* Filter Tabs */}
+        <View className="py-2 border-b border-ui-border">
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="px-2"
+          >
+            {TABS.map((tab, index) => {
+              const count = getTabCount(tab);
+              return (
+                <TouchableOpacity
+                  key={tab}
+                  onPress={() => handleTabPress(tab, index)}
+                  onLayout={(event) => {
+                    const layout = event.nativeEvent.layout;
+                    setTabPositions((prev) => {
+                      const newPositions = [...prev];
+                      newPositions[index] = layout.x;
+                      return newPositions;
+                    });
+                  }}
+                  className="mr-2"
+                >
+                  <View
+                    className={`px-4 py-1 rounded-full flex-row items-center ${selectedTab === tab
+                      ? 'bg-primary-sage600'
+                      : 'bg-background-tertiary'
+                      }`}
+                  >
+                    <Text
+                      className={`text-base font-semibold ${selectedTab === tab
+                        ? 'text-text-inverse'
+                        : 'text-text-secondary'
+                        }`}
+                    >
+                      {tab}
+                    </Text>
+
+                    <View
+                      className={`ml-1.5 px-1.5 rounded-full min-w-[20px] h-5 items-center justify-center ${selectedTab === tab
+                        ? 'bg-white/30'
+                        : 'bg-ui-border'
+                        }`}
+                    >
+                      <Text
+                        className={`text-xs font-bold ${selectedTab === tab
+                          ? 'text-text-inverse'
+                          : 'text-text-tertiary'
+                          }`}
+                      >
+                        {count || '0'}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+
+
+        <NoInternet onRetry={handleRetryConnection} isChecking={checkingConnection} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background-primary">
       <Header
         title="Bucket"
         titlePosition="left"
-        titleStyle="font-bold text-2xl ml-5 "
+        titleStyle="font-bold text-2xl ml-5"
         showRightIcon={true}
-        containerStyle=' flex-row pt-3 py-2 px-4'
+        containerStyle='flex-row pt-3 py-2 px-4'
         customRightIconComponent={
           <Icon name="bag-add-outline" size={24} color="#333" />
         }
@@ -688,8 +908,8 @@ const Bucket = () => {
         </ScrollView>
       </View>
 
-      {/* Conditional rendering: skeleton or list */}
-      {isTabLoading ? (
+      {/* Conditional rendering: skeleton or list with pull to refresh */}
+      {isTabLoading && !refreshing ? (
         renderSkeleton()
       ) : (
         <FlatList
@@ -698,6 +918,16 @@ const Bucket = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#58A890']}
+              tintColor="#58A890"
+              title="Pull to refresh"
+              titleColor="#58A890"
+            />
+          }
           ListEmptyComponent={
             <View className="items-center justify-center mt-10">
               <Icon name="search-outline" size={60} color="#CCCCCC" />

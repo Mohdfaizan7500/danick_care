@@ -1,3 +1,4 @@
+// Scan.js
 import { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -20,11 +21,12 @@ import NetInfo from '@react-native-community/netinfo';
 import Header from '../../../components/Header';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import { request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
-import NoInternet from '../../NoInternet';
+
 import { GetPartDetailQRCode } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import StatusMessage from '../../../components/StatusMessage';
+import NoInternet from '../../NoInternet';
 
 const Scan = () => {
   const [searchText, setSearchText] = useState('A11069');
@@ -223,7 +225,7 @@ const Scan = () => {
           showBackButton={true}
           containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
         />
-        <NoInternet />
+        <NoInternet onRetry={handleRetry} />
       </SafeAreaView>
     );
   }
@@ -231,9 +233,8 @@ const Scan = () => {
   const handleProductPress = (product) => {
     if (product.type === "Yes") {
       navigation.navigate('ProductDetails', { product: product });
-
     }
-  }
+  };
 
   // Main UI when online
   return (
@@ -340,11 +341,11 @@ const Scan = () => {
                   className="w-20 h-20 rounded-lg bg-gray-50"
                   resizeMode="contain"
                   onError={() => console.log('Image load error')}
-                  defaultSource={'https://nigamcommunications.com/public/images/no_product.png'}
+                  
                 />
               ) : (
-                <View className="w-20 h-20 rounded-lg bg-gray-100 items-center justify-center">
-                  <Icon name="image-outline" size={30} color="#999" />
+                <View className="w-20 h-20 rounded-xl bg-teal-100 items-center justify-center">
+                  <Icon name="cube-outline" size={36} color="teal" />
                 </View>
               )}
               <View className="flex-1 ml-4">
@@ -373,18 +374,18 @@ const Scan = () => {
             </View>
           </Pressable>
         )}
-         {/* No Result Message */}
-        {!loading && !searchedProduct && searchText.length == 0 && (
+
+        {/* No Result Message - Initial State */}
+        {!loading && !searchedProduct && searchText.length === 0 && (
           <View className="bg-white border border-gray-200 rounded-xl p-8 items-center justify-center mb-6">
             <Icon name="search-outline" size={50} color="#999" />
             <Text className="text-gray-600 text-center mt-4">
               Enter QR code to search for a product
             </Text>
-            
           </View>
         )}
 
-        {/* No Result Message */}
+        {/* No Result Message - Search with no results */}
         {!loading && !searchedProduct && searchText.length > 0 && (
           <View className="bg-white border border-gray-200 rounded-xl p-8 items-center justify-center mb-6">
             <Icon name="search-outline" size={50} color="#999" />

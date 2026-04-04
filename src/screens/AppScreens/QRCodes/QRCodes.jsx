@@ -1,3 +1,4 @@
+// QRCodes.js
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
     View,
@@ -22,6 +23,9 @@ import { useAuth } from '../../../context/AuthContext';
 import Clipboard from '@react-native-clipboard/clipboard';
 import StatusMessage from '../../../components/StatusMessage';
 import { AssignQRCodeList, AssignQRCodeCount } from '../../../lib/api';
+import NetInfo from '@react-native-community/netinfo';
+import NoInternet from '../../NoInternet';
+
 
 // Tabs - Updated for QR Codes
 const TABS = ['All QR', 'Used QR', 'Fresh QR'];
@@ -77,6 +81,9 @@ const QRCodes = () => {
     const status = route.params?.status || null;
     console.log('QRCodes route params:', route.params);
 
+    // Internet connection state
+    const [isConnected, setIsConnected] = useState(true);
+
     // Set initial tab based on status param
     const initialTab = getTabFromStatus(status);
     const [selectedTab, setSelectedTab] = useState(initialTab);
@@ -100,8 +107,19 @@ const QRCodes = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchFocused, setIsSearchFocused] = useState(false);
 
+    // Monitor internet connection
+    useEffect(() => {
+        const unsubscribe = NetInfo.addEventListener(state => {
+            setIsConnected(state.isConnected ?? false);
+        });
+        return () => unsubscribe();
+    }, []);
+
     // Fetch QR code counts from API
     const fetchQRCodeCounts = async () => {
+        // Don't fetch if offline
+        if (!isConnected) return;
+
         try {
             const technicianId = user?.id?.toString() || '1';
             const payload = {
@@ -128,6 +146,13 @@ const QRCodes = () => {
 
     // Fetch QR data from API
     const fetchQRData = async (tab, isRefresh = false) => {
+        // Don't fetch if offline
+        if (!isConnected) {
+            setIsTabLoading(false);
+            setRefreshing(false);
+            return;
+        }
+
         try {
             if (!isRefresh) {
                 setIsTabLoading(true);
@@ -208,32 +233,64 @@ const QRCodes = () => {
 
     // Fetch counts when component mounts
     useEffect(() => {
-        fetchQRCodeCounts();
-    }, []);
+        if (isConnected) {
+            fetchQRCodeCounts();
+        }
+    }, [isConnected]);
 
     // Fetch data when tab changes
     useEffect(() => {
-        fetchQRData(selectedTab);
+        if (isConnected) {
+            fetchQRData(selectedTab);
+        }
         // Clear search when changing tabs
         setSearchQuery('');
-    }, [selectedTab]);
+    }, [selectedTab, isConnected]);
 
     // Refresh data when screen comes into focus
     useFocusEffect(
         useCallback(() => {
-            fetchQRData(selectedTab);
-            fetchQRCodeCounts();
-        }, [selectedTab])
+            if (isConnected) {
+                fetchQRData(selectedTab);
+                fetchQRCodeCounts();
+            }
+        }, [selectedTab, isConnected])
     );
 
     // Pull to refresh handler
     const onRefresh = useCallback(async () => {
+        if (!isConnected) {
+            // If offline, just check connection again
+            const state = await NetInfo.fetch();
+            setIsConnected(state.isConnected ?? false);
+            return;
+        }
+
         setRefreshing(true);
         await Promise.all([
             fetchQRData(selectedTab, true),
             fetchQRCodeCounts()
         ]);
-    }, [selectedTab]);
+    }, [selectedTab, isConnected]);
+
+    // Retry connection handler
+    const handleRetry = async () => {
+        const state = await NetInfo.fetch();
+        const connected = state.isConnected ?? false;
+        setIsConnected(connected);
+
+        if (connected) {
+            toast.custom(
+                <StatusMessage type='success' title='Connection Restored' />,
+                { duration: 1500 }
+            );
+            // Refresh data when connection is restored
+            await Promise.all([
+                fetchQRData(selectedTab, true),
+                fetchQRCodeCounts()
+            ]);
+        }
+    };
 
     // Confirmation dialog state
     const [confirmVisible, setConfirmVisible] = useState(false);
@@ -262,7 +319,7 @@ const QRCodes = () => {
 
     const handleCardPress = (item) => {
         if (item.complaintId && item.complaintId !== 'N/A') {
-            navigation.navigate('QRCodeDetails', { qrData: item,status:"qrcode" });
+            navigation.navigate('QRCodeDetails', { qrData: item, status: "qrcode" });
         }
         else {
             toast.custom(
@@ -479,6 +536,10 @@ const QRCodes = () => {
                                 )}
                             </View>
 
+                            {/* Part Name */}
+                            {item.partName && item.partName !== 'Spare Part' && (
+                                <Text className="text-sm text-gray-700 mt-1">{item.partName}</Text>
+                            )}
 
                             {/* Complaint ID - only show if exists */}
                             {item.complaintId && item.complaintId !== 'N/A' && (
@@ -516,6 +577,107 @@ const QRCodes = () => {
         </View>
     );
 
+    // If offline, show NoInternet screen
+    if (!isConnected) {
+        return (
+            <SafeAreaView className="flex-1 bg-background-primary">
+                <Header
+                    title="QR Codes"
+                    titlePosition="left"
+                    titleStyle="font-bold text-2xl ml-5"
+                    showRightIcon={false}
+                    containerStyle='flex-row pt-3 py-2 px-4'
+                />
+                <View className="px-4 py-0 bg-background-primary">
+                    <View className={`flex-row items-center bg-background-secondary rounded-xl px-3 py-0 border ${isSearchFocused ? 'border-primary-sage500' : 'border-ui-border'}`}>
+                        <Icon name="search-outline" size={20} color="#999999" />
+                        <TextInput
+                            className="flex-1 ml-2 text-base text-text-primary"
+                            placeholder="Search by QR code, complaint ID, part name..."
+                            placeholderTextColor="#999999"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            onFocus={() => setIsSearchFocused(true)}
+                            onBlur={() => setIsSearchFocused(false)}
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Icon name="close-circle" size={20} color="#999999" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                    {searchQuery.length > 0 && (
+                        <Text className="text-xs text-text-tertiary mt-1 ml-1">
+                            Found {filteredProducts.length} result(s)
+                        </Text>
+                    )}
+                </View>
+
+                {/* Filter Tabs */}
+                <View className="py-2 border-b border-ui-border">
+                    <ScrollView
+                        ref={scrollViewRef}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        className="px-2"
+                    >
+                        {TABS.map((tab, index) => {
+                            const count = getTabCount(tab);
+                            return (
+                                <TouchableOpacity
+                                    key={tab}
+                                    onPress={() => handleTabPress(tab, index)}
+                                    onLayout={(event) => {
+                                        const layout = event.nativeEvent.layout;
+                                        setTabPositions((prev) => {
+                                            const newPositions = [...prev];
+                                            newPositions[index] = layout.x;
+                                            return newPositions;
+                                        });
+                                    }}
+                                    className="mr-2"
+                                >
+                                    <View
+                                        className={`px-4 py-1 rounded-full flex-row items-center ${selectedTab === tab
+                                            ? 'bg-primary-sage600'
+                                            : 'bg-background-tertiary'
+                                            }`}
+                                    >
+                                        <Text
+                                            className={`text-base font-semibold ${selectedTab === tab
+                                                ? 'text-text-inverse'
+                                                : 'text-text-secondary'
+                                                }`}
+                                        >
+                                            {tab}
+                                        </Text>
+
+                                        <View
+                                            className={`ml-1.5 px-1.5 rounded-full min-w-[20px] h-5 items-center justify-center ${selectedTab === tab
+                                                ? 'bg-white/30'
+                                                : 'bg-ui-border'
+                                                }`}
+                                        >
+                                            <Text
+                                                className={`text-xs font-bold ${selectedTab === tab
+                                                    ? 'text-text-inverse'
+                                                    : 'text-text-tertiary'
+                                                    }`}
+                                            >
+                                                {count}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+                <NoInternet onRetry={handleRetry} />
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView className="flex-1 bg-background-primary">
             <Header
@@ -525,8 +687,9 @@ const QRCodes = () => {
                 showRightIcon={false}
                 containerStyle='flex-row pt-3 py-2 px-4'
             />
-            <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+            <View className="absolute inset-0 z-50 pointer-events-none">
                 <Toaster />
+
             </View>
 
             {/* Search Bar */}
