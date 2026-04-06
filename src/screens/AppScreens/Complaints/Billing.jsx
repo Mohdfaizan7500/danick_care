@@ -1031,7 +1031,7 @@ const Billing = () => {
                   disabled={isPartTransferred}
                 >
                   {
-                    !part.imageUrl ? (
+                    part.imageUrl ? (
                       <Image
                         source={{ uri: part.imageUrl }}
                         className="w-12 h-12 rounded-lg bg-gray-300"

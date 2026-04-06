@@ -27,6 +27,7 @@ import QRCodeDetails from '../../screens/AppScreens/QRCodes/QRCodeDetails';
 import AMCList from '../../screens/AppScreens/Complaints/AMCList';
 import ComplaintAMCDetails from '../../screens/AppScreens/Complaints/AMCDetails';
 import AMCBilling from '../../screens/AppScreens/Complaints/AMCBilling';
+import Parts from '../../screens/AppScreens/Tabs/Parts';
 // import BottomTabs from 
 const Stack = createNativeStackNavigator();
 
@@ -119,6 +120,8 @@ const AppStack = () => {
       <Stack.Screen name="AMCList" component={AMCList} />
       <Stack.Screen name="ComplaintAMCDetails" component={ComplaintAMCDetails} />
       <Stack.Screen name="AMCBilling" component={AMCBilling} />
+      <Stack.Screen name="Parts" component={Parts} />
+
 
 
 

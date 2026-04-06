@@ -76,10 +76,11 @@ const Home = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [count, setCount] = useState(null);
   const [checkingConnection, setCheckingConnection] = useState(false); // New state for retry button
-  
+
   const flatListRef = useRef(null);
   const navigation = useNavigation();
-  const { IsOnline, user, imagUrl, profileData, updateProfileData } = useAuth();
+  const { IsOnline, user, imagUrl, profileData, updateProfileData, setIsOnline } = useAuth();
+
 
   // ---------- Network state ----------
   const [isConnected, setIsConnected] = useState(true);
@@ -111,6 +112,9 @@ const Home = () => {
         console.log('Profile data fetched:', data);
         // Save profile data to context
         await updateProfileData(data);
+        const isOnline = data?.login_status === 'Online';
+        console.log("Active status set:",isOnline)
+        await setIsOnline(isOnline);
       }
     } catch (error) {
       console.log('Fetch profile error:', error);
@@ -170,14 +174,14 @@ const Home = () => {
   const handleRetryConnection = async () => {
     // Show checking connection message
     setCheckingConnection(true);
-    
+
     // Wait for 2 seconds while checking connection
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Check actual connection
     const state = await NetInfo.fetch();
     const connected = state.isConnected ?? false;
-    
+
     if (connected) {
       setIsConnected(true);
       toast.custom(
@@ -195,7 +199,7 @@ const Home = () => {
         { duration: 2000 }
       );
     }
-    
+
     // Hide checking connection message
     setCheckingConnection(false);
   };
@@ -311,7 +315,7 @@ const Home = () => {
           barStyle="dark-content"
           translucent={true}
         />
-        
+
         {/* Header with Profile and Icons (for consistency) */}
         <View
           className="w-full bg-transparent flex-row items-center justify-between px-4 "
@@ -386,7 +390,7 @@ const Home = () => {
           </View>
         )}
 
-        
+
 
         <NoInternet onRetry={handleRetryConnection} isChecking={checkingConnection} />
       </LinearGradient>
@@ -419,7 +423,7 @@ const Home = () => {
               className="w-12 h-12 rounded-full border-2 border-white"
             />
             <View
-              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${userProfile.IsOnline ? 'bg-green-500' : 'bg-gray-400'
+              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${IsOnline ? 'bg-green-500' : 'bg-gray-400'
                 }`}
             />
           </View>
@@ -431,10 +435,10 @@ const Home = () => {
               </Text>
             </View>
             <Text
-              className={`text-xs font-medium ${userProfile.IsOnline ? 'text-green-600' : 'text-gray-500'
+              className={`text-xs font-medium ${IsOnline? 'text-green-600' : 'text-gray-500'
                 }`}
             >
-              {userProfile.IsOnline ? '● Active' : '● Inactive'}
+              {IsOnline ? '● Active' : '● Inactive'}
             </Text>
           </View>
         </View>
@@ -483,31 +487,7 @@ const Home = () => {
             />
           }
         >
-          {/* Carousel Section */}
-          <View className="mt-2">
-            <FlatList
-              ref={flatListRef}
-              data={carouselImages}
-              renderItem={renderCarouselItem}
-              keyExtractor={item => item.id.toString()}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              getItemLayout={getItemLayout}
-            />
-            {/* Pagination Dots */}
-            <View className="flex-row justify-center mt-2">
-              {carouselImages.map((_, index) => (
-                <View
-                  key={index}
-                  className={`h-1.5 rounded-full mx-1 ${index === activeIndex ? 'bg-primary-sage600 w-6' : 'bg-gray-300 w-1.5'
-                    }`}
-                />
-              ))}
-            </View>
-          </View>
+          
 
           {/* Cards Section */}
           <View className="px-4 py-4">
