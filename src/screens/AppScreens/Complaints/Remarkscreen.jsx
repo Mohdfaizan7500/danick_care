@@ -57,8 +57,8 @@ const Remarkscreen = () => {
 
     // Compute if form is complete
     const isFormComplete =
-        selectedCustomerType.trim() !== '' &&
-        remark.trim() !== '' &&
+        (selectedCustomerType || '').trim() !== '' &&
+        (remark || '').trim() !== '' &&
         image1Uri !== null &&
         image2Uri !== null &&
         image1Id !== null &&
@@ -66,8 +66,11 @@ const Remarkscreen = () => {
 
     // Fetch existing images on component mount
     useEffect(() => {
-        if (complaintData?.id) {
-            fetchExistingImages();
+        if (complaintData?.remark && complaintData.remark !== '') {
+            setRemark(complaintData.remark);
+        }
+        if (complaintData?.review && complaintData.review !== '') {
+            setSelectedCustomerType(complaintData.review);
         }
     }, [complaintData]);
 
@@ -137,6 +140,10 @@ const Remarkscreen = () => {
         }
     };
 
+
+    useEffect(()=>{
+        fetchExistingImages()
+    },[])
     // ----- Camera permission functions -----
     const checkCameraPermission = async () => {
         if (Platform.OS === 'ios') {
@@ -239,7 +246,7 @@ const Remarkscreen = () => {
             });
 
             // Set different image_type and status for image 1 and image 2
-            const imageType = imageNumber === 1 ? 'before working' : 'after working';
+            const imageType = imageNumber === 1 ? 'after working' : 'after working';
             const status = imageNumber === 1 ? '2' : '3';
 
             // Append other parameters
@@ -509,7 +516,7 @@ const Remarkscreen = () => {
 
                 // Navigate to billing screen after successful update
                 setTimeout(() => {
-                    navigation.navigate('Billing', {
+                    navigation.replace('Billing', {
                         selectedCustomerType,
                         remark,
                         image1Id: image1Id,
@@ -584,16 +591,7 @@ const Remarkscreen = () => {
                 titleStyle="font-bold text-2xl ml-5"
                 showBackButton={true}
                 containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
-                rightIconContainerStyle="w-10 h-10 rounded-full b-white justify-center items-center"
-                showRightIcon={true}
-                customRightIconComponent={
-                    <Text style={{ color: '#007AFF', width: 150, fontWeight: '600' }}>
-                        Convert to AMC
-                    </Text>
-                }
-                onRightIconPress={() => {
-                    handleConvertToAMC();
-                }}
+               
             />
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

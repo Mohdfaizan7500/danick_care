@@ -1,4 +1,4 @@
-import { Text, View, TouchableOpacity, ActivityIndicator, Image, ScrollView, Alert, Platform } from 'react-native';
+import { Text, View, TouchableOpacity, ActivityIndicator, Image, ScrollView, Platform } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
@@ -10,19 +10,18 @@ import DialogBox from '../../../components/DilaogBox';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import NetInfo from '@react-native-community/netinfo';
-import { MaterialIcons } from '@react-native-vector-icons/material-icons';
+import { logoutApi } from '../../../lib/api';
 
 const Profile = () => {
-  const { user, logout, profileData, imagUrl } = useAuth();
+  const { user, logout, profileData, imagUrl, setAuthData, setIsOnline } = useAuth();
   const tech_id = user?.id;
   console.log('id:', tech_id);
   const navigation = useNavigation();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDialogLoggingOut, setIsDialogLoggingOut] = useState(false);
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
 
-  const device = Platform.OS == 'ios';
+  const device = Platform.OS === 'ios';
   console.log('device:', device);
 
   // Monitor internet connection
@@ -98,15 +97,37 @@ const Profile = () => {
     setIsDialogLoggingOut(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      await logout();
-      setLogoutDialogVisible(false);
+      const payload = {
+        technician_id: tech_id
+      };
+      const response = await logoutApi(payload);
+      console.log('Logout response:', response);
+
+      if (response?.data?.success) {
+        // Call logout function from context to clear all data
+        await logout();
+        
+        // Optional: set offline status
+        if (setIsOnline) {
+          await setIsOnline(false);
+        }
+
+        toast.custom(<StatusMessage type='success' title={'Logout successful!'} />, { duration: 200 });
+        setLogoutDialogVisible(false);
+        
+        // Navigate to login screen (you need to implement this based on your navigation structure)
+        // navigation.reset({
+        //   index: 0,
+        //   routes: [{ name: 'Login' }],
+        // });
+      } else {
+        throw new Error(response?.data?.msg || 'Logout failed');
+      }
     } catch (error) {
-      toast.custom(<StatusMessage type='error' title={'Failed to logout. Please try again.'} />, { duration: 300 });
-      setLogoutDialogVisible(false);
+      console.error('Logout error:', error);
+      toast.custom(<StatusMessage type='error' title={error.message || 'Failed to logout. Please try again.'} />, { duration: 300 });
     } finally {
       setIsDialogLoggingOut(false);
-      setIsLoggingOut(false);
     }
   };
 
@@ -114,9 +135,8 @@ const Profile = () => {
     if (!isConnected) {
       toast.custom(<StatusMessage type='error' title={'You are offline. Please check your internet connection.'} />, { duration: 300 });
       return;
-    } else {
-      navigation.navigate(route);
     }
+    navigation.navigate(route);
   };
 
   const MenuItem = ({ item, isLast }) => (
@@ -167,19 +187,19 @@ const Profile = () => {
         <Toaster />
       </View>
 
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={{ 
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
           flexGrow: 1,
-          paddingBottom: 20 
+          paddingBottom: 20
         }}
       >
         {/* Profile Header Section */}
         <View className="bg-white p-5 items-center border-b border-gray-200">
           <Image
             source={
-              profileData?.profile_photo 
-                ? { uri: `${imagUrl}${profileData.profile_photo}` } 
+              profileData?.profile_photo
+                ? { uri: `${imagUrl}${profileData.profile_photo}` }
                 : require('../../../assets/images/profileImage.jpg')
             }
             className="w-24 h-24 rounded-full mb-4 border-3 border-white shadow-md"
@@ -187,14 +207,14 @@ const Profile = () => {
 
           <Text className="text-2xl font-bold text-gray-800">
             {profileData?.firstName && profileData?.lastName
-              ? `${profileData?.firstName} ${profileData?.lastName}`
+              ? `${profileData.firstName} ${profileData.lastName}`
               : profileData?.technician_name || 'User Name'}
           </Text>
 
           <View className="flex-row items-center mt-1 gap-2">
             <Phone size={14} color="gray" />
             <Text className="text-xs text-gray-500 font-medium">
-              +91 {profileData?.technician_mobile || '+91 98765 43210'}
+              +91 {profileData?.technician_mobile || '98765 43210'}
             </Text>
           </View>
 
@@ -205,7 +225,7 @@ const Profile = () => {
             </Text>
           </View>
 
-          {user?.username && (user?.firstName || user?.lastName) && (
+          {user?.username && (
             <Text className="text-sm text-gray-500 mt-1">@{user.username}</Text>
           )}
         </View>

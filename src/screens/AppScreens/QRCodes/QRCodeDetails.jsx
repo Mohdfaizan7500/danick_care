@@ -20,6 +20,7 @@ const QRCodeDetails = () => {
   const [loading, setLoading] = useState(false);
   const [complaintDetails, setComplaintDetails] = useState(null);
   const [expandedParts, setExpandedParts] = useState(false);
+  const [expandedCommission, setExpandedCommission] = useState(false);
 
   console.log('Received QR Code:', qrCode);
   const complaint_id = qrCode.complaintId || qrCode.complaint_id || qrCode.id || 'N/A';
@@ -93,6 +94,99 @@ const QRCodeDetails = () => {
     return 'QR Code Details';
   };
 
+  // Format rating to show as X/5
+  const formatRating = (rating) => {
+    if (!rating) return 'N/A';
+    const parts = rating.split('/');
+    if (parts.length === 2) {
+      return `${parts[0]} / ${parts[1]}`;
+    }
+    return rating;
+  };
+
+  // Render commission in 3-column row format
+  const renderCommissionRow = () => {
+    if (!complaintDetails?.commission || complaintDetails.commission.length === 0) {
+      return null;
+    }
+
+    const commission = complaintDetails.commission[0]; // Assuming single commission object
+
+    return (
+      <View className="mt-2">
+        {/* 3-Column Header */}
+        <View className="flex-row bg-gray-100 rounded-t-lg p-3 border-b border-gray-200">
+          <View className="flex-1 items-center">
+            <Text className="font-bold text-text-primary text-sm">Total Amount</Text>
+          </View>
+          <View className="flex-1 items-center">
+            <Text className="font-bold text-text-primary text-sm">Technician Fund</Text>
+          </View>
+          <View className="flex-1 items-center">
+            <Text className="font-bold text-text-primary text-sm">Admin Fund</Text>
+          </View>
+        </View>
+
+        {/* 3-Column Data Row */}
+        <View className="flex-row bg-white rounded-b-lg p-3">
+          <View className="flex-1 items-center">
+            <Text className="text-text-primary font-semibold">₹{parseFloat(commission.fund).toFixed(2)}</Text>
+          </View>
+          <View className="flex-1 items-center">
+            <Text className="text-green-600 font-bold">₹{parseFloat(commission.tech_fund).toFixed(2)}</Text>
+          </View>
+          <View className="flex-1 items-center">
+            <Text className="text-orange-600 font-bold">₹{parseFloat(commission.admin_fund).toFixed(2)}</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  // Render multiple commission entries in 3-column row format
+  const renderMultipleCommissionRows = () => {
+    if (!complaintDetails?.commission || complaintDetails.commission.length === 0) {
+      return null;
+    }
+
+    return (
+      <View className="mt-2">
+        {/* Header */}
+        <View className="flex-row bg-gray-100 rounded-t-lg p-3 border-b border-gray-200">
+          <View className="flex-1 items-center">
+            <Text className="font-bold text-text-primary text-sm">Total Amount</Text>
+          </View>
+          <View className="flex-1 items-center">
+            <Text className="font-bold text-text-primary text-sm">Technician Fund</Text>
+          </View>
+          <View className="flex-1 items-center">
+            <Text className="font-bold text-text-primary text-sm">Admin Fund</Text>
+          </View>
+        </View>
+
+        {/* Data Rows */}
+        {complaintDetails.commission.map((commission, index) => (
+          <View 
+            key={index} 
+            className={`flex-row p-3 ${index === complaintDetails.commission.length - 1 ? 'rounded-b-lg' : 'border-b border-gray-100'} ${
+              index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+            }`}
+          >
+            <View className="flex-1 items-center">
+              <Text className="text-text-primary font-semibold">₹{parseFloat(commission.fund).toFixed(2)}</Text>
+            </View>
+            <View className="flex-1 items-center">
+              <Text className="text-green-600 font-bold">₹{parseFloat(commission.tech_fund).toFixed(2)}</Text>
+            </View>
+            <View className="flex-1 items-center">
+              <Text className="text-orange-600 font-bold">₹{parseFloat(commission.admin_fund).toFixed(2)}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
@@ -148,7 +242,7 @@ const QRCodeDetails = () => {
         showBackButton={true}
         containerStyle='flex-row bg-white pt-3 py-2 px-4'
       />
-      <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+      <View className="absolute inset-0 z-50 pointer-events-none">
         <Toaster />
       </View>
 
@@ -159,7 +253,7 @@ const QRCodeDetails = () => {
       >
         {/* QR Code Information Card - Only show when coming from QR code */}
         {status === 'qrcode' && (
-          <View className="bg-white rounded-2xl p-4  mt-4 shadow-sm border border-gray-200">
+          <View className="bg-white rounded-2xl p-4 mt-4 shadow-sm border border-gray-200">
             <Text className="text-lg font-bold text-text-primary mb-3">QR Code Information</Text>
             <View className="flex-row justify-between items-center mb-2">
               <Text className="text-text-secondary">QR Code Number</Text>
@@ -261,7 +355,7 @@ const QRCodeDetails = () => {
               {complaintDetails.rating ? (
                 <View className="flex-row items-center">
                   <Text className={`font-semibold text-base ${getRatingColor(complaintDetails.rating)}`}>
-                    {complaintDetails.rating}
+                    {formatRating(complaintDetails.rating)}
                   </Text>
                   <Icon name="star" size={16} color="#F0B27A" className="ml-1" />
                 </View>
@@ -285,6 +379,40 @@ const QRCodeDetails = () => {
             </View>
           )}
         </View>
+
+        {/* Commission Card with 3-Column Row Format */}
+        {complaintDetails.commission && complaintDetails.commission.length > 0 && (
+          <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-gray-200">
+            <TouchableOpacity 
+              onPress={() => setExpandedCommission(!expandedCommission)}
+              className="flex-row justify-between items-center mb-3"
+            >
+              <Text className="text-lg font-bold text-text-primary">Commission Details</Text>
+              <Icon name={expandedCommission ? "chevron-up-outline" : "chevron-down-outline"} size={20} color="#666" />
+            </TouchableOpacity>
+
+            {/* Show compact view when collapsed */}
+            {!expandedCommission && (
+              renderCommissionRow()
+            )}
+
+            {/* Show expanded view with all commission entries */}
+            {expandedCommission && (
+              renderMultipleCommissionRows()
+            )}
+
+            {complaintDetails.commission.length > 1 && (
+              <TouchableOpacity 
+                onPress={() => setExpandedCommission(!expandedCommission)}
+                className="mt-3 items-center pt-2 border-t border-gray-100"
+              >
+                <Text className="text-primary-sage600 font-semibold">
+                  {expandedCommission ? 'Show Less' : `View All (${complaintDetails.commission.length} entries)`}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* Parts Used Card */}
         {complaintDetails.parts && complaintDetails.parts.length > 0 && (
@@ -338,7 +466,7 @@ const QRCodeDetails = () => {
 
           <View className="flex-row justify-between mb-2">
             <Text className="text-text-secondary">OTP Verified</Text>
-            <Text className="text-text-primary font-semibold">{complaintDetails.verify_otp ? 'Yes' : 'No'}</Text>
+            <Text className="text-text-primary font-semibold">{complaintDetails.verify_otp === "1" ? 'Yes' : 'No'}</Text>
           </View>
 
           <View className="flex-row justify-between">

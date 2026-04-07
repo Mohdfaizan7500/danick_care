@@ -10,6 +10,7 @@ import {
     Platform,
     PermissionsAndroid,
     ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -19,8 +20,8 @@ import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { launchCamera } from 'react-native-image-picker';
 import { sendOTP, verifyOTP, UploadComplaintImage } from '../../../lib/api';
-// Import this for file handling
-import RNFS from 'react-native-fs';
+import { check, request, RESULTS, PERMISSIONS, openSettings } from 'react-native-permissions';
+import Geolocation from '@react-native-community/geolocation';
 
 const ComplaintDetail = () => {
     const navigation = useNavigation();
@@ -40,6 +41,11 @@ const ComplaintDetail = () => {
     const [complaintData, setComplaintData] = useState(complaint);
     const inputRefs = useRef([]);
 
+    // Location states
+    const [currentLocation, setCurrentLocation] = useState(null);
+    const [isGettingLocation, setIsGettingLocation] = useState(false);
+    const [hasLocationPermission, setHasLocationPermission] = useState(false);
+
     // Camera states
     const [photoUri, setPhotoUri] = useState(null);
     const [sendingPhoto, setSendingPhoto] = useState(false);
@@ -52,6 +58,167 @@ const ComplaintDetail = () => {
 
     // Check if complaint status is complete (success)
     const isComplete = complaint.status === 'success';
+    
+    // Check if OTP is already verified (verify_otp is "1")
+    const isOtpAlreadyVerified = complaint.verify_otp === "1";
+
+    // Location permission and getting current location
+    const checkLocationPermission = async () => {
+        try {
+            if (Platform.OS === 'ios') {
+                return await check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+            } else {
+                return await check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+            }
+        } catch (error) {
+            console.log('Permission check error:', error);
+            return RESULTS.UNAVAILABLE;
+        }
+    };
+
+    const requestLocationPermission = async () => {
+        try {
+            if (Platform.OS === 'ios') {
+                return await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+            } else {
+                return await request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+            }
+        } catch (error) {
+            console.log('Permission request error:', error);
+            return RESULTS.UNAVAILABLE;
+        }
+    };
+
+    const getCurrentLocation = () => {
+        return new Promise((resolve, reject) => {
+            let timeoutId;
+            
+            const successCallback = (position) => {
+                if (timeoutId) clearTimeout(timeoutId);
+                const { latitude, longitude } = position.coords;
+                console.log('Latitude:', latitude);
+                console.log('Longitude:', longitude);
+                resolve({ latitude: latitude.toString(), longitude: longitude.toString() });
+            };
+
+            const errorCallback = (error) => {
+                if (timeoutId) clearTimeout(timeoutId);
+                console.log('Location error:', error);
+                
+                let errorMessage = 'Failed to get location';
+                if (error.code === 1) {
+                    errorMessage = 'Location permission denied';
+                } else if (error.code === 2) {
+                    errorMessage = 'Location unavailable. Please enable GPS.';
+                } else if (error.code === 3) {
+                    errorMessage = 'Location request timed out. Please try again.';
+                }
+                
+                reject(new Error(errorMessage));
+            };
+
+            // Set timeout to reject if location takes too long
+            timeoutId = setTimeout(() => {
+                errorCallback({ code: 3, message: 'Location request timed out' });
+            }, 10000);
+
+            Geolocation.getCurrentPosition(successCallback, errorCallback, {
+                enableHighAccuracy: false,
+                timeout: 8000,
+                maximumAge: 30000,
+            });
+        });
+    };
+
+    const initializeLocation = async () => {
+        try {
+            let permissionStatus = await checkLocationPermission();
+            console.log('Initial permission:', permissionStatus);
+
+            if (permissionStatus === RESULTS.GRANTED) {
+                setHasLocationPermission(true);
+                setIsGettingLocation(true);
+                try {
+                    const location = await getCurrentLocation();
+                    setCurrentLocation(location);
+                    console.log('=== LOCATION OBTAINED ===');
+                    console.log('Latitude:', location.latitude);
+                    console.log('Longitude:', location.longitude);
+                    console.log('========================');
+                    toast.custom(
+                        <StatusMessage type="success" title="Location obtained successfully" />,
+                        { duration: 2000 }
+                    );
+                    return location;
+                } catch (error) {
+                    console.log('Error getting location:', error.message);
+                    toast.custom(
+                        <StatusMessage type="error" title={error.message} />,
+                        { duration: 3000 }
+                    );
+                    return null;
+                } finally {
+                    setIsGettingLocation(false);
+                }
+            }
+
+            if (permissionStatus === RESULTS.DENIED) {
+                const requestStatus = await requestLocationPermission();
+                console.log('After request:', requestStatus);
+
+                if (requestStatus === RESULTS.GRANTED) {
+                    setHasLocationPermission(true);
+                    setIsGettingLocation(true);
+                    try {
+                        const location = await getCurrentLocation();
+                        setCurrentLocation(location);
+                        console.log('=== LOCATION OBTAINED ===');
+                        console.log('Latitude:', location.latitude);
+                        console.log('Longitude:', location.longitude);
+                        console.log('========================');
+                        toast.custom(
+                            <StatusMessage type="success" title="Location obtained successfully" />,
+                            { duration: 2000 }
+                        );
+                        return location;
+                    } catch (error) {
+                        console.log('Error getting location:', error.message);
+                        toast.custom(
+                            <StatusMessage type="error" title={error.message} />,
+                            { duration: 3000 }
+                        );
+                        return null;
+                    } finally {
+                        setIsGettingLocation(false);
+                    }
+                } else {
+                    setHasLocationPermission(false);
+                    toast.custom(
+                        <StatusMessage type="error" title="Location permission is required for OTP verification" />,
+                        { duration: 3000 }
+                    );
+                    return null;
+                }
+            }
+
+            if (permissionStatus === RESULTS.BLOCKED) {
+                setHasLocationPermission(false);
+                Alert.alert(
+                    'Location Permission Required',
+                    'This app requires location permission for OTP verification. Please enable location access in settings.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: () => openSettings() },
+                    ]
+                );
+                return null;
+            }
+        } catch (error) {
+            console.log('Location initialization error:', error);
+            setIsGettingLocation(false);
+            return null;
+        }
+    };
 
     // Check if OTP is already verified from the complaint data
     useEffect(() => {
@@ -59,9 +226,9 @@ const ComplaintDetail = () => {
         if (isComplete) {
             return;
         }
-        
-        // Check if the complaint already has verify_otp flag set to true
-        if (complaint.verify_otp === true) {
+
+        // Check if the complaint already has verify_otp flag set to "1"
+        if (complaint.verify_otp === "1") {
             console.log('OTP already verified for this complaint');
             setVerified(true);
             setJobStarted(true);
@@ -71,27 +238,33 @@ const ComplaintDetail = () => {
                 id: complaint.id
             });
         }
-        
+
         // Check if upload_image is "1", navigate directly to next screen
         if (complaint.upload_image === "1") {
             console.log('Upload image already completed, navigating to remarks screen');
-            // Navigate directly to remarks screen
-            navigation.replace('Remarkscreen', { 
+            navigation.replace('Remarkscreen', {
                 complaintData: complaint,
-                isVerified: complaint.verify_otp === true,
+                isVerified: complaint.verify_otp === "1",
                 isImageUploaded: true
             });
         }
     }, [complaint, navigation, isComplete]);
 
+    // Initialize location when component mounts (only if not already verified)
+    useEffect(() => {
+        if (!isComplete && !isOtpAlreadyVerified && !verified) {
+            initializeLocation();
+        }
+    }, [isComplete, isOtpAlreadyVerified, verified]);
+
     // Disable swipe back gesture when verified
     useEffect(() => {
         if (!isComplete) {
             navigation.setOptions({
-                gestureEnabled: !verified,
+                gestureEnabled: !verified && !isOtpAlreadyVerified,
             });
         }
-    }, [verified, navigation, isComplete]);
+    }, [verified, navigation, isComplete, isOtpAlreadyVerified]);
 
     // Cleanup timeout on unmount
     useEffect(() => {
@@ -188,6 +361,73 @@ const ComplaintDetail = () => {
     };
 
     const handleStartJob = async (complaint) => {
+        // If already verified, don't start job again
+        if (complaint.verify_otp === "1") {
+            toast.custom(
+                <StatusMessage
+                    type="info"
+                    title="Job already started and verified"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
+            return;
+        }
+
+        // Check location permission before sending OTP
+        if (!hasLocationPermission) {
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title="Location permission is required to start job"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
+            const location = await initializeLocation();
+            if (!location) {
+                return;
+            }
+        }
+
+        // Get current location if not available
+        let location = currentLocation;
+        if (!location) {
+            setIsGettingLocation(true);
+            try {
+                location = await getCurrentLocation();
+                setCurrentLocation(location);
+
+                // LOG THE LATITUDE AND LONGITUDE HERE
+                console.log('=== LOCATION DETAILS (Start Job) ===');
+                console.log('Latitude:', location.latitude);
+                console.log('Longitude:', location.longitude);
+                console.log('Full location object:', location);
+                console.log('=====================================');
+
+            } catch (error) {
+                console.log('Error getting location:', error);
+                toast.custom(
+                    <StatusMessage
+                        type="error"
+                        title={error.message || "Unable to get current location. Please enable GPS."}
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
+                setIsGettingLocation(false);
+                return;
+            }
+            setIsGettingLocation(false);
+        } else {
+            // Log existing location if already available
+            console.log('=== EXISTING LOCATION DETAILS (Start Job) ===');
+            console.log('Latitude:', location.latitude);
+            console.log('Longitude:', location.longitude);
+            console.log('Full location object:', location);
+            console.log('============================================');
+        }
+
         const payload = {
             complaint_id: complaint.id,
             mobile: complaint.customer_mobile
@@ -291,14 +531,70 @@ const ComplaintDetail = () => {
             return;
         }
 
+        // Check location permission and get current location
+        if (!hasLocationPermission) {
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title="Location permission is required for verification"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
+            const location = await initializeLocation();
+            if (!location) {
+                return;
+            }
+        }
+
+        // Get current location if not available
+        let location = currentLocation;
+        if (!location) {
+            setIsGettingLocation(true);
+            try {
+                location = await getCurrentLocation();
+                setCurrentLocation(location);
+                
+                // LOG THE LATITUDE AND LONGITUDE FOR VERIFICATION
+                console.log('=== LOCATION DETAILS (OTP Verification) ===');
+                console.log('Latitude:', location.latitude);
+                console.log('Longitude:', location.longitude);
+                console.log('Full location object:', location);
+                console.log('==========================================');
+                
+            } catch (error) {
+                console.log('Error getting location:', error);
+                toast.custom(
+                    <StatusMessage
+                        type="error"
+                        title={error.message || "Unable to get current location. Please enable GPS."}
+                        className="mx-4 mb-6"
+                    />,
+                    { duration: 3000 }
+                );
+                setIsGettingLocation(false);
+                return;
+            }
+            setIsGettingLocation(false);
+        } else {
+            // Log existing location
+            console.log('=== EXISTING LOCATION DETAILS (OTP Verification) ===');
+            console.log('Latitude:', location.latitude);
+            console.log('Longitude:', location.longitude);
+            console.log('Full location object:', location);
+            console.log('===================================================');
+        }
+
         setVerifying(true);
 
         try {
-            // Prepare payload for OTP verification
+            // Prepare payload for OTP verification with location
             const payload = {
-                complaint_id: complaintData.id,
                 mobile: complaintData.customer_mobile,
-                otp: enteredOtp
+                complaint_id: complaintData.id.toString(),
+                otp: enteredOtp,
+                latitude: location.latitude,
+                longitude: location.longitude
             };
 
             console.log('Verifying OTP with payload:', payload);
@@ -320,7 +616,7 @@ const ComplaintDetail = () => {
                     setComplaintData(prev => ({
                         ...prev,
                         ...updatedComplaint,
-                        verify_otp: true // Mark as verified
+                        verify_otp: "1" // Mark as verified with string "1"
                     }));
                 }
 
@@ -440,7 +736,7 @@ const ComplaintDetail = () => {
         setPhotoUri(null);
     };
 
-    // handleSendPhoto function - Always uses "before" and status "1"
+    // handleSendPhoto function
     const handleSendPhoto = async () => {
         if (!photoUri) {
             toast.custom(
@@ -457,27 +753,21 @@ const ComplaintDetail = () => {
         setSendingPhoto(true);
 
         try {
-            // Create form data for file upload
             const formData = new FormData();
-
-            // Get file info
             const fileUri = photoUri;
             const fileName = fileUri.split('/').pop();
             const fileType = 'image/jpeg';
 
-            // Append the image file
             formData.append('image', {
                 uri: Platform.OS === 'ios' ? fileUri.replace('file://', '') : fileUri,
                 name: fileName || `photo_${Date.now()}.jpg`,
                 type: fileType,
             });
 
-            // Always use "before" and status "1"
             formData.append('complaint_id', complaintData.id.toString());
-            formData.append('image_type', 'before working'); // Always "before"
-            formData.append('status', '1'); // Always "1"
+            formData.append('image_type', 'before working');
+            formData.append('status', '1');
 
-            // Log the form data for debugging
             console.log('Uploading image with params:', {
                 complaint_id: complaintData.id,
                 image_type: 'before working',
@@ -486,11 +776,9 @@ const ComplaintDetail = () => {
                 fileUri: fileUri
             });
 
-            // Call the upload API
             const response = await UploadComplaintImage(formData);
             console.log('Upload response:', response);
 
-            // Check if upload was successful
             if (response && response.data && response.data.success) {
                 toast.custom(
                     <StatusMessage
@@ -501,7 +789,6 @@ const ComplaintDetail = () => {
                     { duration: 3000 }
                 );
 
-                // Navigate to next screen after successful upload
                 navigation.replace('Remarkscreen', {
                     customerData: otpResponseData,
                     complaintData: complaintData,
@@ -510,7 +797,6 @@ const ComplaintDetail = () => {
                     imageType: 'before working'
                 });
             } else {
-                // Handle unsuccessful upload
                 toast.custom(
                     <StatusMessage
                         type="error"
@@ -524,14 +810,10 @@ const ComplaintDetail = () => {
 
         } catch (error) {
             console.error('Error uploading photo:', error);
-
-            // Log more details about the error
             if (error.response) {
                 console.error('Error response data:', error.response.data);
                 console.error('Error response status:', error.response.status);
-                console.error('Error response headers:', error.response.headers);
             }
-
             toast.custom(
                 <StatusMessage
                     type="error"
@@ -544,18 +826,11 @@ const ComplaintDetail = () => {
         }
     };
 
-    // Format the date for display
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         return dateString;
     };
 
-    // Determine priority based on available data or set default
-    const getPriority = () => {
-        return 'Medium';
-    };
-
-    // Determine status display
     const getStatusDisplay = () => {
         const status = complaintData.status;
         switch (status) {
@@ -576,7 +851,6 @@ const ComplaintDetail = () => {
         }
     };
 
-    // Determine status color class
     const getStatusColorClass = () => {
         const status = complaintData.status;
         switch (status) {
@@ -597,7 +871,6 @@ const ComplaintDetail = () => {
         }
     };
 
-    // Determine status text color class
     const getStatusTextColorClass = () => {
         const status = complaintData.status;
         switch (status) {
@@ -618,35 +891,8 @@ const ComplaintDetail = () => {
         }
     };
 
-    // Determine priority color class
-    const getPriorityColorClass = () => {
-        const priority = getPriority();
-        switch (priority) {
-            case 'High':
-                return 'bg-ui-error/20';
-            case 'Medium':
-                return 'bg-ui-warning/20';
-            case 'Low':
-                return 'bg-ui-success/20';
-            default:
-                return 'bg-ui-warning/20';
-        }
-    };
-
-    // Determine priority text color class
-    const getPriorityTextColorClass = () => {
-        const priority = getPriority();
-        switch (priority) {
-            case 'High':
-                return 'text-ui-error';
-            case 'Medium':
-                return 'text-ui-warning';
-            case 'Low':
-                return 'text-ui-success';
-            default:
-                return 'text-ui-warning';
-        }
-    };
+    // Determine if we should show verified content
+    const showVerifiedContent = verified || isOtpAlreadyVerified;
 
     return (
         <SafeAreaView className="flex-1 bg-background-primary">
@@ -668,13 +914,6 @@ const ComplaintDetail = () => {
                     <Text className="text-text-primary text-2xl font-bold mb-2">
                         {complaintData.service_name}
                     </Text>
-                    {/* <View className="mb-2">
-                        <View className={`px-3 py-1 rounded-full ${getPriorityColorClass()}`}>
-                            <Text className={`text-xs font-medium ${getPriorityTextColorClass()}`}>
-                                {getPriority()} Priority
-                            </Text>
-                        </View>
-                    </View> */}
                 </View>
 
                 {/* Status Badge */}
@@ -684,11 +923,29 @@ const ComplaintDetail = () => {
                     </Text>
                 </View>
 
+                {/* Location Status Indicator - Only show if not complete and not verified */}
+                {!isComplete && !showVerifiedContent && (
+                    <View className="mb-4">
+                        <View className={`flex-row items-center ${hasLocationPermission && currentLocation ? 'bg-green-50' : 'bg-yellow-50'} p-2 rounded-lg`}>
+                            <Icon
+                                name="location-outline"
+                                size={20}
+                                color={hasLocationPermission && currentLocation ? "#10b981" : "#eab308"}
+                            />
+                            <Text className={`ml-2 text-sm ${hasLocationPermission && currentLocation ? 'text-green-700' : 'text-yellow-700'}`}>
+                                {isGettingLocation ? 'Getting location...' :
+                                    hasLocationPermission && currentLocation ? 'Location ready for verification' :
+                                        'Location permission required for OTP verification'}
+                            </Text>
+                        </View>
+                    </View>
+                )}
+
                 {/* Only show OTP, verification, camera, reverse, and action buttons if NOT complete */}
                 {!isComplete && (
                     <>
-                        {/* OTP Input Section - Only show if not already verified */}
-                        {!verified && showOtp && (
+                        {/* OTP Input Section - Only show if not already verified and showOtp is true */}
+                        {!showVerifiedContent && showOtp && (
                             <View className="mb-6">
                                 <Text className="text-text-primary text-base mb-3 text-center">
                                     Enter 5-digit OTP sent to customer
@@ -705,18 +962,18 @@ const ComplaintDetail = () => {
                                             onChangeText={(text) => handleOtpChange(text, index)}
                                             onKeyPress={(e) => handleKeyPress(e, index)}
                                             selectTextOnFocus
-                                            editable={!verifying && !verified}
+                                            editable={!verifying && !showVerifiedContent}
                                         />
                                     ))}
                                 </View>
 
                                 <TouchableOpacity
                                     onPress={handleVerifyOtp}
-                                    disabled={verifying || verified}
-                                    className={`mt-4 py-3 rounded-xl items-center ${verifying ? 'bg-ui-secondary' : 'bg-primary-sage600'
+                                    disabled={verifying || showVerifiedContent || isGettingLocation}
+                                    className={`mt-4 py-3 rounded-xl items-center ${verifying || isGettingLocation ? 'bg-ui-secondary' : 'bg-primary-sage600'
                                         }`}
                                 >
-                                    {verifying ? (
+                                    {verifying || isGettingLocation ? (
                                         <ActivityIndicator color="#fff" />
                                     ) : (
                                         <Text className="text-text-inverse font-semibold">Verify OTP</Text>
@@ -726,7 +983,7 @@ const ComplaintDetail = () => {
                         )}
 
                         {/* Display Verified Customer Info when already verified */}
-                        {verified && (
+                        {showVerifiedContent && (
                             <View className="bg-ui-success/10 border border-ui-success rounded-xl p-3 mb-4">
                                 <View className="flex-row items-center">
                                     <Icon name="checkmark-circle" size={20} color="#58A890" />
@@ -735,16 +992,20 @@ const ComplaintDetail = () => {
                                 <Text className="text-text-primary text-sm mt-1">
                                     {complaintData.customer_name} • {complaintData.customer_mobile}
                                 </Text>
+                                {currentLocation && (
+                                    <Text className="text-text-tertiary text-xs mt-1">
+                                        Location: {currentLocation.latitude}, {currentLocation.longitude}
+                                    </Text>
+                                )}
                             </View>
                         )}
 
                         {/* Camera Section – appears after verification */}
-                        {verified && (
+                        {showVerifiedContent && (
                             <View className="mb-6">
                                 <Text className="text-text-primary text-base mb-2 font-semibold">
                                     Take Before Working Photo
                                 </Text>
-                                {/* Photo capture area */}
                                 {!photoUri ? (
                                     <TouchableOpacity
                                         onPress={handleTakePhoto}
@@ -774,7 +1035,6 @@ const ComplaintDetail = () => {
                                     </View>
                                 )}
 
-                                {/* Send Button */}
                                 <TouchableOpacity
                                     onPress={handleSendPhoto}
                                     className={`py-4 rounded-xl items-center ${sendingPhoto || !photoUri ? 'bg-ui-disabled' : 'bg-ui-success'
@@ -827,7 +1087,6 @@ const ComplaintDetail = () => {
                     <TouchableOpacity
                         onPress={handlePhoneCall}
                         className="flex-row items-center"
-                        disabled={verified && !isComplete}
                     >
                         <Icon name="call-outline" size={18} color="#666" />
                         <Text className="text-[#666] text-base ml-2">{complaintData.customer_mobile}</Text>
@@ -889,10 +1148,10 @@ const ComplaintDetail = () => {
                                 onPress={handleReverse}
                                 disabled={submittingReverse}
                                 className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${submittingReverse
-                                        ? 'bg-ui-disabled'
-                                        : showReasonInput && reasonText.trim()
-                                            ? 'bg-ui-success'
-                                            : 'bg-ui-secondary/20'
+                                    ? 'bg-ui-disabled'
+                                    : showReasonInput && reasonText.trim()
+                                        ? 'bg-ui-success'
+                                        : 'bg-ui-secondary/20'
                                     }`}
                             >
                                 {submittingReverse ? (
@@ -900,8 +1159,8 @@ const ComplaintDetail = () => {
                                 ) : (
                                     <Text
                                         className={`font-semibold ${showReasonInput && reasonText.trim()
-                                                ? 'text-text-inverse'
-                                                : 'text-text-secondary'
+                                            ? 'text-text-inverse'
+                                            : 'text-text-secondary'
                                             }`}
                                     >
                                         Reverse
@@ -910,14 +1169,14 @@ const ComplaintDetail = () => {
                             </TouchableOpacity>
 
                             {/* Only show Start Job button if not already verified and job not started */}
-                            {!verified && !jobStarted && (
+                            {!showVerifiedContent && !jobStarted && (
                                 <TouchableOpacity
                                     onPress={() => handleStartJob(complaintData)}
-                                    disabled={verifying || sendingOTP}
-                                    className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${verifying || sendingOTP ? 'bg-ui-disabled' : 'bg-primary-sage600'
+                                    disabled={verifying || sendingOTP || isGettingLocation}
+                                    className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${verifying || sendingOTP || isGettingLocation ? 'bg-ui-disabled' : 'bg-primary-sage600'
                                         }`}
                                 >
-                                    {sendingOTP ? (
+                                    {sendingOTP || isGettingLocation ? (
                                         <ActivityIndicator color="#fff" />
                                     ) : (
                                         <Text

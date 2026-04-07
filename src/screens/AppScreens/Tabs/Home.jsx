@@ -37,9 +37,11 @@ import OffLineScreen from '../OffLineScreen';
 import { toast } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { getDeshBoardCount, getProfile, AssignQRCodeCount } from '../../../lib/api';
-
+import { check, request, RESULTS, PERMISSIONS } from 'react-native-permissions';
+import Geolocation from '@react-native-community/geolocation';
+import { Platform } from 'react-native';
 const { width: screenWidth } = Dimensions.get('window');
-
+import { openSettings } from 'react-native-permissions';
 // Carousel images
 const carouselImages = [
   {
@@ -85,6 +87,85 @@ const Home = () => {
   // ---------- Network state ----------
   const [isConnected, setIsConnected] = useState(true);
 
+  const checkLocationPermission = async () => {
+    try {
+      if (Platform.OS === 'ios') {
+        return await check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+      } else {
+        return await check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+      }
+    } catch (error) {
+      console.log('Permission check error:', error);
+    }
+  };
+
+  const requestLocationPermission = async () => {
+    try {
+      if (Platform.OS === 'ios') {
+        return await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+      } else {
+        return await request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+      }
+    } catch (error) {
+      console.log('Permission request error:', error);
+    }
+  };
+
+  const getCurrentLocation = () => {
+    Geolocation.getCurrentPosition(
+      position => {
+        const { latitude, longitude } = position.coords;
+        console.log('Latitude:', latitude);
+        console.log('Longitude:', longitude);
+      },
+      error => {
+        console.log('Location error:', error);
+        toast.custom(
+          <StatusMessage type="error" title="Failed to get location" />
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000,
+      }
+    );
+  };
+
+
+
+  useEffect(() => {
+    const initLocation = async () => {
+      let permissionStatus = await checkLocationPermission();
+
+      console.log('Initial permission:', permissionStatus);
+
+
+
+      if (permissionStatus === RESULTS.DENIED) {
+        const requestStatus = await requestLocationPermission();
+
+        console.log('After request:', requestStatus);
+
+
+        return;
+      }
+
+      if (permissionStatus === RESULTS.BLOCKED) {
+        Alert.alert(
+          'Permission Required',
+          'Please enable location permission from settings',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => openSettings() },
+          ]
+        );
+      }
+    };
+
+    initLocation();
+  }, []);
+
   // ---------- User data from context ----------
   const userProfile = {
     name: profileData?.technician_name || 'John Doe',
@@ -113,7 +194,7 @@ const Home = () => {
         // Save profile data to context
         await updateProfileData(data);
         const isOnline = data?.login_status === 'Online';
-        console.log("Active status set:",isOnline)
+        console.log("Active status set:", isOnline)
         await setIsOnline(isOnline);
       }
     } catch (error) {
@@ -435,7 +516,7 @@ const Home = () => {
               </Text>
             </View>
             <Text
-              className={`text-xs font-medium ${IsOnline? 'text-green-600' : 'text-gray-500'
+              className={`text-xs font-medium ${IsOnline ? 'text-green-600' : 'text-gray-500'
                 }`}
             >
               {IsOnline ? '● Active' : '● Inactive'}
@@ -487,7 +568,7 @@ const Home = () => {
             />
           }
         >
-          
+
 
           {/* Cards Section */}
           <View className="px-4 py-4">

@@ -11,7 +11,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import { useAuth } from '../../../context/AuthContext';
@@ -224,6 +224,29 @@ const Complaints = () => {
     }
   };
 
+  // Refresh all data (dashboard counts and complaints)
+  const refreshAllData = async () => {
+    console.log('Refreshing all data...');
+    setRefreshing(true);
+    
+    try {
+      // First refresh dashboard counts
+      await fetchTabCount();
+      
+      // Small delay to ensure counts are updated
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Then refresh complaints for current tab
+      await fetchComplaints(selectedTab, 1, false, true);
+      
+      console.log('All data refreshed successfully');
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // Load more data when reaching the end
   const loadMoreComplaints = () => {
     // Prevent multiple calls while loading
@@ -252,10 +275,10 @@ const Complaints = () => {
     fetchComplaints(selectedTab, nextPage, true, false);
   };
 
-  // Refresh data
+  // Refresh data (pull to refresh)
   const onRefresh = () => {
-    console.log('Refreshing complaints');
-    fetchComplaints(selectedTab, 1, false, true);
+    console.log('Pull to refresh triggered');
+    refreshAllData();
   };
 
   // Fetch dashboard counts from API
@@ -291,48 +314,62 @@ const Complaints = () => {
     }
   };
 
+  // Initialize data on mount
+  const initializeData = async () => {
+    await fetchTabCount();
+
+    // Small delay to ensure dashboard counts are loaded
+    setTimeout(() => {
+      if (status === 'Complete' || status === 'Cancel') {
+        if (scrollViewRef.current) {
+          scrollViewRef.current.scrollTo({
+            x: 200,
+            animated: true,
+          });
+        }
+      }
+
+      if (status) {
+        if (status === 'All') {
+          setSelectedTab('All');
+          fetchComplaints('All', 1, false, false);
+        } else if (status === 'Assign') {
+          setSelectedTab('Assigned');
+          fetchComplaints('Assigned', 1, false, false);
+        } else if (status === 'Onworking') {
+          setSelectedTab('On Progress');
+          fetchComplaints('On Progress', 1, false, false);
+        } else if (status === 'Complete') {
+          setSelectedTab('Complete');
+          fetchComplaints('Complete', 1, false, false);
+        } else if (status === 'Cancel') {
+          setSelectedTab('Cancel');
+          fetchComplaints('Cancel', 1, false, false);
+        }
+      } else {
+        // Default: fetch for 'All' tab when no route param
+        fetchComplaints('All', 1, false, false);
+      }
+    }, 100);
+  };
+
   // Initial fetch based on route param (if any)
   useEffect(() => {
-    const initializeData = async () => {
-      await fetchTabCount();
-
-      // Small delay to ensure dashboard counts are loaded
-      setTimeout(() => {
-        if (status === 'Complete' || status === 'Cancel') {
-          if (scrollViewRef.current) {
-            scrollViewRef.current.scrollTo({
-              x: 200,
-              animated: true,
-            });
-          }
-        }
-
-        if (status) {
-          if (status === 'All') {
-            setSelectedTab('All');
-            fetchComplaints('All', 1, false, false);
-          } else if (status === 'Assign') {
-            setSelectedTab('Assigned');
-            fetchComplaints('Assigned', 1, false, false);
-          } else if (status === 'Onworking') {
-            setSelectedTab('On Progress');
-            fetchComplaints('On Progress', 1, false, false);
-          } else if (status === 'Complete') {
-            setSelectedTab('Complete');
-            fetchComplaints('Complete', 1, false, false);
-          } else if (status === 'Cancel') {
-            setSelectedTab('Cancel');
-            fetchComplaints('Cancel', 1, false, false);
-          }
-        } else {
-          // Default: fetch for 'All' tab when no route param
-          fetchComplaints('All', 1, false, false);
-        }
-      }, 100);
-    };
-
     initializeData();
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Screen focused - refreshing data');
+      refreshAllData();
+      
+      return () => {
+        // Cleanup if needed
+        console.log('Screen unfocused');
+      };
+    }, [selectedTab]) // Re-run when selectedTab changes
+  );
 
   // Filter complaints based on selected tab and search query
   const filteredComplaints = complaintsData.filter((complaint) => {
@@ -391,7 +428,6 @@ const Complaints = () => {
     }
     else {
       navigation.navigate('ComplaintDetail', { complaint, status: "complaint" });
-
     }
   };
 

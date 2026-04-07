@@ -55,6 +55,14 @@ const BucketpartDetails = () => {
   const description = item.description || 'No description available';
   const partId = item.id;
 
+  // Check if transfer is allowed (market parts cannot be transferred)
+  const isTransferAllowed = () => {
+    if (parentType === 'market' || item.transfer_by === 'market') {
+      return false;
+    }
+    return true;
+  };
+
   // Format parent type display
   const getParentTypeDisplay = (type) => {
     switch (type) {
@@ -93,6 +101,11 @@ const BucketpartDetails = () => {
 
   // Open modal for partner selection
   const openPartnerModal = () => {
+    // Check if transfer is allowed before opening modal
+    if (!isTransferAllowed()) {
+      toast.error('Market parts cannot be transferred');
+      return;
+    }
     setTempSelectedPartner(selectedTransferPartner);
     setSearchQuery('');
     setPartnerModalVisible(true);
@@ -109,8 +122,13 @@ const BucketpartDetails = () => {
   };
 
   // Actual transfer with navigation and refresh
-  // Actual transfer with navigation and refresh
   const handleTransfer = async () => {
+    // Check if transfer is allowed first
+    if (!isTransferAllowed()) {
+      toast.error('Market parts cannot be transferred');
+      return;
+    }
+
     if (!selectedTransferPartner) {
       toast.error('Please select a partner first');
       return;
@@ -137,16 +155,15 @@ const BucketpartDetails = () => {
       );
 
       // Wait for a short moment to ensure toast is shown, then navigate back
-      // This gives time for the toast to render before navigation
       setTimeout(() => {
         navigation.goBack();
-      }, 500); // 500ms delay ensures toast is visible
+      }, 500);
 
     } catch (error) {
       console.log('Failed to transfer:', error);
       console.error('Failed to transfer:', error);
       toast.error('Transfer failed. Please try again.');
-      setTransferLoading(false); // Reset loading state on error
+      setTransferLoading(false);
     }
   };
 
@@ -234,30 +251,64 @@ const BucketpartDetails = () => {
             </View>
           )}
 
-          {/* Dropdown Button for Partner Selection */}
-          <TouchableOpacity
-            onPress={openPartnerModal}
-            className="flex-row items-center justify-between bg-background-secondary border border-ui-border rounded-xl p-4 mb-4"
-          >
-            <View className="flex-row items-center">
-              <Icon name="people-outline" size={20} color="#666666" />
-              <Text className="text-text-primary ml-2 font-medium">
-                {selectedTransferPartner
-                  ? `Selected: ${selectedTransferPartner.technician_name}`
-                  : 'Select Partner for Transfer'}
+          {/* Market Part Warning Section */}
+          {!isTransferAllowed() && (
+            <View className="bg-red-50 p-4 rounded-xl mb-4 border border-red-200">
+              <View className="flex-row items-center">
+                <Icon name="alert-circle" size={20} color="#DC2626" />
+                <Text className="text-red-700 font-semibold ml-2">
+                  Market Part - Cannot Be Transferred
+                </Text>
+              </View>
+              <Text className="text-red-600 text-sm mt-1 ml-7">
+                Parts from the market cannot be transferred to technicians. This part is from {parentName}.
               </Text>
             </View>
-            <Icon name="chevron-down" size={20} color="#666666" />
+          )}
+
+          {/* Dropdown Button for Partner Selection - Disabled for market parts */}
+          <TouchableOpacity
+            onPress={openPartnerModal}
+            disabled={!isTransferAllowed()}
+            className={`flex-row items-center justify-between rounded-xl p-4 mb-4 ${
+              !isTransferAllowed() 
+                ? 'bg-gray-100 border border-gray-200 opacity-60' 
+                : 'bg-background-secondary border border-ui-border'
+            }`}
+          >
+            <View className="flex-row items-center">
+              <Icon 
+                name="people-outline" 
+                size={20} 
+                color={!isTransferAllowed() ? "#999999" : "#666666"} 
+              />
+              <Text className={`ml-2 font-medium ${
+                !isTransferAllowed() ? 'text-text-tertiary' : 'text-text-primary'
+              }`}>
+                {!isTransferAllowed()
+                  ? 'Transfer not available for market parts'
+                  : selectedTransferPartner
+                    ? `Selected: ${selectedTransferPartner.technician_name}`
+                    : 'Select Partner for Transfer'
+                }
+              </Text>
+            </View>
+            <Icon 
+              name="chevron-down" 
+              size={20} 
+              color={!isTransferAllowed() ? "#999999" : "#666666"} 
+            />
           </TouchableOpacity>
 
-          {/* Transfer Button (enabled only when partner selected) */}
+          {/* Transfer Button - Disabled for market parts */}
           <TouchableOpacity
             onPress={handleTransfer}
-            disabled={!selectedTransferPartner || transferLoading}
-            className={`py-4 rounded-xl flex-row items-center justify-center ${!selectedTransferPartner || transferLoading
-              ? 'bg-primary-sage300'
-              : 'bg-primary-sage600'
-              }`}
+            disabled={!isTransferAllowed() || !selectedTransferPartner || transferLoading}
+            className={`py-4 rounded-xl flex-row items-center justify-center ${
+              !isTransferAllowed() || !selectedTransferPartner || transferLoading
+                ? 'bg-primary-sage300'
+                : 'bg-primary-sage600'
+            }`}
           >
             {transferLoading ? (
               <ActivityIndicator color="white" />
@@ -265,9 +316,12 @@ const BucketpartDetails = () => {
               <>
                 <Icon name="swap-horizontal" size={20} color="white" />
                 <Text className="text-text-inverse font-semibold text-lg ml-2">
-                  {selectedTransferPartner
-                    ? `Transfer to ${selectedTransferPartner.technician_name}`
-                    : 'Confirm Transfer'}
+                  {!isTransferAllowed()
+                    ? 'Cannot Transfer Market Part'
+                    : selectedTransferPartner
+                      ? `Transfer to ${selectedTransferPartner.technician_name}`
+                      : 'Confirm Transfer'
+                  }
                 </Text>
               </>
             )}
@@ -290,8 +344,9 @@ const BucketpartDetails = () => {
             <TouchableOpacity
               onPress={confirmPartnerSelection}
               disabled={!tempSelectedPartner}
-              className={`py-4 rounded-xl flex-row items-center justify-center ${!tempSelectedPartner ? 'bg-primary-sage300' : 'bg-primary-sage600'
-                }`}
+              className={`py-4 rounded-xl flex-row items-center justify-center ${
+                !tempSelectedPartner ? 'bg-primary-sage300' : 'bg-primary-sage600'
+              }`}
             >
               <Icon name="checkmark" size={20} color="white" />
               <Text className="text-text-inverse font-semibold text-lg ml-2">
@@ -348,10 +403,11 @@ const BucketpartDetails = () => {
             renderItem={({ item: tech }) => (
               <TouchableOpacity
                 onPress={() => setTempSelectedPartner(tech)}
-                className={`p-4 rounded-xl mb-2 border ${tempSelectedPartner?.id === tech.id
-                  ? 'border-primary-sage400 bg-primary-sage50'
-                  : 'border-ui-border bg-background-secondary'
-                  }`}
+                className={`p-4 rounded-xl mb-2 border ${
+                  tempSelectedPartner?.id === tech.id
+                    ? 'border-primary-sage400 bg-primary-sage50'
+                    : 'border-ui-border bg-background-secondary'
+                }`}
               >
                 <Text className="text-base font-medium text-text-primary">
                   {tech.technician_name}

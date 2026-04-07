@@ -23,17 +23,20 @@ import {
   AttechPartWithComplaints,
   RecomplaitAttechPart,
   FetchPartsForReplaced,
-  ReplacedPartManagement
+  ReplacedPartManagement,
+  ComplaintBilling
 } from '../../../lib/api';
 
 const Billing = () => {
   const navigation = useNavigation();
   const { importedPart, updateImportedPart, user, imagUrl } = useAuth();
-  const [discount, setDiscount] = useState(0);
-  const SERVICE_CHARGE = 500;
+  const [discount, setDiscount] = useState('');
   const route = useRoute();
   const complaintData = route.params?.complaintData || null;
   console.log('Complaint Data in Billing:', complaintData);
+
+  // Get base amount from complaint data (tot_amt)
+  const baseAmount = parseFloat(complaintData?.tot_amt) || 0;
 
   // State for parts
   const [parts, setParts] = useState([]);
@@ -48,6 +51,7 @@ const Billing = () => {
   const [submitDialogVisible, setSubmitDialogVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [billingError, setBillingError] = useState(null);
 
   // Replace part dialog states
   const [replaceDialogVisible, setReplaceDialogVisible] = useState(false);
@@ -63,6 +67,11 @@ const Billing = () => {
 
   // Check if it's a recomplaint
   const isRecomplaint = complaintData?.recomplaint === 'Yes';
+
+  // Calculate total amounts
+  const totalPartsPrice = parts?.reduce((sum, part) => sum + part.price, 0) || 0;
+  const totalBeforeDiscount = baseAmount + totalPartsPrice;
+  const totalPayable = totalBeforeDiscount - discount;
 
   // Function to fetch available parts for replacement
   const fetchAvailableParts = async (partName) => {
@@ -97,14 +106,13 @@ const Billing = () => {
       if (partsData.length > 0) {
         const formattedParts = partsData.map(part => ({
           part_accept: part?.part_accept,
-          old_part_id: part?.old_part_id || null, // Capture old_part_id
+          old_part_id: part?.old_part_id || null,
           technician_name: part?.technician_name || '',
           id: part.id?.toString(),
           name: part.part_name || 'Part',
           partNumber: part.id?.toString() || '',
           price: parseFloat(part.part_price) || 0,
-          imageUrl: part?.part_image ,
-           
+          imageUrl: part?.part_image,
           description: part.description || '',
           transfer_by: part.transfer_by || 'market',
           status: part.status || '0',
@@ -147,7 +155,6 @@ const Billing = () => {
 
     try {
       if (isRecomplaint && complaintData?.oldcomp_id) {
-        // For recomplaint, use the new payload structure
         const payload = {
           complaint_id: complaintData.oldcomp_id?.toString(),
           old_part_id: partToReplace.id?.toString(),
@@ -160,7 +167,6 @@ const Billing = () => {
         console.log('ReplacedPartManagement response:', response);
 
         if (response?.data?.success) {
-          // Update local state
           const updatedParts = parts.map(part =>
             part.id === partToReplace.id
               ? {
@@ -183,9 +189,8 @@ const Billing = () => {
           setParts(updatedParts);
           updateImportedPart(updatedParts);
 
-          // Reset discount if needed
-          const newTotalPartsPrice = updatedParts.reduce((sum, p) => sum + p.price, 0);
-          const newTotalBeforeDiscount = newTotalPartsPrice + SERVICE_CHARGE;
+          // Reset discount if it exceeds new total
+          const newTotalBeforeDiscount = baseAmount + updatedParts.reduce((sum, p) => sum + p.price, 0);
           if (discount > newTotalBeforeDiscount) {
             setDiscount(newTotalBeforeDiscount);
             setDiscountError('');
@@ -196,19 +201,15 @@ const Billing = () => {
             { duration: 1500 }
           );
 
-          // Close dialog and reset states
           setReplaceDialogVisible(false);
           setPartToReplace(null);
           setSelectedReplacePart(null);
           setAvailableParts([]);
-
-          // Refresh parts list
           await fetchParts();
         } else {
           throw new Error(response?.data?.message || 'Failed to replace part');
         }
       } else {
-        // For regular complaints, use the new payload structure with AttechPartWithComplaints
         const payload = {
           complaint_id: complaintData?.id?.toString(),
           old_part_id: partToReplace.id?.toString(),
@@ -221,7 +222,6 @@ const Billing = () => {
         console.log('Replace part response:', response);
 
         if (response?.data?.success) {
-          // Update local state
           const updatedParts = parts.map(part =>
             part.id === partToReplace.id
               ? {
@@ -244,9 +244,7 @@ const Billing = () => {
           setParts(updatedParts);
           updateImportedPart(updatedParts);
 
-          // Reset discount if needed
-          const newTotalPartsPrice = updatedParts.reduce((sum, p) => sum + p.price, 0);
-          const newTotalBeforeDiscount = newTotalPartsPrice + SERVICE_CHARGE;
+          const newTotalBeforeDiscount = baseAmount + updatedParts.reduce((sum, p) => sum + p.price, 0);
           if (discount > newTotalBeforeDiscount) {
             setDiscount(newTotalBeforeDiscount);
             setDiscountError('');
@@ -257,7 +255,6 @@ const Billing = () => {
             { duration: 1500 }
           );
 
-          // Close dialog and reset states
           setReplaceDialogVisible(false);
           setPartToReplace(null);
           setSelectedReplacePart(null);
@@ -283,26 +280,22 @@ const Billing = () => {
 
     try {
       const payload = {
-        // use old conplaint id here 
         complaint_id: complaintData?.oldcomp_id?.toString(),
-        old_part_id: replacementPartToRemove?.old_part_id?.toString(), // This should now be properly set
-        new_part_id:  replacementPartToRemove.id?.toString(),
+        old_part_id: replacementPartToRemove?.old_part_id?.toString(),
+        new_part_id: replacementPartToRemove.id?.toString(),
         status: "1"
       };
       console.log('Payload for removing replacement part:', payload);
 
-      const response = await ReplacedPartManagement(payload); // Use AttechPartWithComplaints instead of RecomplaitAttechPart
+      const response = await ReplacedPartManagement(payload);
       console.log('Remove replacement part response:', response);
 
       if (response?.data?.success) {
-        // Remove the part from the list
         const updatedParts = parts.filter((p) => p.id !== replacementPartToRemove.id);
         setParts(updatedParts);
         updateImportedPart(updatedParts);
 
-        // Update total and discount
-        const newTotalPartsPrice = updatedParts.reduce((sum, p) => sum + p.price, 0);
-        const newTotalBeforeDiscount = newTotalPartsPrice + SERVICE_CHARGE;
+        const newTotalBeforeDiscount = baseAmount + updatedParts.reduce((sum, p) => sum + p.price, 0);
         if (discount > newTotalBeforeDiscount) {
           setDiscount(newTotalBeforeDiscount);
           setDiscountError('');
@@ -313,7 +306,6 @@ const Billing = () => {
           { duration: 1500 }
         );
 
-        // Refresh parts list
         await fetchParts();
       } else {
         throw new Error(response?.data?.message || 'Failed to remove replacement part');
@@ -330,7 +322,6 @@ const Billing = () => {
     }
   };
 
-  // Function to fetch parts based on complaint type
   // Function to fetch parts based on complaint type
   const fetchParts = async () => {
     if (!complaintData) {
@@ -394,14 +385,12 @@ const Billing = () => {
         partNumber: part.id?.toString() || '',
         price: parseFloat(part.part_price || part.price) || 0,
         imageUrl: part.part_image,
-         
         description: part.description || '',
         transfer_by: part.transfer_by,
         part_accept: part.part_accept,
-        technician_name: part.technician_name,
         status: part.status,
         replace_part: part.replace_part || 'No',
-        old_part_id: part.old_part_id || null // Capture the old_part_id
+        old_part_id: part.old_part_id || null
       }));
 
       console.log('Formatted parts:', formattedParts);
@@ -418,6 +407,42 @@ const Billing = () => {
     }
   };
 
+  // Function to submit billing
+  const submitBilling = async () => {
+    try {
+      setBillingError(null);
+
+      const payload = {
+        id: complaintData?.id?.toString() || complaintData?.oldcomp_id?.toString(),
+        final_amount: totalPayable.toFixed(2),
+        discount: discount.toString()
+      };
+
+      console.log('Submitting billing with payload:', payload);
+      const response = await ComplaintBilling(payload);
+      console.log('ComplaintBilling response:', response);
+
+      if (response?.data?.success) {
+        setShowSuccess(true);
+        toast.custom(
+          <StatusMessage type='success' title="Bill submitted successfully!" />,
+          { duration: 2000 }
+        );
+      } else {
+        throw new Error(response?.data?.message || 'Failed to submit bill');
+      }
+    } catch (err) {
+      console.error('Error submitting billing:', err);
+      setBillingError(err.message);
+      toast.custom(
+        <StatusMessage type='error' title={err.message || 'Failed to submit bill'} />,
+        { duration: 3000 }
+      );
+    } finally {
+      setIsSubmitting(false);
+      setSubmitDialogVisible(false);
+    }
+  };
 
   useEffect(() => {
     fetchParts();
@@ -429,10 +454,6 @@ const Billing = () => {
       fetchParts();
     }, [complaintData, user?.id])
   );
-
-  const totalPartsPrice = parts?.reduce((sum, part) => sum + part.price, 0) || 0;
-  const totalBeforeDiscount = totalPartsPrice + SERVICE_CHARGE;
-  const totalPayable = totalBeforeDiscount - discount;
 
   const handleDiscountChange = (text) => {
     const value = parseFloat(text) || 0;
@@ -470,7 +491,7 @@ const Billing = () => {
           updateImportedPart(updatedParts);
 
           const removedPart = parts.find(p => p.id === partToRemove);
-          const newTotalBeforeDiscount = (totalPartsPrice - (removedPart?.price || 0)) + SERVICE_CHARGE;
+          const newTotalBeforeDiscount = baseAmount + (totalPartsPrice - (removedPart?.price || 0));
           if (discount > newTotalBeforeDiscount) {
             setDiscount(newTotalBeforeDiscount);
             setDiscountError('');
@@ -501,9 +522,7 @@ const Billing = () => {
   };
 
   const handlePartClick = (part) => {
-    // Check if part is a replacement part (replace_part === "Yes")
     if (part.replace_part === "Yes") {
-      // Show confirmation dialog to remove the replacement part
       setReplacementPartToRemove(part);
       setRemoveReplacementDialogVisible(true);
       return;
@@ -518,11 +537,6 @@ const Billing = () => {
         />,
         { duration: 3000 }
       );
-      return;
-    }
-
-    if (part.part_accept === null || part.part_accept === undefined) {
-      openReplaceDialog(part);
       return;
     }
 
@@ -545,11 +559,7 @@ const Billing = () => {
 
     setSubmitDialogVisible(false);
     setIsSubmitting(true);
-
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setShowSuccess(true);
-    }, 1000);
+    submitBilling();
   };
 
   const handleSuccessClose = () => {
@@ -560,7 +570,6 @@ const Billing = () => {
   const replacePartClicked = async (part) => {
     console.log('Replace part clicked:', part);
 
-    // Check if the selected replacement part itself is a replacement part
     if (part.replace_part === "Yes") {
       toast.custom(
         <StatusMessage
@@ -583,7 +592,6 @@ const Billing = () => {
       return;
     }
 
-    // For recomplaint, call API immediately when part is selected
     if (isRecomplaint && complaintData?.oldcomp_id) {
       const payload = {
         complaint_id: complaintData.oldcomp_id?.toString(),
@@ -599,7 +607,6 @@ const Billing = () => {
         console.log('ReplacedPartManagement response:', response);
 
         if (response?.data?.success) {
-          // Update local state
           const updatedParts = parts.map(p =>
             p.id === partToReplace?.id
               ? {
@@ -622,9 +629,7 @@ const Billing = () => {
           setParts(updatedParts);
           updateImportedPart(updatedParts);
 
-          // Reset discount if needed
-          const newTotalPartsPrice = updatedParts.reduce((sum, p) => sum + p.price, 0);
-          const newTotalBeforeDiscount = newTotalPartsPrice + SERVICE_CHARGE;
+          const newTotalBeforeDiscount = baseAmount + updatedParts.reduce((sum, p) => sum + p.price, 0);
           if (discount > newTotalBeforeDiscount) {
             setDiscount(newTotalBeforeDiscount);
             setDiscountError('');
@@ -635,13 +640,10 @@ const Billing = () => {
             { duration: 1500 }
           );
 
-          // Close dialog and reset states
           setReplaceDialogVisible(false);
           setPartToReplace(null);
           setSelectedReplacePart(null);
           setAvailableParts([]);
-
-          // Refresh parts list
           await fetchParts();
         } else {
           throw new Error(response?.data?.message || 'Failed to replace part');
@@ -657,7 +659,6 @@ const Billing = () => {
         );
       }
     } else {
-      // For regular complaints, just select the part
       setSelectedReplacePart(part);
       toast.custom(
         <StatusMessage
@@ -710,10 +711,10 @@ const Billing = () => {
   const renderReplacePartItem = ({ item }) => (
     <TouchableOpacity
       onPress={() => replacePartClicked(item)}
-      className={`flex-row items-center p-3 mb-2 rounded-xl border border-gray-300 ${selectedReplacePart?.id === item.id
-        ? 'ring-2 ring-blue-500'
-        : ''
-        } ${item.part_accept === "0" ? 'opacity-50 bg-gray-100' : ''} ${item.replace_part === "Yes" ? 'opacity-50 bg-gray-100' : ''}`}
+      className={`flex-row items-center p-3 mb-2 rounded-xl border border-gray-300 ${selectedReplacePart?.id === item.id ? 'ring-2 ring-blue-500' : ''
+        } ${item.part_accept === "0" ? 'opacity-50 bg-gray-100' : ''
+        } ${item.replace_part === "Yes" ? 'opacity-50 bg-gray-100' : ''
+        }`}
       disabled={item.part_accept === "0" || item.replace_part === "Yes"}
     >
       <Image
@@ -794,7 +795,7 @@ const Billing = () => {
     </View>
   );
 
-  // Modal component for dialogs with customizable container and close icon
+  // Modal component for dialogs
   const CustomModal = ({
     visible,
     onClose,
@@ -822,16 +823,11 @@ const Billing = () => {
 
     const getPositionStyles = () => {
       if (customPosition) return customPosition;
-
       switch (position) {
         case 'top':
           return 'justify-start pt-10';
         case 'bottom':
           return 'justify-end pb-10';
-        case 'left':
-          return 'justify-center items-start pl-10';
-        case 'right':
-          return 'justify-center items-end pr-10';
         default:
           return 'justify-center items-center';
       }
@@ -854,7 +850,6 @@ const Billing = () => {
           <View className={`flex-1 ${overlayColor} ${getPositionStyles()} ${containerStyle}`}>
             <TouchableWithoutFeedback>
               <View className={`bg-white border border-gray-300 rounded-2xl ${getSizeStyles()} max-h-[90%]`}>
-                {/* Header with Close Icon */}
                 <View className="border-b border-gray-200 p-4 flex-row justify-between items-center">
                   <Text className="text-xl font-bold text-text-primary flex-1">
                     {title}
@@ -869,13 +864,9 @@ const Billing = () => {
                     </TouchableOpacity>
                   )}
                 </View>
-
-                {/* Content */}
                 <ScrollView className="p-4" showsVerticalScrollIndicator={false}>
                   {children}
                 </ScrollView>
-
-                {/* Footer */}
                 {footer && (
                   <View className="border-t border-gray-200 p-4">
                     {footer}
@@ -1030,21 +1021,18 @@ const Billing = () => {
                   onPress={() => handlePartClick(part)}
                   disabled={isPartTransferred}
                 >
-                  {
-                    part.imageUrl ? (
-                      <Image
-                        source={{ uri: part.imageUrl }}
-                        className="w-12 h-12 rounded-lg bg-gray-300"
-                        resizeMode="cover"
-                        onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-                      />
-                    ) : (
-                      <View className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                        <Icon name="cube-outline" size={20} color="#10b981" />
-                      </View>
-                    )
-                  }
-                  
+                  {part.imageUrl ? (
+                    <Image
+                      source={{ uri: part.imageUrl }}
+                      className="w-12 h-12 rounded-lg bg-gray-300"
+                      resizeMode="cover"
+                      onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+                    />
+                  ) : (
+                    <View className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+                      <Icon name="cube-outline" size={20} color="#10b981" />
+                    </View>
+                  )}
                 </TouchableOpacity>
                 <TouchableOpacity
                   className="flex-1 ml-3"
@@ -1060,20 +1048,13 @@ const Billing = () => {
                   <Text className="text-text-secondary text-sm">
                     Part #: {part.partNumber}
                   </Text>
-
-                  <Text className={`font-bold text-base mt-1 ${isPartTransferred ? 'text-gray-400' : 'text-primary-sage700'}`}>
+                  <Text className={`font-bold text-base mt-1 ${isPartTransferred ? 'text-gray-400' : 'text-primary-sage700'
+                    }`}>
                     ₹{part.price.toFixed(2)}
                   </Text>
                 </TouchableOpacity>
                 <View className="flex-row">
-                  {!isRecomplaint && !isRemoving && !isPartTransferred && !isReplacementPart && (
-                    <TouchableOpacity
-                      onPress={() => openReplaceDialog(part)}
-                      className="mr-3"
-                    >
-                      <Icon name="sync-outline" size={20} color="#3b82f6" />
-                    </TouchableOpacity>
-                  )}
+
                   {!isRecomplaint && !isRemoving && !isPartTransferred && !isReplacementPart && (
                     <TouchableOpacity
                       onPress={() => {
@@ -1113,13 +1094,21 @@ const Billing = () => {
       <View className="bg-white justify-end px-3 py-2 border-t border-gray-200">
         <View className="border p-5 w-full mb-3 border-gray-300 rounded-2xl">
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="font-medium text-md">Total Parts Price</Text>
-            <Text className="font-semibold">₹{totalPartsPrice.toFixed(2)}</Text>
+            <Text className="font-medium text-md">Base Amount</Text>
+            <Text className="font-semibold">₹{baseAmount - complaintData?.platform_fee}</Text>
+          </View>
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="font-medium text-md">Platform Fee</Text>
+            <Text className="font-semibold">₹{complaintData?.platform_fee}</Text>
+          </View>
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="font-medium text-md">Total Base Amount</Text>
+            <Text className="font-semibold">₹{baseAmount.toFixed(2)}</Text>
           </View>
 
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="font-medium text-md">Service Charge</Text>
-            <Text className="font-semibold">₹{SERVICE_CHARGE.toFixed(2)}</Text>
+            <Text className="font-medium text-md">Total Parts Price</Text>
+            <Text className="font-semibold">₹{totalPartsPrice.toFixed(2)}</Text>
           </View>
 
           <View className="flex-row items-center justify-between mb-2 pt-2 border-t border-gray-200">
@@ -1131,11 +1120,12 @@ const Billing = () => {
             <View className="flex-row items-center justify-between">
               <Text className="font-medium text-md">Discount</Text>
               <TextInput
-                className="border border-gray-300 rounded-lg px-3 py-1 w-24 text-right"
+                className="border border-gray-300 text-black rounded-lg px-3 py-1 w-24 text-right"
                 keyboardType="numeric"
-                value={discount.toString()}
+                placeholder="amount"
+                value={discount ? discount.toString() : ''}
                 onChangeText={handleDiscountChange}
-                placeholder="0"
+                placeholderTextColor="#999"
               />
             </View>
             {discountError ? (
@@ -1162,14 +1152,14 @@ const Billing = () => {
             }
             setSubmitDialogVisible(true);
           }}
-          disabled={parts.length === 0 || isSubmitting}
-          style={{ opacity: parts.length === 0 ? 0.5 : 1 }}
+          disabled={isSubmitting}
+          style={{ opacity: isSubmitting ? 0.5 : 1 }}
         >
           <Text className="text-white font-bold text-xl">Submit</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Remove Part Modal - Centered with custom overlay */}
+      {/* Modals */}
       <CustomModal
         visible={removeDialogVisible}
         onClose={() => {
@@ -1189,7 +1179,6 @@ const Billing = () => {
         </Text>
       </CustomModal>
 
-      {/* Remove Replacement Part Modal */}
       <CustomModal
         visible={removeReplacementDialogVisible}
         onClose={() => {
@@ -1209,7 +1198,6 @@ const Billing = () => {
         </Text>
       </CustomModal>
 
-      {/* Replace Part Modal - Bottom sheet style */}
       <CustomModal
         visible={replaceDialogVisible}
         onClose={() => {
@@ -1242,10 +1230,7 @@ const Billing = () => {
               <Text className="text-text-secondary text-xs mb-2">
                 Found {availableParts.length} replacement part(s)
               </Text>
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                style={{ maxHeight: 450 }}
-              >
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 450 }}>
                 {availableParts.map((item) => (
                   <View key={item.id}>
                     {renderReplacePartItem({ item })}
@@ -1267,7 +1252,6 @@ const Billing = () => {
         </View>
       </CustomModal>
 
-      {/* Submit Confirmation Modal - Custom styled */}
       <CustomModal
         visible={submitDialogVisible}
         onClose={() => setSubmitDialogVisible(false)}
@@ -1292,7 +1276,6 @@ const Billing = () => {
         </View>
       </CustomModal>
 
-      {/* Loading Modal - Centered, no backdrop close */}
       <CustomModal
         visible={isSubmitting}
         onClose={() => { }}
@@ -1311,7 +1294,6 @@ const Billing = () => {
         </View>
       </CustomModal>
 
-      {/* Success Modal - Centered */}
       <CustomModal
         visible={showSuccess}
         onClose={handleSuccessClose}

@@ -9,7 +9,7 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [profileData, setProfileData] = useState(null); // Add profile data state
+  const [profileData, setProfileData] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
   const [refreshToken, setRefreshToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
   // Initialize from stored tokens
   useEffect(() => {
     checkStoredTokens();
-  }, [IsOnline]);
+  }, []);
 
   const checkStoredTokens = async () => {
     try {
@@ -63,11 +63,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // NEW: Set auth data after successful login (used by login screen)
+  // Set auth data after successful login
   const setAuthData = async (userData, userAccessToken, userRefreshToken = null) => {
     if (!userAccessToken) {
       console.error('Invalid accessToken');
-      return;
+      return false;
     }
 
     try {
@@ -84,19 +84,23 @@ export const AuthProvider = ({ children }) => {
       }
 
       console.log('Auth data stored successfully');
+      return true;
     } catch (error) {
       console.error('Error storing auth data:', error);
+      return false;
     }
   };
 
-  // NEW: Update profile data
+  // Update profile data
   const updateProfileData = async (data) => {
     try {
       setProfileData(data);
       await AsyncStorage.setItem('profileData', JSON.stringify(data));
       console.log('Profile data stored successfully');
+      return true;
     } catch (error) {
       console.error('Error storing profile data:', error);
+      return false;
     }
   };
 
@@ -114,18 +118,22 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.removeItem('profileData');
 
       console.log('Logout successful');
+      return true;
     } catch (error) {
       console.error('Error removing auth data:', error);
+      return false;
     }
   };
 
   const updateUser = async (updatedUserData) => {
-    if (!updatedUserData) return;
+    if (!updatedUserData) return false;
     try {
       setUser(updatedUserData);
       await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
+      return true;
     } catch (error) {
       console.error('Error updating user data:', error);
+      return false;
     }
   };
 
@@ -153,14 +161,14 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
-    profileData,          // Add profile data to context
+    profileData,
     accessToken,
     refreshToken,
     isLoading,
     importedPart,
     updateImportedPart,
     setAuthData,
-    updateProfileData,    // Add update function
+    updateProfileData,
     logout,
     updateUser,
     refreshUserFromToken,

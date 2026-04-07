@@ -613,7 +613,7 @@ const Bucket = () => {
               ) : null}
               {item.part_accept == 0 && (
                 <Text className="text-xs text-ui-info mt-1">
-                  {item.part_accept == 0 ? `Transferred To: ${item.technician_name}` : `Received From: ${item.technician_name}`}
+                  {selectedTab == 'Received' ? `Received From: ${item.technician_name}`:`Transferred To: ${item.technician_name}` }
                 </Text>
               )}
             </View>

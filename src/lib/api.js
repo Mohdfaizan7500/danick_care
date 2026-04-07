@@ -60,17 +60,17 @@ export const loginApi = async (username, password) => {
         });
         console.log('responce:', response)
         // console.log('data:',response.data)
-        if(response.data.success){
+        if (response.data.success) {
             return {
-            success: response.data.success,
-            data: response.data,
-            accessToken: response.data.accessToken,
-            refreshToken: response.data.refreshToken,
-        };
-       
+                success: response.data.success,
+                data: response.data,
+                accessToken: response.data.accessToken,
+                refreshToken: response.data.refreshToken,
+            };
+
 
         }
-         else{
+        else {
             return {
                 success: response.data.success,
                 data: response.data
@@ -78,7 +78,7 @@ export const loginApi = async (username, password) => {
         }
 
 
-        
+
     } catch (error) {
         console.error('API error in loginApi:', error);
         const errorMessage = getErrorMessage(error);
@@ -558,6 +558,34 @@ export const AssignQRCodeCount = async (payload) => {
         throw new Error(errorMessage);
     }
 };
+
+
+export const ComplaintBilling = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/ComplaintBilling', payload);
+        console.log('ComplaintBilling api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in ComplaintBilling:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const logoutApi = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/Logout', payload);
+        console.log('Logout api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in Logout:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
 
 
 

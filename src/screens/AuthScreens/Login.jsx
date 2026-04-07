@@ -13,6 +13,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import DialogBox from '../../components/DilaogBox';
 import { loginApi } from '../../lib/api'; // adjust path as needed
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Toaster } from 'sonner-native';
 
 const Login = ({ navigation }) => {
     const [email, setEmail] = useState('');
@@ -173,6 +174,9 @@ const Login = ({ navigation }) => {
 
     return (
         <SafeAreaView className="flex-1 bg-teal-100 justify-center items-center px-10">
+            <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+                <Toaster />
+            </View>
             <StatusBar backgroundColor={'#CCFBF1'} barStyle={'dark-content'} />
             <View className="bg-white w-[100%] p-8 h-auto rounded-3xl shadow-lg border border-gray-100">
                 <Text className="font-bold text-3xl text-black mb-2">Welcome Back</Text>
