@@ -1,82 +1,13 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput } from 'react-native'
-import React, { useState } from 'react'
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Alert } from 'react-native'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useNavigation } from '@react-navigation/native'
 import Header from '../../components/Header'
-import { Filter, Search, Clock, MapPin, User, Wrench, ChevronDown } from 'lucide-react-native'
-
-// Mock data for complaints
-const mockComplaints = [
-  {
-    id: 'CMP001',
-    csn: 'CSN24031501',
-    customerName: 'Rajesh Kumar',
-    serviceName: 'AC Gas Refill',
-    slotDate: '2026-03-13T10:30:00',
-    address: '123, Green Park, New Delhi',
-    status: 'pending',
-    priority: 'high',
-  },
-  {
-    id: 'CMP002',
-    csn: 'CSN24031502',
-    customerName: 'Priya Sharma',
-    serviceName: 'Compressor Repair',
-    slotDate: '2026-03-13T14:00:00',
-    address: '456, Model Town, Mumbai',
-    status: 'in-progress',
-    priority: 'medium',
-  },
-  {
-    id: 'CMP003',
-    csn: 'CSN24031401',
-    customerName: 'Amit Patel',
-    serviceName: 'AC Installation',
-    slotDate: '2026-03-12T09:15:00',
-    address: '789, Koregaon Park, Pune',
-    status: 'resolved',
-    priority: 'low',
-  },
-  {
-    id: 'CMP004',
-    csn: 'CSN24031402',
-    customerName: 'Sneha Reddy',
-    serviceName: 'Water Leakage',
-    slotDate: '2026-03-12T16:30:00',
-    address: '321, Jubilee Hills, Hyderabad',
-    status: 'pending',
-    priority: 'urgent',
-  },
-  {
-    id: 'CMP005',
-    csn: 'CSN24031001',
-    customerName: 'Vikram Singh',
-    serviceName: 'General Service',
-    slotDate: '2026-03-10T11:00:00',
-    address: '654, Civil Lines, Jaipur',
-    status: 'resolved',
-    priority: 'medium',
-  },
-  {
-    id: 'CMP006',
-    csn: 'CSN24030901',
-    customerName: 'Anjali Desai',
-    serviceName: 'Filter Cleaning',
-    slotDate: '2026-03-09T13:45:00',
-    address: '987, FC Road, Bangalore',
-    status: 'cancelled',
-    priority: 'low',
-  },
-  {
-    id: 'CMP007',
-    csn: 'CSN24030801',
-    customerName: 'Mohan Das',
-    serviceName: 'Thermostat Issue',
-    slotDate: '2026-03-08T15:20:00',
-    address: '147, Alwarpet, Chennai',
-    status: 'resolved',
-    priority: 'medium',
-  },
-]
+import { Filter, Search, Clock, MapPin, User, Wrench, ChevronDown, RotateCcw } from 'lucide-react-native'
+import { getComplaints, getDeshBoardCount } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
+import { toast, Toaster } from 'sonner-native'
+import StatusMessage from '../../components/StatusMessage'
 
 // Filter options as a constant object
 const FILTER_PERIODS = {
@@ -89,44 +20,333 @@ const FILTER_PERIODS = {
 }
 
 const MyComplaints = () => {
-  const [selectedFilter, setSelectedFilter] = useState('all')
+  const { user } = useAuth()
+  const navigation = useNavigation()
+
+  // State declarations
+  const [selectedFilter, setSelectedFilter] = useState(FILTER_PERIODS.ALL)
   const [showFilterDropdown, setShowFilterDropdown] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
 
-  // Filter complaints based on selected period
-  const getFilteredComplaints = () => {
+  // State for API data
+  const [complaints, setComplaints] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  // State for dashboard counts
+  const [dashboardCounts, setDashboardCounts] = useState({
+    all: 0,
+    assign: 0,
+    onworking: 0,
+    completed: 0,
+    cancel: 0,
+    bucket: 0,
+    prebooking: 0,
+    amc: 0,
+    payout: 0,
+    allQr: 0,
+    unusedQr: 0,
+    usedQr: 0
+  })
+
+  // Refs to prevent double API calls
+  const isInitialized = useRef(false)
+  const isFetchingComplaints = useRef(false)
+  const isFetchingDashboard = useRef(false)
+  const toastShownRef = useRef(false)
+
+  // Memoized technician ID
+  const technicianId = useMemo(() => {
+    return user?.id || user?.technician_id || null
+  }, [user?.id, user?.technician_id])
+
+  // Fetch dashboard counts - only once
+  const fetchDashboardCounts = useCallback(async () => {
+    // Prevent duplicate calls
+    if (isFetchingDashboard.current) {
+      console.log('Dashboard counts already fetching, skipping...')
+      return
+    }
+
+    if (!technicianId) {
+      console.error('No technician ID found')
+      return
+    }
+
+    try {
+      isFetchingDashboard.current = true
+      const payload = {
+        technician_id: technicianId.toString()
+      }
+
+      console.log('Fetching Dashboard Counts API...')
+      const response = await getDeshBoardCount(payload)
+      console.log('Dashboard Counts Response:', response?.data)
+
+      if (response?.data?.success) {
+        setDashboardCounts({
+          all: response.data.all || 0,
+          assign: response.data.assign || 0,
+          onworking: response.data.onworking || 0,
+          completed: response.data.completed || 0,
+          cancel: response.data.cancel || 0,
+          bucket: response.data.bucket || 0,
+          prebooking: response.data.prebooking || 0,
+          amc: response.data.amc || 0,
+          payout: response.data.payout || 0,
+          allQr: response.data.allQr || 0,
+          unusedQr: response.data.unusedQr || 0,
+          usedQr: response.data.usedQr || 0
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard counts:', error)
+    } finally {
+      isFetchingDashboard.current = false
+    }
+  }, [technicianId])
+
+  // Fetch complaints from API - only once per page
+  const fetchComplaints = useCallback(async (page = 1, isRefresh = false, showToast = false) => {
+    // Prevent duplicate simultaneous fetches
+    if (isFetchingComplaints.current) {
+      console.log('Already fetching complaints, skipping...')
+      return
+    }
+
+    if (!technicianId) {
+      console.error('No technician ID found')
+      toast.custom(
+        <StatusMessage type='error' title='Error' message='Technician ID not found' />
+      )
+      return
+    }
+
+    try {
+      isFetchingComplaints.current = true
+
+      if (isRefresh) {
+        setRefreshing(true)
+      } else if (page === 1) {
+        setLoading(true)
+      } else {
+        setLoadingMore(true)
+      }
+
+      console.log(`Fetching Complaints API - Page: ${page}, Refresh: ${isRefresh}`)
+      // Always fetch with status 'success'
+      const response = await getComplaints(technicianId, 'success', page)
+      console.log('Complaints API Response:', response?.data)
+
+      if (response?.data?.success && response?.data?.result) {
+        const newComplaints = response.data.result
+
+        if (isRefresh || page === 1) {
+          setComplaints(newComplaints)
+        } else {
+          setComplaints(prev => [...prev, ...newComplaints])
+        }
+
+        // Check if there are more pages
+        const currentPageNum = parseInt(response.data.page) || page
+        const limit = parseInt(response.data.limit) || 10
+        const hasMorePages = newComplaints.length === limit
+        setHasMore(hasMorePages)
+        setCurrentPage(currentPageNum)
+
+        // Show success toast only if explicitly requested and not already shown
+        if (showToast && !toastShownRef.current) {
+          toastShownRef.current = true
+          toast.custom(
+            <StatusMessage
+              type='success'
+              title='Refresh Successful'
+              message={`Loaded ${newComplaints.length} complaints`}
+            />, { duration: 500 }
+          )
+          setTimeout(() => {
+            toastShownRef.current = false
+          }, 1000)
+        }
+      } else {
+        if (page === 1) {
+          setComplaints([])
+        }
+        setHasMore(false)
+
+        // Show info toast on refresh if no data and explicitly requested
+        if (showToast && !toastShownRef.current) {
+          toastShownRef.current = true
+          toast.custom(
+            <StatusMessage
+              type='info'
+              title='No Data'
+              message='No complaints found'
+            />
+          )
+          setTimeout(() => {
+            toastShownRef.current = false
+          }, 1000)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching complaints:', error)
+
+      // Show error toast on refresh if explicitly requested
+      if (showToast && !toastShownRef.current) {
+        toastShownRef.current = true
+        toast.custom(
+          <StatusMessage
+            type='error'
+            title='Refresh Failed'
+            message={error.message || 'Failed to load complaints'}
+          />
+        )
+        setTimeout(() => {
+          toastShownRef.current = false
+        }, 1000)
+      } else if (page === 1 && !showToast) {
+        toast.custom(
+          <StatusMessage type='error' title='Error' message={error.message || 'Failed to load complaints'} />
+        )
+      }
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+      setLoadingMore(false)
+      isFetchingComplaints.current = false
+    }
+  }, [technicianId])
+
+  // Initial load - ONLY ONCE
+  useEffect(() => {
+    // Check if already initialized
+    if (isInitialized.current) {
+      console.log('Already initialized, skipping initial load...')
+      return
+    }
+
+    if (technicianId) {
+      console.log('Initial load started...')
+      isInitialized.current = true
+
+      const initializeData = async () => {
+        await Promise.all([
+          fetchDashboardCounts(),
+          fetchComplaints(1, false, false)
+        ])
+        console.log('Initial load completed')
+      }
+      initializeData()
+    }
+
+    // Cleanup function
+    return () => {
+      console.log('Component unmounting...')
+    }
+  }, [technicianId]) // Only run when technicianId changes
+
+  // Handle refresh - reset refs to allow new fetch
+  const onRefresh = useCallback(async () => {
+    console.log('Manual refresh triggered...')
+
+    // Reset fetching flags to allow new requests
+    isFetchingDashboard.current = false
+    isFetchingComplaints.current = false
+    toastShownRef.current = false
+
+    try {
+      await Promise.all([
+        fetchDashboardCounts(),
+        fetchComplaints(1, true, true)
+      ])
+      console.log('Manual refresh completed')
+    } catch (error) {
+      console.error('Refresh error:', error)
+      if (!toastShownRef.current) {
+        toastShownRef.current = true
+        toast.custom(
+          <StatusMessage
+            type='error'
+            title='Refresh Failed'
+            message='Unable to refresh data. Please try again.'
+          />
+        )
+        setTimeout(() => {
+          toastShownRef.current = false
+        }, 1000)
+      }
+    }
+  }, [fetchDashboardCounts, fetchComplaints])
+
+  // Handle load more
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore && !loading && !refreshing && !isFetchingComplaints.current) {
+      console.log(`Loading more - Page: ${currentPage + 1}`)
+      fetchComplaints(currentPage + 1, false, false)
+    }
+  }, [loadingMore, hasMore, loading, refreshing, currentPage, fetchComplaints])
+
+  // Handle card press - Navigate to complaint details
+  const handleCardPress = useCallback((complaint) => {
+    // Show toast with complaint ID
+    toast.custom(
+      <StatusMessage
+        type='info'
+        title='Complaint Selected'
+        message={`Complaint #${complaint.id} - ${complaint.customer_name}`}
+      />
+    )
+
+    // Navigate to complaint details screen
+    navigation.navigate('QRCodeDetails', { complaint, status: "complaint" });
+  }, [navigation])
+
+  // Memoized filtered complaints based on search and date filter
+  const filteredComplaints = useMemo(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    
+
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
-    
+
     const last7Days = new Date(today)
     last7Days.setDate(last7Days.getDate() - 7)
-    
+
     const lastMonth = new Date(today)
     lastMonth.setMonth(lastMonth.getMonth() - 1)
 
-    return mockComplaints.filter(complaint => {
-      const complaintDate = new Date(complaint.slotDate)
+    let filtered = [...complaints]
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(complaint => {
+        const matchesSearch =
+          complaint.id?.toString().toLowerCase().includes(query) ||
+          complaint.csn?.toLowerCase().includes(query) ||
+          complaint.customer_name?.toLowerCase().includes(query) ||
+          complaint.service_name?.toLowerCase().includes(query) ||
+          complaint.service_address?.toLowerCase().includes(query)
+
+        return matchesSearch
+      })
+    }
+
+    // Apply date filter based on slot_date
+    filtered = filtered.filter(complaint => {
+      if (!complaint.slot_date) return true
+
+      // Parse slot_date (format: "18-04-2026")
+      const dateParts = complaint.slot_date.split('-')
+      const complaintDate = new Date(dateParts[2], dateParts[1] - 1, dateParts[0])
       complaintDate.setHours(0, 0, 0, 0)
 
-      // Apply search filter
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase()
-        const matchesSearch = 
-          complaint.id.toLowerCase().includes(query) ||
-          complaint.csn.toLowerCase().includes(query) ||
-          complaint.customerName.toLowerCase().includes(query) ||
-          complaint.serviceName.toLowerCase().includes(query) ||
-          complaint.address.toLowerCase().includes(query)
-        
-        if (!matchesSearch) return false
-      }
-
-      // Apply date filter
       switch (selectedFilter) {
         case FILTER_PERIODS.TODAY:
           return complaintDate.getTime() === today.getTime()
@@ -147,86 +367,54 @@ const MyComplaints = () => {
           return true
       }
     })
-  }
 
-  // Group complaints by date
-  const groupComplaintsByDate = (complaints) => {
+    return filtered
+  }, [complaints, searchQuery, selectedFilter, selectedDate])
+
+  // Memoized grouped complaints
+  const groupedComplaints = useMemo(() => {
     const groups = {}
-    
-    complaints.forEach(complaint => {
-      const date = new Date(complaint.slotDate)
-      const dateKey = date.toDateString()
-      
-      if (!groups[dateKey]) {
-        groups[dateKey] = []
+
+    filteredComplaints.forEach(complaint => {
+      if (complaint.slot_date) {
+        const dateParts = complaint.slot_date.split('-')
+        const date = new Date(dateParts[2], dateParts[1] - 1, dateParts[0])
+        const dateKey = date.toDateString()
+
+        if (!groups[dateKey]) {
+          groups[dateKey] = []
+        }
+        groups[dateKey].push(complaint)
+      } else {
+        // Handle complaints without date
+        if (!groups['No Date']) {
+          groups['No Date'] = []
+        }
+        groups['No Date'].push(complaint)
       }
-      groups[dateKey].push(complaint)
     })
-    
-    return groups
-  }
 
-  // Get status badge color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-status-away'
-      case 'in-progress':
-        return 'bg-status-active'
-      case 'resolved':
-        return 'bg-status-online'
-      case 'cancelled':
-        return 'bg-status-busy'
-      default:
-        return 'bg-gray-400'
-    }
-  }
-
-  // Get priority badge color
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'urgent':
-        return 'bg-status-busy'
-      case 'high':
-        return 'bg-status-away'
-      case 'medium':
-        return 'bg-status-active'
-      case 'low':
-        return 'bg-status-online'
-      default:
-        return 'bg-gray-400'
-    }
-  }
-
-  // Format date for display
-  const getDateTitle = (dateKey) => {
-    const date = new Date(dateKey)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
-
-    if (date.getTime() === today.getTime()) {
-      return 'Today'
-    } else if (date.getTime() === yesterday.getTime()) {
-      return 'Yesterday'
-    }
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
+    // Sort dates in descending order (newest first)
+    const sortedGroups = Object.keys(groups).sort((a, b) => {
+      if (a === 'No Date') return 1
+      if (b === 'No Date') return -1
+      return new Date(b) - new Date(a)
     })
-  }
 
-  const filteredComplaints = getFilteredComplaints()
-  const groupedComplaints = groupComplaintsByDate(filteredComplaints)
+    const sortedGroupedComplaints = {}
+    sortedGroups.forEach(key => {
+      sortedGroupedComplaints[key] = groups[key]
+    })
 
-  // Calculate pending count
-  const pendingCount = filteredComplaints.filter(c => c.status === 'pending' || c.status === 'in-progress').length
+    return sortedGroupedComplaints
+  }, [filteredComplaints])
 
-  // Get filter display text
-  const getFilterDisplayText = () => {
+  // Memoized counts
+  const totalCount = useMemo(() => dashboardCounts.completed, [dashboardCounts.completed])
+  const filteredCount = useMemo(() => filteredComplaints.length, [filteredComplaints])
+
+  // Memoized filter display text
+  const getFilterDisplayText = useMemo(() => {
     switch (selectedFilter) {
       case FILTER_PERIODS.ALL:
         return 'All Time'
@@ -243,24 +431,121 @@ const MyComplaints = () => {
       default:
         return 'All Time'
     }
+  }, [selectedFilter, selectedDate])
+
+  // Memoized status info function
+  const getStatusInfo = useCallback((status) => {
+    switch (status?.toLowerCase()) {
+      case 'success':
+        return { color: 'bg-green-500', text: 'Completed' }
+      case 'pending':
+        return { color: 'bg-yellow-500', text: 'Pending' }
+      case 'in-progress':
+        return { color: 'bg-blue-500', text: 'In Progress' }
+      case 'cancel':
+      case 'cancelled':
+        return { color: 'bg-red-500', text: 'Cancelled' }
+      default:
+        return { color: 'bg-gray-400', text: status || 'Unknown' }
+    }
+  }, [])
+
+  // Memoized rating color function
+  const getRatingColor = useCallback((rating) => {
+    if (!rating || rating === '0/0') return 'text-gray-400'
+    const ratingValue = parseFloat(rating.split('/')[0])
+    if (ratingValue >= 4) return 'text-green-600'
+    if (ratingValue >= 3) return 'text-yellow-600'
+    return 'text-red-600'
+  }, [])
+
+  // Memoized rating format function
+  const formatRating = useCallback((rating) => {
+    if (!rating || rating === '0/0') return 'Not rated'
+    return rating
+  }, [])
+
+  // Memoized date title function
+  const getDateTitle = useCallback((dateKey) => {
+    if (dateKey === 'No Date') return 'No Date'
+
+    const date = new Date(dateKey)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    if (date.getTime() === today.getTime()) {
+      return 'Today'
+    } else if (date.getTime() === yesterday.getTime()) {
+      return 'Yesterday'
+    }
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    })
+  }, [])
+
+  // Memoized scroll handler
+  const handleScrollEnd = useCallback((e) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent
+    const isEnd = layoutMeasurement.height + contentOffset.y >= contentSize.height - 20
+    if (isEnd && hasMore && !loadingMore && !loading && !refreshing && !isFetchingComplaints.current) {
+      loadMore()
+    }
+  }, [hasMore, loadingMore, loading, refreshing, loadMore])
+
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-background-secondary">
+        <Header
+          title={'My Complaints'}
+          titlePosition='left'
+          containerStyle='bg-transparent px-4 py-4 flex-row items-center justify-between'
+          titleStyle='font-bold text-xl text-black'
+        />
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#58A890" />
+          <Text className="mt-4 text-text-secondary">Loading complaints...</Text>
+        </View>
+      </SafeAreaView>
+    )
   }
 
   return (
     <SafeAreaView className="flex-1 bg-background-secondary">
-      <Header 
+      <View className="absolute inset-0 z-50 pointer-events-none">
+        <Toaster />
+      </View>
+      <Header
         title={'My Complaints'}
         titlePosition='left'
-        containerStyle='bg-transaprent text-red-100 px-4 py-4 flex-row items-center justify-between'
+        containerStyle='bg-transparent px-4 py-4 flex-row items-center justify-between'
         titleStyle='font-bold text-xl text-black'
       />
 
+      {/* Stats Banner */}
+      <View className="px-4 mb-2">
+        <View className="bg-primary-sage100 rounded-xl p-3 flex-row justify-between">
+          <View>
+            <Text className="text-text-secondary text-sm">Total Complaints</Text>
+            <Text className="text-text-primary font-bold text-2xl">{totalCount}</Text>
+          </View>
+          <View>
+            <Text className="text-text-secondary text-sm">Showing</Text>
+            <Text className="text-text-primary font-bold text-2xl">{filteredCount}</Text>
+          </View>
+        </View>
+      </View>
 
       {/* Search Bar */}
       <View className="px-4 mt-2">
         <View className="flex-row items-center bg-ui-card rounded-2xl border border-ui-border px-3 py-0">
           <Search size={20} color="#999999" />
           <TextInput
-            className="flex-1 ml-2 text-text-primary"
+            className="flex-1 ml-2 text-text-primary py-3"
             placeholder="Search by ID, name, service..."
             placeholderTextColor="#999999"
             value={searchQuery}
@@ -276,21 +561,21 @@ const MyComplaints = () => {
             <Filter size={18} color="#666666" />
             <Text className="text-text-secondary ml-2 font-medium">Filter by:</Text>
           </View>
-          
+
           {/* Filter Dropdown */}
           <View className="relative z-10">
             <TouchableOpacity
               onPress={() => setShowFilterDropdown(!showFilterDropdown)}
-              className="flex-row items-center bg-ui-card border border-ui-border rounded-lg px-3 py-1"
+              className="flex-row items-center bg-ui-card border border-ui-border rounded-lg px-3 py-2"
             >
               <Text className="text-text-primary mr-2">
-                {getFilterDisplayText()}
+                {getFilterDisplayText}
               </Text>
               <ChevronDown size={16} color="#666666" />
             </TouchableOpacity>
 
             {showFilterDropdown && (
-              <View className="absolute top-12 right-0 bg-ui-card border border-ui-border rounded-lg shadow-lg w-40">
+              <View className="absolute top-12 right-0 bg-ui-card border border-ui-border rounded-lg shadow-lg w-40 z-20">
                 <TouchableOpacity
                   onPress={() => {
                     setSelectedFilter(FILTER_PERIODS.ALL)
@@ -367,7 +652,7 @@ const MyComplaints = () => {
                 onPress={() => setShowDatePicker(false)}
                 className="ml-2 px-4 py-2 bg-primary-sage rounded-lg"
               >
-                <Text className="text-text-inverse">Apply</Text>
+                <Text className="text-white">Apply</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -375,88 +660,101 @@ const MyComplaints = () => {
       </View>
 
       {/* Complaints List */}
-      <ScrollView className="flex-1 px-4 mt-4" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1 px-4 mt-4"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#58A890']} />
+        }
+        onMomentumScrollEnd={handleScrollEnd}
+      >
         {Object.keys(groupedComplaints).length > 0 ? (
-          Object.entries(groupedComplaints).map(([dateKey, complaints]) => (
+          Object.entries(groupedComplaints).map(([dateKey, complaintsList]) => (
             <View key={dateKey} className="mb-4">
               <Text className="text-text-secondary font-semibold mb-2">
                 {getDateTitle(dateKey)}
               </Text>
-              
-              {complaints.map((complaint) => (
-                <TouchableOpacity
-                  key={complaint.id}
-                  className="bg-ui-card rounded-xl p-4 mb-3 border border-ui-border"
-                  activeOpacity={0.7}
-                >
-                  {/* Header with ID and Status */}
-                  <View className="flex-row justify-between items-center mb-3">
-                    <View className="flex-row items-center">
-                      <Text className="text-text-primary font-bold">{complaint.id}</Text>
-                      <Text className="text-text-tertiary text-xs ml-2">| {complaint.csn}</Text>
-                    </View>
-                    <View className="flex-row">
-                      <View className={`px-2 py-1 rounded-full mr-2 ${getPriorityColor(complaint.priority)}`}>
-                        <Text className="text-text-inverse text-xs capitalize">{complaint.priority}</Text>
-                      </View>
-                      <View className={`px-2 py-1 rounded-full ${getStatusColor(complaint.status)}`}>
-                        <Text className="text-text-inverse text-xs capitalize">{complaint.status}</Text>
-                      </View>
-                    </View>
-                  </View>
 
-                  {/* Customer Name */}
-                  <View className="flex-row items-center mb-2">
-                    <User size={16} color="#666666" />
-                    <Text className="text-text-primary ml-2 font-medium">{complaint.customerName}</Text>
-                  </View>
+              {complaintsList.map((complaint) => {
+                const statusInfo = getStatusInfo(complaint.status)
+                const isRecomplaint = complaint.oldcomp_id && complaint.oldcomp_id !== null
 
-                  {/* Service Name */}
-                  <View className="flex-row items-center mb-2">
-                    <Wrench size={16} color="#666666" />
-                    <Text className="text-text-secondary ml-2">{complaint.serviceName}</Text>
-                  </View>
-
-                  {/* Slot Date & Time */}
-                  <View className="flex-row items-center mb-2">
-                    <Clock size={16} color="#666666" />
-                    <Text className="text-text-secondary ml-2">
-                      {new Date(complaint.slotDate).toLocaleString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </Text>
-                  </View>
-
-                  {/* Address */}
-                  <View className="flex-row items-start">
-                    <MapPin size={16} color="#666666" style={{ marginTop: 2 }} />
-                    <Text className="text-text-secondary ml-2 flex-1">{complaint.address}</Text>
-                  </View>
-
-                  {/* Pending/Resolve Indicator */}
-                  {complaint.status !== 'resolved' && complaint.status !== 'cancelled' && (
-                    <View className="mt-3 pt-3 border-t border-ui-border">
-                      <View className="flex-row items-center">
-                        <View className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <View 
-                            className="h-full bg-status-active rounded-full"
-                            style={{ 
-                              width: complaint.status === 'in-progress' ? '50%' : '25%' 
-                            }} 
-                          />
+                return (
+                  <TouchableOpacity
+                    key={complaint.id}
+                    onPress={() => handleCardPress(complaint)}
+                    className="bg-ui-card rounded-xl p-4 mb-3 border border-ui-border"
+                    activeOpacity={0.7}
+                  >
+                    {/* Header with ID and Status */}
+                    <View className="flex-row justify-between items-center mb-3">
+                      <View className="flex-row items-center flex-1">
+                        <Text className="text-text-primary font-bold">#{complaint.id}</Text>
+                        <Text className="text-text-tertiary text-xs ml-2">| {complaint.csn}</Text>
+                        <View className={`flex-row items-center ml-2 px-2 py-0.5 rounded-full ${isRecomplaint ? 'bg-orange-100' : 'bg-blue-100'}`}>
+                          <Text className={`text-xs ml-1 font-medium ${isRecomplaint ? 'text-orange-600' : 'text-blue-600'}`}>
+                            {isRecomplaint ? 'Recomplaint' : 'New'}
+                          </Text>
                         </View>
-                        <Text className="text-text-tertiary text-xs ml-2">
-                          {complaint.status === 'in-progress' ? 'In Progress' : 'Pending'}
+                      </View>
+                      <View className={`px-2 py-1 rounded-full ${statusInfo.color}`}>
+                        <Text className="text-white text-xs capitalize">{statusInfo.text}</Text>
+                      </View>
+                    </View>
+
+                    {/* Customer Name */}
+                    <View className="flex-row items-center mb-2">
+                      <User size={16} color="#666666" />
+                      <Text className="text-text-primary ml-2 font-medium">{complaint.customer_name}</Text>
+                    </View>
+
+                    {/* Service Name */}
+                    <View className="flex-row items-center mb-2">
+                      <Wrench size={16} color="#666666" />
+                      <Text className="text-text-secondary ml-2 flex-1">{complaint.service_name}</Text>
+                    </View>
+
+                    {/* Slot Date & Time */}
+                    <View className="flex-row items-center mb-2">
+                      <Clock size={16} color="#666666" />
+                      <Text className="text-text-secondary ml-2">
+                        {complaint.slot_date} | {complaint.slot_time || 'Time not specified'}
+                      </Text>
+                    </View>
+
+                    {/* Address */}
+                    <View className="flex-row items-start mb-2">
+                      <MapPin size={16} color="#666666" style={{ marginTop: 2 }} />
+                      <Text className="text-text-secondary ml-2 flex-1" numberOfLines={2}>
+                        {complaint.service_address}
+                      </Text>
+                    </View>
+
+                    {/* Rating and Amount */}
+                    <View className="flex-row justify-between items-center mt-2 pt-2 border-t border-ui-border">
+                      <View className="flex-row items-center">
+                        <Text className="text-text-secondary text-sm mr-2">Rating:</Text>
+                        <Text className={`font-semibold ${getRatingColor(complaint.rating)}`}>
+                          {formatRating(complaint.rating)}
                         </Text>
                       </View>
+                      <View>
+                        <Text className="text-text-secondary text-sm">Amount:</Text>
+                        <Text className="text-primary-sage font-bold">₹{complaint.tot_amt}</Text>
+                      </View>
                     </View>
-                  )}
-                </TouchableOpacity>
-              ))}
+
+                    {/* Remark if available */}
+                    {complaint.remark && complaint.remark !== 'A' && (
+                      <View className="mt-2 pt-2 border-t border-ui-border">
+                        <Text className="text-text-tertiary text-xs italic">
+                          "{complaint.remark}"
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )
+              })}
             </View>
           ))
         ) : (
@@ -464,7 +762,15 @@ const MyComplaints = () => {
             <Text className="text-text-tertiary text-center">No complaints found</Text>
           </View>
         )}
-        
+
+        {/* Loading More Indicator */}
+        {loadingMore && (
+          <View className="py-4 items-center">
+            <ActivityIndicator size="small" color="#58A890" />
+            <Text className="text-text-tertiary text-xs mt-2">Loading more...</Text>
+          </View>
+        )}
+
         {/* Bottom Spacing */}
         <View className="h-4" />
       </ScrollView>

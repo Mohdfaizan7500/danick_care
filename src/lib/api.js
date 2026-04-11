@@ -599,6 +599,32 @@ export const CommissionPayout = async (payload) => {
     }
 };
 
+export const ReplacePartsCount = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/ReplacePartsCount', payload);
+        console.log('ReplacePartsCount api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in ReplacePartsCount:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const TechnicianReplacePart = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/TechnicianReplacePart', payload);
+        console.log('TechnicianReplacePart api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in TechnicianReplacePart:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
 
 
 
