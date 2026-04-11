@@ -40,8 +40,10 @@ import { getDeshBoardCount, getProfile, AssignQRCodeCount } from '../../../lib/a
 import { check, request, RESULTS, PERMISSIONS } from 'react-native-permissions';
 import Geolocation from '@react-native-community/geolocation';
 import { Platform } from 'react-native';
-const { width: screenWidth } = Dimensions.get('window');
 import { openSettings } from 'react-native-permissions';
+
+const { width: screenWidth } = Dimensions.get('window');
+
 // Carousel images
 const carouselImages = [
   {
@@ -77,16 +79,16 @@ const Home = () => {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [count, setCount] = useState(null);
-  const [checkingConnection, setCheckingConnection] = useState(false); // New state for retry button
+  const [checkingConnection, setCheckingConnection] = useState(false);
 
   const flatListRef = useRef(null);
   const navigation = useNavigation();
   const { IsOnline, user, imagUrl, profileData, updateProfileData, setIsOnline } = useAuth();
 
-
   // ---------- Network state ----------
   const [isConnected, setIsConnected] = useState(true);
 
+  // ---------- Location Permission Functions ----------
   const checkLocationPermission = async () => {
     try {
       if (Platform.OS === 'ios') {
@@ -132,39 +134,95 @@ const Home = () => {
     );
   };
 
+  // ---------- Storage Permission Functions ----------
+  const checkStoragePermission = async () => {
+    try {
+      if (Platform.OS === 'ios') {
+        return await check(PERMISSIONS.IOS.PHOTO_LIBRARY);
+      } else {
+        // For Android 13+ (API 33+), check granular permissions
+        if (Platform.Version >= 33) {
+          const readImagesStatus = await check(PERMISSIONS.ANDROID.READ_MEDIA_IMAGES);
+          return readImagesStatus;
+        } else {
+          // For older Android versions
+          const readStatus = await check(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
+          const writeStatus = await check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
+          return readStatus === RESULTS.GRANTED && writeStatus === RESULTS.GRANTED 
+            ? RESULTS.GRANTED 
+            : RESULTS.DENIED;
+        }
+      }
+    } catch (error) {
+      console.log('Storage permission check error:', error);
+      return RESULTS.DENIED;
+    }
+  };
 
+  const requestStoragePermission = async () => {
+    try {
+      if (Platform.OS === 'ios') {
+        return await request(PERMISSIONS.IOS.PHOTO_LIBRARY);
+      } else {
+        // For Android 13+ (API 33+)
+        if (Platform.Version >= 33) {
+          const readImagesResult = await request(PERMISSIONS.ANDROID.READ_MEDIA_IMAGES);
+          // Also request for videos and audio if needed for your use case
+          await request(PERMISSIONS.ANDROID.READ_MEDIA_VIDEO);
+          await request(PERMISSIONS.ANDROID.READ_MEDIA_AUDIO);
+          return readImagesResult;
+        } else {
+          // For older Android versions
+          const readResult = await request(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
+          const writeResult = await request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
+          return readResult === RESULTS.GRANTED && writeResult === RESULTS.GRANTED 
+            ? RESULTS.GRANTED 
+            : RESULTS.DENIED;
+        }
+      }
+    } catch (error) {
+      console.log('Storage permission request error:', error);
+      return RESULTS.DENIED;
+    }
+  };
 
-  useEffect(() => {
-    const initLocation = async () => {
-      let permissionStatus = await checkLocationPermission();
-
-      console.log('Initial permission:', permissionStatus);
-
-
-
+  const initStoragePermission = async () => {
+    try {
+      let permissionStatus = await checkStoragePermission();
+      
+      console.log('Initial storage permission:', permissionStatus);
+      
       if (permissionStatus === RESULTS.DENIED) {
-        const requestStatus = await requestLocationPermission();
-
-        console.log('After request:', requestStatus);
-
-
+        const requestStatus = await requestStoragePermission();
+        console.log('After storage request:', requestStatus);
+        
+        if (requestStatus === RESULTS.GRANTED) {
+          console.log('Storage permission granted');
+          toast.custom(
+            <StatusMessage type="success" title="Storage access granted" />
+          );
+        }
         return;
       }
-
+      
       if (permissionStatus === RESULTS.BLOCKED) {
         Alert.alert(
-          'Permission Required',
-          'Please enable location permission from settings',
+          'Storage Permission Required',
+          'Please enable storage permission from settings to access photos and files',
           [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Open Settings', onPress: () => openSettings() },
           ]
         );
       }
-    };
-
-    initLocation();
-  }, []);
+      
+      if (permissionStatus === RESULTS.GRANTED) {
+        console.log('Storage permission already granted');
+      }
+    } catch (error) {
+      console.log('Storage permission initialization error:', error);
+    }
+  };
 
   // ---------- User data from context ----------
   const userProfile = {
@@ -191,10 +249,9 @@ const Home = () => {
 
       if (data) {
         console.log('Profile data fetched:', data);
-        // Save profile data to context
         await updateProfileData(data);
         const isOnline = data?.login_status === 'Online';
-        console.log("Active status set:", isOnline)
+        console.log("Active status set:", isOnline);
         await setIsOnline(isOnline);
       }
     } catch (error) {
@@ -231,7 +288,6 @@ const Home = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      // Fetch all data simultaneously
       await Promise.all([
         fetchProfile(),
         fetchDashboardCount(),
@@ -251,15 +307,10 @@ const Home = () => {
     }
   };
 
-  // Retry connection handler with 2-second checking message
+  // Retry connection handler
   const handleRetryConnection = async () => {
-    // Show checking connection message
     setCheckingConnection(true);
-
-    // Wait for 2 seconds while checking connection
     await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Check actual connection
     const state = await NetInfo.fetch();
     const connected = state.isConnected ?? false;
 
@@ -269,7 +320,6 @@ const Home = () => {
         <StatusMessage type='success' title='Connection Restored' />,
         { duration: 1500 }
       );
-      // Refresh data when connection is restored
       await Promise.all([
         fetchProfile(),
         fetchDashboardCount(),
@@ -280,13 +330,48 @@ const Home = () => {
         { duration: 2000 }
       );
     }
-
-    // Hide checking connection message
     setCheckingConnection(false);
   };
 
+  // ---------- Initialize all permissions ----------
   useEffect(() => {
-    // Fetch data when component mounts and user is available
+    const initPermissions = async () => {
+      // Initialize location permission
+      let locationPermissionStatus = await checkLocationPermission();
+      
+      console.log('Initial location permission:', locationPermissionStatus);
+      
+      if (locationPermissionStatus === RESULTS.DENIED) {
+        const requestStatus = await requestLocationPermission();
+        console.log('After location request:', requestStatus);
+        
+        if (requestStatus === RESULTS.GRANTED) {
+          // Get location if permission granted
+          getCurrentLocation();
+        }
+      } else if (locationPermissionStatus === RESULTS.GRANTED) {
+        // Get location if permission already granted
+        getCurrentLocation();
+      } else if (locationPermissionStatus === RESULTS.BLOCKED) {
+        Alert.alert(
+          'Permission Required',
+          'Please enable location permission from settings',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => openSettings() },
+          ]
+        );
+      }
+      
+      // Initialize storage permission
+      await initStoragePermission();
+    };
+    
+    initPermissions();
+  }, []);
+
+  // ---------- Fetch data when component mounts ----------
+  useEffect(() => {
     if (user?.id) {
       fetchProfile();
       fetchDashboardCount();
@@ -369,20 +454,13 @@ const Home = () => {
   });
 
   const formatNumberToK = (num) => {
-    // Convert to number if it's a string
     const number = parseFloat(num);
-
-    // Check if it's a valid number
     if (isNaN(number)) return '0';
-
-    // Divide by 1000 to get thousands
     const thousands = number / 1000;
-
-    // Format to 1 decimal place and add 'k'
     return `${thousands.toFixed(1)}k`;
   };
 
-  // If offline, show NoInternet screen with custom retry handler
+  // If offline, show NoInternet screen
   if (!isConnected) {
     return (
       <LinearGradient
@@ -397,12 +475,10 @@ const Home = () => {
           translucent={true}
         />
 
-        {/* Header with Profile and Icons (for consistency) */}
         <View
           className="w-full bg-transparent flex-row items-center justify-between px-4 "
           style={{ paddingTop: insets.top + 4, paddingBottom: 4 }}
         >
-          {/* Left side - Profile */}
           <View className="flex-row items-center flex-1">
             <View className="relative">
               <Image
@@ -430,7 +506,6 @@ const Home = () => {
             </View>
           </View>
 
-          {/* Right side - Wallet and Notification Icons (disabled when offline) */}
           <View className="flex-row items-center">
             <TouchableOpacity
               onPress={handleWalletPress}
@@ -457,9 +532,9 @@ const Home = () => {
             </TouchableOpacity>
           </View>
         </View>
-        {/* Show checking connection message when retry is clicked */}
+
         {checkingConnection && (
-          <View className="px-4 mt-4 bg-white  pt-5  ">
+          <View className="px-4 mt-4 bg-white pt-5">
             <View className="bg-blue-50 border border-blue-200 rounded-lg p-3 mx-4">
               <View className="flex-row items-center justify-center">
                 <ActivityIndicator size="small" color="#3B82F6" />
@@ -470,8 +545,6 @@ const Home = () => {
             </View>
           </View>
         )}
-
-
 
         <NoInternet onRetry={handleRetryConnection} isChecking={checkingConnection} />
       </LinearGradient>
@@ -496,7 +569,6 @@ const Home = () => {
         className="w-full bg-transparent flex-row items-center justify-between px-4"
         style={{ paddingTop: insets.top + 4, paddingBottom: 4 }}
       >
-        {/* Left side - Profile */}
         <View className="flex-row items-center flex-1">
           <View className="relative">
             <Image
@@ -524,7 +596,6 @@ const Home = () => {
           </View>
         </View>
 
-        {/* Right side - Wallet and Notification Icons */}
         <View className="flex-row items-center">
           <TouchableOpacity
             onPress={handleWalletPress}
@@ -551,7 +622,6 @@ const Home = () => {
         </View>
       </View>
 
-      {/* ---------- CONDITIONAL RENDERING ---------- */}
       {IsOnline ? (
         <ScrollView
           className="flex-1"
@@ -561,16 +631,13 @@ const Home = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[Colors.primary.sage400]} // Android
-              tintColor={Colors.primary.sage400} // iOS
-              title="Pull to refresh" // iOS
-              titleColor={Colors.primary.sage400} // iOS
+              colors={[Colors.primary.sage400]}
+              tintColor={Colors.primary.sage400}
+              title="Pull to refresh"
+              titleColor={Colors.primary.sage400}
             />
           }
         >
-
-
-          {/* Cards Section */}
           <View className="px-4 py-4">
             {/* Status Overview */}
             <View className="mb-6">
@@ -578,15 +645,13 @@ const Home = () => {
                 Status Overview
               </Text>
 
-              {/* Row 1 → All + Cancel */}
               <View className="flex-row justify-between mb-3">
-                {/* All */}
                 <Pressable
                   onPress={() => handleCardPress('All')}
                   className="bg-white rounded-xl p-4 py-6 flex-row items-center justify-between border border-gray-200 flex-1 mr-2"
                 >
                   <View>
-                    <Text className="text-2xl font-bold text-gray-800">{count?.all || 0} </Text>
+                    <Text className="text-2xl font-bold text-gray-800">{count?.all || 0}</Text>
                     <Text className="text-xs text-gray-500">All</Text>
                   </View>
                   <View className="bg-red-100 p-3 rounded-full">
@@ -594,7 +659,6 @@ const Home = () => {
                   </View>
                 </Pressable>
 
-                {/* Cancel */}
                 <Pressable
                   onPress={() => handleCardPress('Cancel')}
                   className="bg-white rounded-xl p-4 flex-row items-center justify-between border border-gray-200 flex-1 ml-2"
@@ -609,9 +673,7 @@ const Home = () => {
                 </Pressable>
               </View>
 
-              {/* Row 2 → Assign, Onworking, Complete */}
               <View className="flex-row justify-between">
-                {/* Assign */}
                 <Pressable
                   onPress={() => handleCardPress('Assign')}
                   className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mr-1"
@@ -623,7 +685,6 @@ const Home = () => {
                   <Text className="text-xs text-gray-500 text-center">Assign</Text>
                 </Pressable>
 
-                {/* Onworking */}
                 <Pressable
                   onPress={() => handleCardPress('Onworking')}
                   className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mx-1"
@@ -637,7 +698,6 @@ const Home = () => {
                   </Text>
                 </Pressable>
 
-                {/* Complete */}
                 <Pressable
                   onPress={() => handleCardPress('Complete')}
                   className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 ml-1"
@@ -659,7 +719,6 @@ const Home = () => {
                 Business Metrics
               </Text>
 
-              {/* First Row - AMC and Bucket */}
               <View className="flex-row justify-between mb-3">
                 <TouchableOpacity
                   onPress={() => handleCardPress('AMC')}
@@ -692,7 +751,6 @@ const Home = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Second Row - Pre-Booking and Payout */}
               <View className="flex-row justify-between">
                 <TouchableOpacity
                   onPress={() => handleCardPress('Pre-Booking')}
@@ -701,7 +759,7 @@ const Home = () => {
                   <View className="bg-purple-100 p-3 rounded-full mb-2">
                     <CalanderIcon width={24} height={24} stroke="#a855f7" />
                   </View>
-                  <Text className="text-2xl font-bold text-gray-800"> {count?.prebooking || 0}</Text>
+                  <Text className="text-2xl font-bold text-gray-800">{count?.prebooking || 0}</Text>
                   <Text className="text-xs text-gray-500 text-center">
                     Pre-Booking
                   </Text>
@@ -724,14 +782,13 @@ const Home = () => {
               </View>
             </View>
 
-            {/* QR Code Section - UPDATED WITH CORRECT COUNTS */}
+            {/* QR Code Section */}
             <View className="mb-6">
               <Text className="text-gray-800 font-bold text-lg mt-3 mb-3">
                 QR Code Section
               </Text>
 
               <View className="flex-row justify-between">
-                {/* All QR codes - Purple theme */}
                 <Pressable
                   onPress={() => handleCardPress('AllQRCodes')}
                   className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mr-1"
@@ -744,7 +801,6 @@ const Home = () => {
                   <Text className="text-xs text-gray-500 text-center">All QR codes</Text>
                 </Pressable>
 
-                {/* Used QR codes - Orange theme */}
                 <Pressable
                   onPress={() => handleCardPress('Used')}
                   className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 mx-1"
@@ -757,7 +813,6 @@ const Home = () => {
                   <Text className="text-xs text-gray-500 text-center">Used QR codes</Text>
                 </Pressable>
 
-                {/* Fresh QR codes (Unused) - Teal theme */}
                 <Pressable
                   onPress={() => handleCardPress('Fresh')}
                   className="bg-white rounded-xl p-3 items-center border border-gray-200 flex-1 ml-1"

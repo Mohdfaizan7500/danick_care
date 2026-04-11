@@ -3,7 +3,7 @@ import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // const BASE_URL = 'https://dummyjson.com/';
-const BASE_URL = 'http://192.168.1.7:5001/';
+const BASE_URL = 'http://192.168.1.43:5001/';
 // const BASE_URL = 'http://api.dainikcare.com/';
 
 
@@ -581,6 +581,19 @@ export const logoutApi = async (payload) => {
         return response;
     } catch (error) {
         console.error('API error in Logout:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const CommissionPayout = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/CommissionPayout', payload);
+        console.log('CommissionPayout api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in CommissionPayout:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }

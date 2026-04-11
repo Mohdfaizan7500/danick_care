@@ -13,7 +13,8 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import DialogBox from '../../components/DilaogBox';
 import { loginApi } from '../../lib/api'; // adjust path as needed
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Toaster } from 'sonner-native';
+import { toast, Toaster } from 'sonner-native';
+import StatusMessage from '../../components/StatusMessage';
 
 const Login = ({ navigation }) => {
     const [email, setEmail] = useState('');
@@ -101,7 +102,8 @@ const Login = ({ navigation }) => {
         // Use the demo credentials from your backend
         setEmail('46757');      // technician_id
         setPassword('123');     // password
-        showDialog('info', 'Demo Account Filled', 'Demo credentials have been filled. Click Sign In to continue.');
+        toast.custom(<StatusMessage type='info' title='Demo Account Filled' message='Demo credentials have been filled. Click Sign In to continue.' />,{duration:300});
+        // showDialog('info', 'Demo Account Filled', 'Demo credentials have been filled. Click Sign In to continue.');
     };
 
     // ---------- Dialog Footers ----------
@@ -173,12 +175,12 @@ const Login = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-teal-100 justify-center items-center px-10">
+        <SafeAreaView className="flex-1 bg-teal-100 justify-center items-center px-5">
             <View className="absolute inset-0 z-50 w-90% pointer-events-none">
                 <Toaster />
             </View>
             <StatusBar backgroundColor={'#CCFBF1'} barStyle={'dark-content'} />
-            <View className="bg-white w-[100%] p-8 h-auto rounded-3xl shadow-lg border border-gray-100">
+            <View className="bg-white w-[100%] py-8 px-5 h-auto rounded-3xl shadow-lg border border-gray-100">
                 <Text className="font-bold text-3xl text-black mb-2">Welcome Back</Text>
                 <Text className="text-gray-500 text-base mb-8">Sign in to your account</Text>
 

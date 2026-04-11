@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,11 @@ import {
   FlatList,
   Modal,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  Dimensions,
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -26,6 +31,7 @@ import {
   ReplacedPartManagement,
   ComplaintBilling
 } from '../../../lib/api';
+import { QrCode } from 'lucide-react-native';
 
 const Billing = () => {
   const navigation = useNavigation();
@@ -41,9 +47,11 @@ const Billing = () => {
   // State for parts
   const [parts, setParts] = useState([]);
   const [loadingParts, setLoadingParts] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [removingPartId, setRemovingPartId] = useState(null);
   const [discountError, setDiscountError] = useState('');
+  const [partSource, setPartSource] = useState({}); // Track source of each part
 
   // Dialog states
   const [removeDialogVisible, setRemoveDialogVisible] = useState(false);
@@ -65,6 +73,11 @@ const Billing = () => {
   const [removeReplacementDialogVisible, setRemoveReplacementDialogVisible] = useState(false);
   const [replacementPartToRemove, setReplacementPartToRemove] = useState(null);
 
+  // Keyboard state for Android 13+
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollViewRef = useRef(null);
+
   // Check if it's a recomplaint
   const isRecomplaint = complaintData?.recomplaint === 'Yes';
 
@@ -72,6 +85,33 @@ const Billing = () => {
   const totalPartsPrice = parts?.reduce((sum, part) => sum + part.price, 0) || 0;
   const totalBeforeDiscount = baseAmount + totalPartsPrice;
   const totalPayable = totalBeforeDiscount - discount;
+
+  // Keyboard listeners for Android 13+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      (e) => {
+        setKeyboardVisible(true);
+        setKeyboardHeight(e.endCoordinates.height);
+        // Scroll to bottom when keyboard opens
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   // Function to fetch available parts for replacement
   const fetchAvailableParts = async (partName) => {
@@ -111,6 +151,7 @@ const Billing = () => {
           id: part.id?.toString(),
           name: part.part_name || 'Part',
           partNumber: part.id?.toString() || '',
+          qr_code: part.qr_code || null,
           price: parseFloat(part.part_price) || 0,
           imageUrl: part?.part_image,
           description: part.description || '',
@@ -175,13 +216,15 @@ const Billing = () => {
                 old_part_id: selectedReplacePart.old_part_id || null,
                 name: selectedReplacePart.name,
                 partNumber: selectedReplacePart.partNumber,
+                qr_code: part.qr_code || null,
                 price: selectedReplacePart.price,
                 imageUrl: selectedReplacePart.imageUrl,
                 description: selectedReplacePart.description,
                 transfer_by: selectedReplacePart.transfer_by,
                 status: "1",
                 part_accept: null,
-                replace_part: selectedReplacePart.replace_part || 'No'
+                replace_part: "Yes",
+                source: 'replacement'
               }
               : part
           );
@@ -230,13 +273,15 @@ const Billing = () => {
                 old_part_id: selectedReplacePart.old_part_id || null,
                 name: selectedReplacePart.name,
                 partNumber: selectedReplacePart.partNumber,
+                qr_code: part.qr_code || null,
                 price: selectedReplacePart.price,
                 imageUrl: selectedReplacePart.imageUrl,
                 description: selectedReplacePart.description,
                 transfer_by: selectedReplacePart.transfer_by,
                 status: "1",
                 part_accept: null,
-                replace_part: selectedReplacePart.replace_part || 'No'
+                replace_part: "Yes",
+                source: 'replacement'
               }
               : part
           );
@@ -323,37 +368,83 @@ const Billing = () => {
   };
 
   // Function to fetch parts based on complaint type
-  const fetchParts = async () => {
+  const fetchParts = async (isRefresh = false) => {
     if (!complaintData) {
       console.log('No complaint data available');
       setLoadingParts(false);
+      setRefreshing(false);
       return;
     }
 
     try {
-      setLoadingParts(true);
+      if (!isRefresh) {
+        setLoadingParts(true);
+      }
       setError(null);
 
       let response;
       let partsData = [];
+      let sourceMap = {}; // Track source of each part
 
       if (isRecomplaint && complaintData.oldcomp_id) {
         const payload = {
           technician_id: user?.id?.toString() || '1',
           oldcomp_id: complaintData.oldcomp_id?.toString()
         };
+        const payload_for_new = {
+          technician_id: user?.id?.toString() || '1',
+          complaint_id: complaintData.id?.toString()
+        };
 
         console.log('Fetching recomplaint parts with payload:', payload);
         response = await RecomplaitAttechPart(payload);
+        const response2 = await FetchPartForComplaints(payload_for_new);
+        console.log('New Complaint API Response:', response2);
         console.log('Recomplaint API Response:', response);
 
+        let recomplaintParts = [];
+        let newParts = [];
+
+        // Extract recomplaint parts and mark them as 'recomplaint'
         if (response?.data?.data && Array.isArray(response.data.data)) {
-          partsData = response.data.data;
+          recomplaintParts = response.data.data;
+          recomplaintParts.forEach(part => {
+            sourceMap[part.id] = 'recomplaint';
+          });
         } else if (response?.data?.result && Array.isArray(response.data.result)) {
-          partsData = response.data.result;
+          recomplaintParts = response.data.result;
+          recomplaintParts.forEach(part => {
+            sourceMap[part.id] = 'recomplaint';
+          });
         } else if (Array.isArray(response?.data)) {
-          partsData = response.data;
+          recomplaintParts = response.data;
+          recomplaintParts.forEach(part => {
+            sourceMap[part.id] = 'recomplaint';
+          });
         }
+
+        // Extract new parts and mark them as 'new'
+        if (response2?.data?.data && Array.isArray(response2.data.data)) {
+          newParts = response2.data.data;
+          newParts.forEach(part => {
+            sourceMap[part.id] = 'new';
+          });
+        } else if (response2?.data?.result && Array.isArray(response2.data.result)) {
+          newParts = response2.data.result;
+          newParts.forEach(part => {
+            sourceMap[part.id] = 'new';
+          });
+        } else if (Array.isArray(response2?.data)) {
+          newParts = response2.data;
+          newParts.forEach(part => {
+            sourceMap[part.id] = 'new';
+          });
+        }
+
+        // Combine parts from both responses
+        partsData = [...recomplaintParts, ...newParts];
+        setPartSource(sourceMap);
+
       } else {
         const payload = {
           technician_id: user?.id?.toString() || '1',
@@ -370,42 +461,81 @@ const Billing = () => {
           partsData = response.data.result;
         } else if (Array.isArray(response?.data)) {
           partsData = response.data;
+        } else if (response?.data && typeof response.data === 'object') {
+          partsData = response.data.parts || response.data.items || [];
         }
+
+        // Mark all parts as 'new' for non-recomplaint
+        partsData.forEach(part => {
+          sourceMap[part.id] = 'new';
+        });
+        setPartSource(sourceMap);
       }
 
+      // Filter parts based on status for non-recomplaint
       let attachedParts = partsData;
       if (!isRecomplaint) {
-        attachedParts = partsData.filter(part => part.status === "1" || part.status === 1);
+        attachedParts = partsData.filter(part =>
+          part.status === "1" || part.status === 1
+        );
       }
 
+      // Format parts with safe navigation
       const formattedParts = attachedParts.map(part => ({
-        id: part.id?.toString(),
+        id: part.id?.toString() || part._id?.toString() || '',
         name: part.part_name || part.name || 'Part',
-        technician_name: part?.technician_name || '',
-        partNumber: part.id?.toString() || '',
-        price: parseFloat(part.part_price || part.price) || 0,
-        imageUrl: part.part_image,
+        technician_name: part?.technician_name || part?.technicianName || '',
+        partNumber: part.part_number || part.partNumber || part.id?.toString() || '',
+        qr_code: part.qr_code || null,
+
+        // Set price to 0 for recomplaint parts
+        price: sourceMap[part.id] === 'recomplaint'
+          ? 0
+          : (parseFloat(part.part_price || part.price || 0) || 0),
+        imageUrl: part.part_image || part.imageUrl || null,
         description: part.description || '',
-        transfer_by: part.transfer_by,
-        part_accept: part.part_accept,
-        status: part.status,
-        replace_part: part.replace_part || 'No',
-        old_part_id: part.old_part_id || null
+        transfer_by: part.transfer_by || part.transferredBy || null,
+        part_accept: part.part_accept || part.accepted || null,
+        status: part.status || null,
+        replace_part: part.replace_part || part.replacePart || 'No',
+        old_part_id: part.old_part_id || part.oldPartId || null,
+        source: sourceMap[part.id] || 'new' // Add source property
       }));
 
       console.log('Formatted parts:', formattedParts);
       setParts(formattedParts);
-      updateImportedPart(formattedParts);
+
+      if (typeof updateImportedPart === 'function') {
+        updateImportedPart(formattedParts);
+      }
+
+      if (isRefresh) {
+        toast.custom(
+          <StatusMessage type='success' title="Parts refreshed successfully" />,
+          { duration: 1500 }
+        );
+      }
 
     } catch (err) {
       console.error('Error fetching parts:', err);
       setError(err.message || 'Failed to fetch parts');
       setParts([]);
-      updateImportedPart([]);
+      setPartSource({});
+
+      if (typeof updateImportedPart === 'function') {
+        updateImportedPart([]);
+      }
     } finally {
       setLoadingParts(false);
+      setRefreshing(false);
     }
   };
+
+  // Pull to refresh handler
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchParts(true);
+  }, [complaintData, user?.id]);
 
   // Function to submit billing
   const submitBilling = async () => {
@@ -414,7 +544,7 @@ const Billing = () => {
 
       const payload = {
         id: complaintData?.id?.toString() || complaintData?.oldcomp_id?.toString(),
-        final_amount: totalPayable.toFixed(2),
+        final_amount: totalPayable.toString(),
         discount: discount.toString()
       };
 
@@ -451,7 +581,7 @@ const Billing = () => {
   useFocusEffect(
     useCallback(() => {
       console.log('Billing screen focused, refreshing parts...');
-      fetchParts();
+      fetchParts(true);
     }, [complaintData, user?.id])
   );
 
@@ -477,7 +607,7 @@ const Billing = () => {
       try {
         const payload = {
           complaint_id: complaintData?.id?.toString(),
-          old_part_id: partToRemove,
+          part_id: partToRemove,
           status: "0"
         };
 
@@ -522,12 +652,22 @@ const Billing = () => {
   };
 
   const handlePartClick = (part) => {
+    // If part is from new complaint (source === 'new'), show delete functionality
+    if (part.source === 'new') {
+      // For new parts, show delete confirmation
+      setPartToRemove(part.id);
+      setRemoveDialogVisible(true);
+      return;
+    }
+
+    // For replacement parts, show remove replacement dialog
     if (part.replace_part === "Yes") {
       setReplacementPartToRemove(part);
       setRemoveReplacementDialogVisible(true);
       return;
     }
 
+    // For transferred parts, show error
     if (part.part_accept === "0") {
       const technicianName = part?.technician_name || 'the technician';
       toast.custom(
@@ -540,6 +680,13 @@ const Billing = () => {
       return;
     }
 
+    // For recomplaint parts (source === 'recomplaint'), open replace dialog
+    if (part.source === 'recomplaint') {
+      openReplaceDialog(part);
+      return;
+    }
+
+    // Default: open replace dialog
     openReplaceDialog(part);
   };
 
@@ -615,13 +762,15 @@ const Billing = () => {
                 old_part_id: part.old_part_id || null,
                 name: part.name,
                 partNumber: part.partNumber,
+                qr_code: part.qr_code || null,
                 price: part.price,
                 imageUrl: part.imageUrl,
                 description: part.description,
                 transfer_by: part.transfer_by,
                 status: "1",
                 part_accept: null,
-                replace_part: part.replace_part || 'No'
+                replace_part: "Yes",
+                source: 'replacement'
               }
               : p
           );
@@ -734,9 +883,14 @@ const Billing = () => {
             </Text>
           </View>
         </View>
-        <Text className="text-text-secondary text-sm">
-          Part #: {item.partNumber}
-        </Text>
+        <View className="flex-row items-center gap-5 ">
+          <Text className="text-text-secondary text-sm">
+            Part #: {item.partNumber}
+          </Text>
+          <Text className="text-text-secondary text-sm">
+            QR Code: {item.qr_code || 'N/A'}
+          </Text>
+        </View>
         <Text className="text-text-tertiary text-xs mt-1" numberOfLines={2}>
           {item.description}
         </Text>
@@ -787,7 +941,7 @@ const Billing = () => {
         {error || 'Failed to load parts'}
       </Text>
       <TouchableOpacity
-        onPress={fetchParts}
+        onPress={() => fetchParts()}
         className="mt-4 bg-primary-sage600 px-6 py-2 rounded-lg"
       >
         <Text className="text-white font-semibold">Retry</Text>
@@ -986,178 +1140,247 @@ const Billing = () => {
         <Toaster />
       </View>
 
-      <Header
-        title={isRecomplaint ? "Recomplaint Billing" : "Billing"}
-        titlePosition="left"
-        titleStyle="font-bold text-2xl ml-5"
-        showBackButton={true}
-        showRightIcon={true}
-        customRightIconComponent={
-          <Icon name="bag-add-outline" size={24} color="#333" />
-        }
-        onRightIconPress={() => navigation.navigate('AddPartBilling', { complaintData })}
-        containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
-      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+        enabled={Platform.OS === 'ios'}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View className="flex-1">
+            <Header
+              title={isRecomplaint ? "Recomplaint Billing" : "Billing"}
+              titlePosition="left"
+              titleStyle="font-bold text-2xl ml-5"
+              showBackButton={true}
+              showRightIcon={true}
+              customRightIconComponent={
+                <Icon name="bag-add-outline" size={24} color="#333" />
+              }
+              onRightIconPress={() => navigation.navigate('AddPartBilling', { complaintData })}
+              containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
+            />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-        {loadingParts ? (
-          renderLoading()
-        ) : error ? (
-          renderError()
-        ) : parts && parts.length > 0 ? (
-          parts.map((part) => {
-            const isRemoving = removingPartId === part.id;
-            const isPartTransferred = part.part_accept === "0";
-            const isReplacementPart = part.replace_part === "Yes";
+            <ScrollView
+              ref={scrollViewRef}
+              contentContainerStyle={{
+                paddingBottom: Platform.OS === 'android' && keyboardVisible ? keyboardHeight + 100 : 20
+              }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              className="flex-1"
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={['#2E7D32', '#4CAF50', '#81C784']}
+                  tintColor="#2E7D32"
+                  title="Pull to refresh"
+                  titleColor="#2E7D32"
+                  progressBackgroundColor="#ffffff"
+                />
+              }
+            >
+              {loadingParts && !refreshing ? (
+                renderLoading()
+              ) : error ? (
+                renderError()
+              ) : parts && parts.length > 0 ? (
+                parts.map((part) => {
+                  const isRemoving = removingPartId === part.id;
+                  const isPartTransferred = part.part_accept === "0";
+                  const isReplacementPart = part.replace_part === "Yes";
+                  const isFromRecomplaint = part.source === 'recomplaint';
+                  const isFromNew = part.source === 'new';
 
-            return (
-              <View
-                key={part.id}
-                className={`flex-row items-center p-3 mx-4 mb-3 rounded-xl border border-gray-300 ${isPartTransferred ? 'opacity-60 bg-gray-50' : ''
-                  }`}
-                style={{ opacity: isRemoving ? 0.5 : 1 }}
-              >
-                <TouchableOpacity
-                  onPress={() => handlePartClick(part)}
-                  disabled={isPartTransferred}
-                >
-                  {part.imageUrl ? (
-                    <Image
-                      source={{ uri: part.imageUrl }}
-                      className="w-12 h-12 rounded-lg bg-gray-300"
-                      resizeMode="cover"
-                      onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-                    />
-                  ) : (
-                    <View className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                      <Icon name="cube-outline" size={20} color="#10b981" />
+                  const showDeleteIcon = isFromNew && !isRemoving && !isPartTransferred && !isReplacementPart;
+                  const showReplaceIcon = isFromRecomplaint && !isReplacementPart && !isPartTransferred;
+
+                  return (
+                    <View
+                      key={part.id}
+                      className={`flex-row items-center p-3 mx-4 mb-3 rounded-xl border border-gray-300 ${isPartTransferred ? 'opacity-60 bg-gray-50' : ''
+                        }`}
+                      style={{ opacity: isRemoving ? 0.5 : 1 }}
+                    >
+                      <TouchableOpacity
+                        onPress={() => handlePartClick(part)}
+                        disabled={isPartTransferred || isFromNew}
+                      >
+                        {part.imageUrl ? (
+                          <Image
+                            source={{ uri: part.imageUrl }}
+                            className="w-12 h-12 rounded-lg bg-gray-300"
+                            resizeMode="cover"
+                            onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+                          />
+                        ) : (
+                          <View className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+                            <Icon name="cube-outline" size={20} color="#10b981" />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        className="flex-1 ml-3"
+                        onPress={() => handlePartClick(part)}
+                        disabled={isPartTransferred || isFromNew}
+                      >
+                        <View className="flex-row justify-between items-center">
+                          <Text className="text-text-primary font-semibold text-base flex-1">
+                            {part.name}
+                          </Text>
+                          {getStatusBadge(part)}
+                        </View>
+                        <View className='flex-row gap-5 items-center'>
+                          <Text className="text-text-secondary text-sm">
+                            Part #: {part.partNumber}
+                          </Text>
+                          <Text className="text-text-secondary text-sm">
+                            QR Code: {part.qr_code || 'N/A'}
+                          </Text>
+                        </View>
+                        <Text className={`font-bold text-base mt-1 ${isPartTransferred ? 'text-gray-400' : 'text-primary-sage700'
+                          }`}>
+                          {isFromRecomplaint ? '₹0.00 (Recomplaint Part)' : `₹${part.price.toFixed(2)}`}
+                        </Text>
+                        {isFromRecomplaint && (
+                          <Text className="text-orange-600 text-xs mt-1">
+                            From previous complaint - needs replacement
+                          </Text>
+                        )}
+                        {isFromNew && (
+                          <Text className="text-blue-600 text-xs mt-1">
+                            New part added
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                      <View className="flex-row">
+                        {showReplaceIcon && (
+                          <TouchableOpacity
+                            onPress={() => openReplaceDialog(part)}
+                            className="mr-2"
+                          >
+                            <Icon name="refresh-outline" size={22} color="#3b82f6" />
+                          </TouchableOpacity>
+                        )}
+
+                        {showDeleteIcon && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setPartToRemove(part.id);
+                              setRemoveDialogVisible(true);
+                            }}
+                          >
+                            <Icon name="trash-outline" size={20} color="#ff4444" />
+                          </TouchableOpacity>
+                        )}
+
+                        {isReplacementPart && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setReplacementPartToRemove(part);
+                              setRemoveReplacementDialogVisible(true);
+                            }}
+                          >
+                            <Icon name="close-circle-outline" size={24} color="#ff4444" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      {isRemoving && <ActivityIndicator size="small" color="#ff4444" />}
                     </View>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className="flex-1 ml-3"
-                  onPress={() => handlePartClick(part)}
-                  disabled={isPartTransferred}
-                >
-                  <View className="flex-row justify-between items-center">
-                    <Text className="text-text-primary font-semibold text-base flex-1">
-                      {part.name}
-                    </Text>
-                    {getStatusBadge(part)}
-                  </View>
-                  <Text className="text-text-secondary text-sm">
-                    Part #: {part.partNumber}
+                  );
+                })
+              ) : (
+                <View className="items-center justify-center py-10">
+                  <Icon name="cart-outline" size={50} color="#ccc" />
+                  <Text className="text-text-tertiary text-base mt-2">
+                    {isRecomplaint ? 'No parts found for this recomplaint' : 'No parts added yet'}
                   </Text>
-                  <Text className={`font-bold text-base mt-1 ${isPartTransferred ? 'text-gray-400' : 'text-primary-sage700'
-                    }`}>
-                    ₹{part.price.toFixed(2)}
-                  </Text>
-                </TouchableOpacity>
-                <View className="flex-row">
-
-                  {!isRecomplaint && !isRemoving && !isPartTransferred && !isReplacementPart && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setPartToRemove(part.id);
-                        setRemoveDialogVisible(true);
-                      }}
-                    >
-                      <Icon name="trash-outline" size={20} color="#ff4444" />
-                    </TouchableOpacity>
-                  )}
-                  {isReplacementPart && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setReplacementPartToRemove(part);
-                        setRemoveReplacementDialogVisible(true);
-                      }}
-                    >
-                      <Icon name="close-circle-outline" size={24} color="#ff4444" />
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    onPress={onRefresh}
+                    className="mt-4 bg-primary-sage600 px-6 py-2 rounded-lg"
+                  >
+                    <Text className="text-white font-semibold">Refresh</Text>
+                  </TouchableOpacity>
                 </View>
-                {isRemoving && <ActivityIndicator size="small" color="#ff4444" />}
+              )}
+            </ScrollView>
+
+            {/* Footer */}
+            <View
+              className="bg-white justify-end px-3 py-2 border-t border-gray-200"
+              style={{
+                paddingBottom: Platform.OS === 'android' && keyboardVisible ? keyboardHeight : 8,
+              }}
+            >
+              <View className="border p-5 w-full mb-3 border-gray-300 rounded-2xl">
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="font-medium text-md">Base Amount</Text>
+                  <Text className="font-semibold">₹{baseAmount - (complaintData?.platform_fee || 0)}</Text>
+                </View>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="font-medium text-md">Platform Fee</Text>
+                  <Text className="font-semibold">₹{complaintData?.platform_fee || 0}</Text>
+                </View>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="font-medium text-md">Total Base Amount</Text>
+                  <Text className="font-semibold">₹{baseAmount.toFixed(2)}</Text>
+                </View>
+
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="font-medium text-md">Total Parts Price</Text>
+                  <Text className="font-semibold">₹{totalPartsPrice.toFixed(2)}</Text>
+                </View>
+
+                <View className="flex-row items-center justify-between mb-2 pt-2 border-t border-gray-200">
+                  <Text className="font-medium text-md">Subtotal</Text>
+                  <Text className="font-semibold">₹{totalBeforeDiscount.toFixed(2)}</Text>
+                </View>
+
+                <View className="mb-2">
+                  <View className="flex-row items-center justify-between">
+                    <Text className="font-medium text-md">Discount</Text>
+                    <TextInput
+                      className="border border-gray-300 text-black rounded-lg px-3 py-1 w-24 text-right"
+                      keyboardType="numeric"
+                      placeholder="amount"
+                      value={discount ? discount.toString() : ''}
+                      onChangeText={handleDiscountChange}
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                  {discountError ? (
+                    <Text className="text-red-500 text-xs mt-1 text-right">
+                      {discountError}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <View className="flex-row items-center justify-between mt-2 pt-2 border-t border-gray-200">
+                  <Text className="font-medium text-md">Total Payable Amount</Text>
+                  <Text className="font-bold text-lg text-primary-sage700">
+                    ₹{totalPayable.toFixed(2)}
+                  </Text>
+                </View>
               </View>
-            );
-          })
-        ) : (
-          <View className="items-center justify-center py-10">
-            <Icon name="cart-outline" size={50} color="#ccc" />
-            <Text className="text-text-tertiary text-base mt-2">
-              {isRecomplaint ? 'No parts found for this recomplaint' : 'No parts added yet'}
-            </Text>
-          </View>
-        )}
-      </ScrollView>
 
-      {/* Footer */}
-      <View className="bg-white justify-end px-3 py-2 border-t border-gray-200">
-        <View className="border p-5 w-full mb-3 border-gray-300 rounded-2xl">
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="font-medium text-md">Base Amount</Text>
-            <Text className="font-semibold">₹{baseAmount - complaintData?.platform_fee}</Text>
-          </View>
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="font-medium text-md">Platform Fee</Text>
-            <Text className="font-semibold">₹{complaintData?.platform_fee}</Text>
-          </View>
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="font-medium text-md">Total Base Amount</Text>
-            <Text className="font-semibold">₹{baseAmount.toFixed(2)}</Text>
-          </View>
-
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="font-medium text-md">Total Parts Price</Text>
-            <Text className="font-semibold">₹{totalPartsPrice.toFixed(2)}</Text>
-          </View>
-
-          <View className="flex-row items-center justify-between mb-2 pt-2 border-t border-gray-200">
-            <Text className="font-medium text-md">Subtotal</Text>
-            <Text className="font-semibold">₹{totalBeforeDiscount.toFixed(2)}</Text>
-          </View>
-
-          <View className="mb-2">
-            <View className="flex-row items-center justify-between">
-              <Text className="font-medium text-md">Discount</Text>
-              <TextInput
-                className="border border-gray-300 text-black rounded-lg px-3 py-1 w-24 text-right"
-                keyboardType="numeric"
-                placeholder="amount"
-                value={discount ? discount.toString() : ''}
-                onChangeText={handleDiscountChange}
-                placeholderTextColor="#999"
-              />
+              <TouchableOpacity
+                className="bg-black py-5 rounded-xl w-full flex justify-center items-center"
+                onPress={() => {
+                  if (discount > totalBeforeDiscount) {
+                    setDiscountError(`Discount cannot exceed ₹${totalBeforeDiscount.toFixed(2)}`);
+                    return;
+                  }
+                  setSubmitDialogVisible(true);
+                }}
+                disabled={isSubmitting}
+                style={{ opacity: isSubmitting ? 0.5 : 1 }}
+              >
+                <Text className="text-white font-bold text-xl">Submit</Text>
+              </TouchableOpacity>
             </View>
-            {discountError ? (
-              <Text className="text-red-500 text-xs mt-1 text-right">
-                {discountError}
-              </Text>
-            ) : null}
           </View>
-
-          <View className="flex-row items-center justify-between mt-2 pt-2 border-t border-gray-200">
-            <Text className="font-medium text-md">Total Payable Amount</Text>
-            <Text className="font-bold text-lg text-primary-sage700">
-              ₹{totalPayable.toFixed(2)}
-            </Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          className="bg-black py-5 rounded-xl w-full flex justify-center items-center"
-          onPress={() => {
-            if (discount > totalBeforeDiscount) {
-              setDiscountError(`Discount cannot exceed ₹${totalBeforeDiscount.toFixed(2)}`);
-              return;
-            }
-            setSubmitDialogVisible(true);
-          }}
-          disabled={isSubmitting}
-          style={{ opacity: isSubmitting ? 0.5 : 1 }}
-        >
-          <Text className="text-white font-bold text-xl">Submit</Text>
-        </TouchableOpacity>
-      </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
 
       {/* Modals */}
       <CustomModal

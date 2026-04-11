@@ -18,7 +18,7 @@ const Tab = createBottomTabNavigator();
 const CustomTabBarButton = ({ children, onPress, isOnline, style, ...props }) => {
   const handlePress = () => {
     if (!isOnline) {
-      toast.custom(<StatusMessage type='error' title={'You are offline, Connect to service center.'}/>, { duration: 1000 });
+      toast.custom(<StatusMessage type='error' title={'You are offline, Connect to service center.'} />, { duration: 1000 });
       return;
     }
     onPress();
@@ -38,7 +38,7 @@ const CustomTabBarButton = ({ children, onPress, isOnline, style, ...props }) =>
       ]}
       {...props}
     >
-      <View style={{ alignItems: 'center' ,justifyContent: 'center' }}>
+      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
         {children}
       </View>
     </Pressable>
@@ -56,12 +56,12 @@ const BottomTabs = () => {
         tabBarActiveTintColor: Colors.brand.primary,
         tabBarInactiveTintColor: Colors.gray[800],
         tabBarStyle: {
-          backgroundColor:Colors.background.primary,
+          backgroundColor: Colors.background.primary,
           borderTopWidth: 1,
-          borderTopColor:Colors.ui.border,
+          borderTopColor: Colors.ui.border,
           // Fixed base height + bottom safe area inset to avoid clipping on iOS
-          height: 60 + insets.bottom,
-          paddingBottom: 0,
+          height: 80 + insets.bottom,
+          paddingBottom: 20,
         },
         tabBarLabelStyle: {
           fontSize: 12,

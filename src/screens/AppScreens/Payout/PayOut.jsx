@@ -4,6 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import SalaryTab from './SalaryTab';
 import CommissionTab from './CommissionTab';
 import Header from '../../../components/Header';
+import { useAuth } from '../../../context/AuthContext';
+import { CommissionPayout } from '../../../lib/api';
+import { Toaster } from 'sonner-native';
 
 // ---------- Dummy Data ----------
 const salaryData = [
@@ -33,7 +36,55 @@ const commissionData = [
 const formatCurrency = (amount) => `₹${amount.toLocaleString()}`;
 
 const PayOut = () => {
+  const [title, setTitle] = useState('Payout fff');
   const [activeTab, setActiveTab] = useState('salary');
+  const { profileData } = useAuth();
+  console.log('Authenticated User in PayOut:', profileData);
+
+  // Get technician type from profile data
+  const technicianType = profileData?.technician_type || '';
+  console.log('Technician Type:', technicianType);
+
+  // Normalize technician type for comparison (handle case sensitivity and spelling variations)
+  const normalizedType = technicianType.toLowerCase().trim();
+
+  // Determine which tabs to show
+  const showSalaryTab =
+    normalizedType === 'salary' ||
+    normalizedType === 'sallary' || // Handle common misspelling
+    normalizedType === 'sallary+commission' ||
+    normalizedType === 'salary+commission' ||
+    normalizedType === '' ||
+    !technicianType;
+
+  const showCommissionTab =
+    normalizedType === 'commission' || // Handle common misspelling
+    normalizedType === 'sallary+commission' ||
+    normalizedType === 'salary+commission' ||
+    normalizedType === '' ||
+    !technicianType;
+
+  // Check if it's combined type
+  const isCombinedType =
+    normalizedType === 'sallary+commission' ||
+    normalizedType === 'salary+commission';
+
+
+  // Set initial active tab based on technician type
+  React.useEffect(() => {
+    if (normalizedType === 'salary' || normalizedType === 'sallary') {
+      setTitle('Salary Details');
+      setActiveTab('salary');
+    } else if (normalizedType === 'commission') {
+      setTitle('Commission Details');
+      setActiveTab('commission');
+    } else if (isCombinedType) {
+      // setTitle('Payout Details');
+      setActiveTab('salary'); // Default to salary for combined type
+    } else {
+      setActiveTab('salary'); // Default to salary if both are shown
+    }
+  }, [technicianType]);
 
   // Salary state
   const [selectedMonth, setSelectedMonth] = useState('March');
@@ -73,35 +124,62 @@ const PayOut = () => {
     setTimeout(() => setIsCommissionLoading(false), 1500);
   };
 
+  // If no tabs to show (should not happen), show a message
+  if (!showSalaryTab && !showCommissionTab) {
+    return (
+      <SafeAreaView className="flex-1 bg-white">
+        <Header
+          title="PayOut"
+          titlePosition="left"
+          titleStyle="font-bold text-2xl ml-5"
+        />
+        <View className="flex-1 justify-center items-center">
+          <Text className="text-gray-500 text-lg">No payout options available</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-white">
+      <View className="absolute inset-0 z-50 w-90% pointer-events-none">
+        <Toaster />
+      </View>
       <Header
-        title="PayOut"
+        title={title}
         titlePosition="left"
         titleStyle="font-bold text-2xl ml-5"
       />
-      {/* Tabs */}
-      <View className="flex-row border-b border-gray-200">
-        <TouchableOpacity
-          onPress={() => setActiveTab('salary')}
-          className={`flex-1 py-3 items-center ${activeTab === 'salary' ? 'border-b-2 border-teal-500' : ''}`}
-        >
-          <Text className={`text-base ${activeTab === 'salary' ? 'text-teal-500 font-semibold' : 'text-gray-600'}`}>
-            Salary
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setActiveTab('commission')}
-          className={`flex-1 py-3 items-center ${activeTab === 'commission' ? 'border-b-2 border-teal-500 ' : ''}`}
-        >
-          <Text className={`text-base ${activeTab === 'commission' ? 'text-teal-500 font-semibold' : 'text-gray-600'}`}>
-            Commission
-          </Text>
-        </TouchableOpacity>
-      </View>
+
+      {/* Tabs - Show only if both tabs are enabled (combined type or empty) */}
+      {showSalaryTab && showCommissionTab && (
+        <View className="flex-row border-b border-gray-200">
+          <TouchableOpacity
+            onPress={() => setActiveTab('salary')}
+            className={`flex-1 py-3 items-center ${activeTab === 'salary' ? 'border-b-2 border-teal-500' : ''}`}
+          >
+            <Text className={`text-base ${activeTab === 'salary' ? 'text-teal-500 font-semibold' : 'text-gray-600'}`}>
+              Salary
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setActiveTab('commission')}
+            className={`flex-1 py-3 items-center ${activeTab === 'commission' ? 'border-b-2 border-teal-500' : ''}`}
+          >
+            <Text className={`text-base ${activeTab === 'commission' ? 'text-teal-500 font-semibold' : 'text-gray-600'}`}>
+              Commission
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+
+
+
+
 
       {/* Content */}
-      {activeTab === 'salary' ? (
+      {showSalaryTab && (activeTab === 'salary' || !showCommissionTab) && (
         <SalaryTab
           selectedMonth={selectedMonth}
           setSelectedMonth={setSelectedMonth}
@@ -115,7 +193,9 @@ const PayOut = () => {
           handleMonthYearConfirm={handleMonthYearConfirm}
           formatCurrency={formatCurrency}
         />
-      ) : (
+      )}
+
+      {showCommissionTab && (activeTab === 'commission' || !showSalaryTab) && (
         <CommissionTab
           startDate={startDate}
           setStartDate={setStartDate}
