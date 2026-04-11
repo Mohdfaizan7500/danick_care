@@ -526,148 +526,149 @@ const MyComplaints = () => {
         titleStyle='font-bold text-xl text-black'
       />
 
-      {/* Stats Banner */}
-      <View className="px-4 mb-2">
-        <View className="bg-primary-sage100 rounded-xl p-3 flex-row justify-between">
-          <View>
-            <Text className="text-text-secondary text-sm">Total Complaints</Text>
-            <Text className="text-text-primary font-bold text-2xl">{totalCount}</Text>
-          </View>
-          <View>
-            <Text className="text-text-secondary text-sm">Showing</Text>
-            <Text className="text-text-primary font-bold text-2xl">{filteredCount}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Search Bar */}
-      <View className="px-4 mt-2">
-        <View className="flex-row items-center bg-ui-card rounded-2xl border border-ui-border px-3 py-0">
-          <Search size={20} color="#999999" />
-          <TextInput
-            className="flex-1 ml-2 text-text-primary py-3"
-            placeholder="Search by ID, name, service..."
-            placeholderTextColor="#999999"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-      </View>
-
-      {/* Filter Section */}
-      <View className="px-4 mt-4">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <Filter size={18} color="#666666" />
-            <Text className="text-text-secondary ml-2 font-medium">Filter by:</Text>
-          </View>
-
-          {/* Filter Dropdown */}
-          <View className="relative z-10">
-            <TouchableOpacity
-              onPress={() => setShowFilterDropdown(!showFilterDropdown)}
-              className="flex-row items-center bg-ui-card border border-ui-border rounded-lg px-3 py-2"
-            >
-              <Text className="text-text-primary mr-2">
-                {getFilterDisplayText}
-              </Text>
-              <ChevronDown size={16} color="#666666" />
-            </TouchableOpacity>
-
-            {showFilterDropdown && (
-              <View className="absolute top-12 right-0 bg-ui-card border border-ui-border rounded-lg shadow-lg w-40 z-20">
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedFilter(FILTER_PERIODS.ALL)
-                    setShowFilterDropdown(false)
-                  }}
-                  className="px-4 py-3 border-b border-ui-border"
-                >
-                  <Text className="text-text-primary">All Time</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedFilter(FILTER_PERIODS.TODAY)
-                    setShowFilterDropdown(false)
-                  }}
-                  className="px-4 py-3 border-b border-ui-border"
-                >
-                  <Text className="text-text-primary">Today</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedFilter(FILTER_PERIODS.YESTERDAY)
-                    setShowFilterDropdown(false)
-                  }}
-                  className="px-4 py-3 border-b border-ui-border"
-                >
-                  <Text className="text-text-primary">Yesterday</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedFilter(FILTER_PERIODS.LAST_7_DAYS)
-                    setShowFilterDropdown(false)
-                  }}
-                  className="px-4 py-3 border-b border-ui-border"
-                >
-                  <Text className="text-text-primary">Last 7 Days</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedFilter(FILTER_PERIODS.LAST_MONTH)
-                    setShowFilterDropdown(false)
-                  }}
-                  className="px-4 py-3 border-b border-ui-border"
-                >
-                  <Text className="text-text-primary">Last Month</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedFilter(FILTER_PERIODS.SPECIFIC)
-                    setShowFilterDropdown(false)
-                    setShowDatePicker(true)
-                  }}
-                  className="px-4 py-3"
-                >
-                  <Text className="text-text-primary">Specific Date</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Date Picker for Specific Date */}
-        {showDatePicker && selectedFilter === FILTER_PERIODS.SPECIFIC && (
-          <View className="mt-3 bg-ui-card border border-ui-border rounded-lg p-3">
-            <Text className="text-text-secondary mb-2">Select Date (YYYY-MM-DD):</Text>
-            <View className="flex-row items-center">
-              <TextInput
-                className="flex-1 border border-ui-border rounded-lg px-3 py-2 text-text-primary"
-                placeholder="2026-03-13"
-                value={selectedDate}
-                onChangeText={setSelectedDate}
-                placeholderTextColor="#999999"
-              />
-              <TouchableOpacity
-                onPress={() => setShowDatePicker(false)}
-                className="ml-2 px-4 py-2 bg-primary-sage rounded-lg"
-              >
-                <Text className="text-white">Apply</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </View>
-
-      {/* Complaints List */}
+      {/* Complaints List with integrated filters */}
       <ScrollView
-        className="flex-1 px-4 mt-4"
+        className="flex-1 px-4"
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#58A890']} />
         }
         onMomentumScrollEnd={handleScrollEnd}
       >
+        {/* Stats Banner */}
+        <View className="mb-4 mt-2">
+          <View className="bg-primary-sage100 rounded-xl p-3 flex-row justify-between">
+            <View>
+              <Text className="text-text-secondary text-sm">Total Complaints</Text>
+              <Text className="text-text-primary font-bold text-2xl">{totalCount}</Text>
+            </View>
+            <View>
+              <Text className="text-text-secondary text-sm">Showing</Text>
+              <Text className="text-text-primary font-bold text-2xl">{filteredCount}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <View className="mb-4">
+          <View className="flex-row items-center bg-ui-card rounded-2xl border border-ui-border px-3 py-0">
+            <Search size={20} color="#999999" />
+            <TextInput
+              className="flex-1 ml-2 text-text-primary py-3"
+              placeholder="Search by ID, name, service..."
+              placeholderTextColor="#999999"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        </View>
+
+        {/* Filter Section */}
+        <View className="mb-4">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              <Filter size={18} color="#666666" />
+              <Text className="text-text-secondary ml-2 font-medium">Filter by:</Text>
+            </View>
+
+            {/* Filter Dropdown */}
+            <View className="relative z-10">
+              <TouchableOpacity
+                onPress={() => setShowFilterDropdown(!showFilterDropdown)}
+                className="flex-row items-center bg-ui-card border border-ui-border rounded-lg px-3 py-2"
+              >
+                <Text className="text-text-primary mr-2">
+                  {getFilterDisplayText}
+                </Text>
+                <ChevronDown size={16} color="#666666" />
+              </TouchableOpacity>
+
+              {showFilterDropdown && (
+                <View className="absolute top-12 right-0 bg-ui-card border border-ui-border rounded-lg shadow-lg w-40 z-20">
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedFilter(FILTER_PERIODS.ALL)
+                      setShowFilterDropdown(false)
+                    }}
+                    className="px-4 py-3 border-b border-ui-border"
+                  >
+                    <Text className="text-text-primary">All Time</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedFilter(FILTER_PERIODS.TODAY)
+                      setShowFilterDropdown(false)
+                    }}
+                    className="px-4 py-3 border-b border-ui-border"
+                  >
+                    <Text className="text-text-primary">Today</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedFilter(FILTER_PERIODS.YESTERDAY)
+                      setShowFilterDropdown(false)
+                    }}
+                    className="px-4 py-3 border-b border-ui-border"
+                  >
+                    <Text className="text-text-primary">Yesterday</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedFilter(FILTER_PERIODS.LAST_7_DAYS)
+                      setShowFilterDropdown(false)
+                    }}
+                    className="px-4 py-3 border-b border-ui-border"
+                  >
+                    <Text className="text-text-primary">Last 7 Days</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedFilter(FILTER_PERIODS.LAST_MONTH)
+                      setShowFilterDropdown(false)
+                    }}
+                    className="px-4 py-3 border-b border-ui-border"
+                  >
+                    <Text className="text-text-primary">Last Month</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedFilter(FILTER_PERIODS.SPECIFIC)
+                      setShowFilterDropdown(false)
+                      setShowDatePicker(true)
+                    }}
+                    className="px-4 py-3"
+                  >
+                    <Text className="text-text-primary">Specific Date</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Date Picker for Specific Date */}
+          {showDatePicker && selectedFilter === FILTER_PERIODS.SPECIFIC && (
+            <View className="mt-3 bg-ui-card border border-ui-border rounded-lg p-3">
+              <Text className="text-text-secondary mb-2">Select Date (YYYY-MM-DD):</Text>
+              <View className="flex-row items-center">
+                <TextInput
+                  className="flex-1 border border-ui-border rounded-lg px-3 py-2 text-text-primary"
+                  placeholder="2026-03-13"
+                  value={selectedDate}
+                  onChangeText={setSelectedDate}
+                  placeholderTextColor="#999999"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(false)}
+                  className="ml-2 px-4 py-2 bg-primary-sage rounded-lg"
+                >
+                  <Text className="text-white">Apply</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Complaints List Content */}
         {Object.keys(groupedComplaints).length > 0 ? (
           Object.entries(groupedComplaints).map(([dateKey, complaintsList]) => (
             <View key={dateKey} className="mb-4">
