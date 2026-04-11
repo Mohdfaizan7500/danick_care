@@ -515,7 +515,7 @@ const MyComplaints = () => {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background-secondary">
+    <SafeAreaView className="flex-1 bg-white">
       <View className="absolute inset-0 z-50 pointer-events-none">
         <Toaster />
       </View>
@@ -537,13 +537,13 @@ const MyComplaints = () => {
       >
         {/* Stats Banner */}
         <View className="mb-4 mt-2">
-          <View className="bg-primary-sage100 rounded-xl p-3 flex-row justify-between">
+          <View className="bg-green-100 rounded-xl p-3 flex-row justify-between border border-green-400">
             <View>
-              <Text className="text-text-secondary text-sm">Total Complaints</Text>
+              <Text className="text-green-700 text-sm">Total Complaints</Text>
               <Text className="text-text-primary font-bold text-2xl">{totalCount}</Text>
             </View>
             <View>
-              <Text className="text-text-secondary text-sm">Showing</Text>
+              <Text className="text-green-700 text-sm">Showing</Text>
               <Text className="text-text-primary font-bold text-2xl">{filteredCount}</Text>
             </View>
           </View>

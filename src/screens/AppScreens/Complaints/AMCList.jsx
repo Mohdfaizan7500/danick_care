@@ -1,154 +1,218 @@
-import { Text, View, FlatList, Image, TouchableOpacity, StatusBar } from 'react-native'
-import React from 'react'
+import { Text, View, FlatList, Image, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native'
+import React, { useState, useEffect } from 'react'
 import Header from '../../../components/Header'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useRoute } from '@react-navigation/native'
 import Icon from 'react-native-vector-icons/Ionicons';
+import { AMCConvertList } from '../../../lib/api' // Update the import path as needed
+
 const AMCList = () => {
     const navigation = useNavigation();
+    const route = useRoute();
+    const { complaintData } = route.params || {};
+    console.log('Received complaint data in AMCList:', complaintData);
 
-    const handleAMCPress = (amc) => {
-        navigation.navigate('ComplaintAMCDetails', { amc });
+    const [loading, setLoading] = useState(false)
+    const [amcData, setAmcData] = useState([])
+    const [refreshing, setRefreshing] = useState(false)
+
+    // Get city_id and service_name from complaintData
+    const cityId = complaintData?.city_id || '1'
+    const serviceName = complaintData?.service || 'AC'
+
+    useEffect(() => {
+        loadAMCList()
+    }, [])
+
+    const loadAMCList = async () => {
+        setLoading(true)
+        try {
+            const payload = {
+                city_id: cityId,
+                service_name: serviceName
+            }
+            const response = await AMCConvertList(payload)
+            console.log('AMC List response:', response)
+            
+            if (response?.data?.success) {
+                setAmcData(response.data.data || [])
+            } else {
+                console.error('Failed to load AMC list:', response?.data)
+            }
+        } catch (error) {
+            console.error('Error loading AMC list:', error)
+        } finally {
+            setLoading(false)
+        }
     }
 
-    const amcData = [
-        {
-            id: '1',
-            name: 'Basic AMC Plan',
-            imageUrl: 'https://www.shutterstock.com/image-vector/air-conditioning-repair-flyer-banner-600nw-2329594219.jpg',
-            price: 2999,
-            warrantyLimit: '3 months',
-            features: ['Free inspection', 'Basic maintenance', 'Phone support']
-        },
-        {
-            id: '2',
-            name: 'Standard AMC Plan',
-            imageUrl: 'https://www.shutterstock.com/image-vector/air-conditioning-repair-flyer-banner-600nw-2329594219.jpg',
-            price: 5999,
-            warrantyLimit: '6 months',
-            features: ['Free inspection', 'Priority service', '20% spare parts discount', 'Phone & WhatsApp support']
-        },
-        {
-            id: '3',
-            name: 'Premium AMC Plan',
-            imageUrl: 'https://www.shutterstock.com/image-vector/air-conditioning-repair-flyer-banner-600nw-2329594219.jpg',
+    const onRefresh = async () => {
+        setRefreshing(true)
+        await loadAMCList()
+        setRefreshing(false)
+    }
 
-            price: 9999,
-            warrantyLimit: '12 months',
-            features: ['Free inspection', 'Priority service', '30% spare parts discount', 'Free spare parts up to ₹1000', '24/7 dedicated support']
-        },
-        {
-            id: '4',
-            name: 'Business AMC Plan',
-            imageUrl: 'https://www.shutterstock.com/image-vector/air-conditioning-repair-flyer-banner-600nw-2329594219.jpg',
+    const handleAMCPress = (amc) => {
+        navigation.navigate('ComplaintAMCDetails', { amc, complaintData })
+    }
 
-            price: 14999,
-            warrantyLimit: '24 months',
-            features: ['Free inspection', 'Emergency service', '50% spare parts discount', 'Free spare parts up to ₹2500', 'Dedicated account manager', 'Monthly reports']
-        },
-        {
-            id: '5',
-            name: 'Annual Maintenance Plus',
-            imageUrl: 'https://www.shutterstock.com/image-vector/air-conditioning-repair-flyer-banner-600nw-2329594219.jpg',
-
-            price: 7999,
-            warrantyLimit: '12 months',
-            features: ['Unlimited service calls', 'Free spare parts up to ₹500', 'Quarterly maintenance', 'Priority support']
+    // Parse HTML content to extract features
+    const parseFeatures = (htmlContent) => {
+        if (!htmlContent) return []
+        
+        const features = []
+        const regex = /<i class="fa fa-check-circle" style="color:green"><\/i>\s*(.*?)<br>/g
+        let match
+        
+        while ((match = regex.exec(htmlContent)) !== null) {
+            if (match[1] && match[1].trim()) {
+                features.push(match[1].trim())
+            }
         }
-    ]
+        
+        // If no features found with regex, return empty array
+        return features
+    }
 
     const formatPrice = (price) => {
+        const numPrice = parseFloat(price)
         return new Intl.NumberFormat('en-IN', {
             style: 'currency',
             currency: 'INR',
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
-        }).format(price)
+        }).format(numPrice)
     }
 
-    const renderItem = ({ item }) => (
-        <TouchableOpacity
-            onPress={() => handleAMCPress(item)}
-            className="bg-white rounded-xl mb-5 overflow-hidden shadow-lg"
-            style={{ elevation: 3 }}
-            activeOpacity={0.7}
-        >
-
-            <View className="relative h-[150px]">
-                {
-                    item?.imageUrl ? (
+    const renderItem = ({ item }) => {
+        const features = parseFeatures(item.content)
+        const imageUrl = item.image1 ? `https://dainikcare.com/dainik_care_admin/${item.image1}` : null
+        
+        return (
+            <TouchableOpacity
+                onPress={() => handleAMCPress(item)}
+                className="bg-white rounded-xl mb-5 overflow-hidden shadow-lg"
+                style={{ elevation: 3 }}
+                activeOpacity={0.7}
+            >
+                <View className="relative h-[150px]">
+                    {imageUrl ? (
                         <>
                             <Image
-                                source={{ uri: item.imageUrl }}
+                                source={{ uri: imageUrl }}
                                 className="w-full h-full"
-                                resizeMode="stretch"
+                                resizeMode="cover"
                             />
                             <View className="absolute top-2.5 right-2.5 bg-orange-500 px-2.5 py-1 rounded-full">
-                                <Text className="text-white text-xs font-bold">Warranty: {item.warrantyLimit}</Text>
+                                <Text className="text-white text-xs font-bold">{item.valid || 'Warranty Included'}</Text>
                             </View>
                         </>
                     ) : (
                         <View className="w-full h-full bg-teal-100 flex items-center justify-center">
                             <Icon name="cube-outline" size={80} color="#10b981" />
                         </View>
-                    )
-                }
-
-            </View>
-
-            <View className="p-4">
-                <Text className="text-xl font-bold text-gray-800 mb-2.5">{item.name}</Text>
-
-                <View className="flex-row items-baseline mb-2">
-                    <Text className="text-sm text-gray-500 mr-2.5">Price:</Text>
-                    <Text className="text-2xl font-bold text-teal-500">{formatPrice(item.price)}</Text>
-                </View>
-
-                <View className="flex-row items-center mb-3 pb-3 border-b border-gray-200">
-                    <Text className="text-sm text-gray-500 mr-2.5">Warranty Limit:</Text>
-                    <Text className="text-base font-semibold text-orange-500">{item.warrantyLimit}</Text>
-                </View>
-
-                <View className="mb-4">
-                    {item.features.slice(0, 3).map((feature, index) => (
-                        <View key={index} className="flex-row items-center mb-1.5">
-                            <Text className="text-sm text-teal-500 mr-2 font-bold">✓</Text>
-                            <Text className="text-sm text-gray-600 flex-1">{feature}</Text>
-                        </View>
-                    ))}
-                    {item.features.length > 3 && (
-                        <Text className="text-xs text-blue-500 mt-1 italic">
-                            +{item.features.length - 3} more features
-                        </Text>
                     )}
                 </View>
 
-                <TouchableOpacity className="bg-teal-500 py-3 rounded-lg items-center mt-2.5">
-                    <Text className="text-white text-base font-bold">Buy Now</Text>
-                </TouchableOpacity>
-            </View>
-        </TouchableOpacity>
-    )
+                <View className="p-4">
+                    <Text className="text-xl font-bold text-gray-800 mb-2.5">{item.name}</Text>
+
+                    <View className="flex-row items-baseline mb-2">
+                        <Text className="text-sm text-gray-500 mr-2.5">Price:</Text>
+                        <Text className="text-2xl font-bold text-teal-500">{formatPrice(item.price)}</Text>
+                    </View>
+
+                    <View className="flex-row items-center mb-3 pb-3 border-b border-gray-200">
+                        <Text className="text-sm text-gray-500 mr-2.5">Validity:</Text>
+                        <Text className="text-base font-semibold text-orange-500">{item.valid || '1 Year'}</Text>
+                    </View>
+
+                    <View className="mb-4">
+                        {features.map((feature, index) => (
+                            <View key={index} className="flex-row items-center mb-1.5">
+                                <Text className="text-sm text-teal-500 mr-2 font-bold">✓</Text>
+                                <Text className="text-sm text-gray-600 flex-1">{feature}</Text>
+                            </View>
+                        ))}
+                       
+                        {features.length === 0 && item.parts && item.parts.length > 0 && (
+                            <View>
+                                <Text className="text-sm font-semibold text-gray-700 mb-1">Covered Parts:</Text>
+                                {item.parts.slice(0, 3).map((part, index) => (
+                                    <View key={index} className="flex-row items-center mb-1.5">
+                                        <Text className="text-sm text-teal-500 mr-2 font-bold">•</Text>
+                                        <Text className="text-sm text-gray-600 flex-1">{part.part_name}</Text>
+                                    </View>
+                                ))}
+                                {item.parts.length > 3 && (
+                                    <Text className="text-xs text-blue-500 mt-1 italic">
+                                        +{item.parts.length - 3} more parts covered
+                                    </Text>
+                                )}
+                            </View>
+                        )}
+                    </View>
+
+                    <TouchableOpacity 
+                        className="bg-teal-500 py-3 rounded-lg items-center mt-2.5"
+                        onPress={() => handleAMCPress(item)}
+                    >
+                        <Text className="text-white text-base font-bold">Buy Now</Text>
+                    </TouchableOpacity>
+                </View>
+            </TouchableOpacity>
+        )
+    }
+
+    if (loading && !refreshing) {
+        return (
+            <SafeAreaView className="flex-1 bg-gray-100">
+                <StatusBar backgroundColor={'#fff'} barStyle={'dark-content'} />
+                <Header
+                    title="AMC"
+                    titlePosition="left"
+                    titleStyle="font-bold text-2xl ml-5"
+                    showBackButton={true}
+                    containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
+                />
+                <View className="flex-1 justify-center items-center">
+                    <ActivityIndicator size="large" color="#10b981" />
+                    <Text className="text-gray-500 mt-4">Loading AMC plans...</Text>
+                </View>
+            </SafeAreaView>
+        )
+    }
 
     return (
         <SafeAreaView className="flex-1 bg-gray-100">
             <StatusBar backgroundColor={'#fff'} barStyle={'dark-content'} />
 
             <Header
-                title="AMC"
+                title={`AMC Plans for ${serviceName}`}
                 titlePosition="left"
                 titleStyle="font-bold text-2xl ml-5"
                 showBackButton={true}
                 containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
             />
 
-
             <FlatList
                 data={amcData}
                 renderItem={renderItem}
-                keyExtractor={item => item.id}
+                keyExtractor={item => item.id.toString()}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ padding: 15 }}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                ListEmptyComponent={
+                    !loading && (
+                        <View className="flex-1 justify-center items-center py-10">
+                            <Icon name="document-text-outline" size={80} color="#CCCCCC" />
+                            <Text className="text-gray-500 text-center mt-4">
+                                No AMC plans available
+                            </Text>
+                        </View>
+                    )
+                }
             />
         </SafeAreaView>
     )

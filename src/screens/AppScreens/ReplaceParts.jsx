@@ -99,6 +99,7 @@ const ReplaceParts = () => {
         loadCounts(),
         loadParts('', true)
       ])
+        
       isInitialLoadDone.current = true
     } catch (error) {
       console.error('Error loading initial data:', error)
@@ -185,7 +186,7 @@ const ReplaceParts = () => {
       case 'returned':
         return 'bg-green-500'
       case 'pending':
-        return 'bg-yellow-500'
+        return 'bg-red-400'
       default:
         return 'bg-gray-400'
     }
@@ -194,7 +195,7 @@ const ReplaceParts = () => {
   const filteredParts = getFilteredParts()
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-white">
       <Header
         title={'Replace Parts'}
         titlePosition='left'
@@ -266,7 +267,7 @@ const ReplaceParts = () => {
               >
                 <View className="flex-1">
                   <Text className={`text-xs ${activeFilter === 'No' ? 'text-blue-700' : 'text-yellow-700'}`}>
-                    Technician Parts
+                    Pending
                   </Text>
                   <View className='flex-row items-center justify-between w-full mt-2'>
                     <Text className={`text-lg font-bold ${activeFilter === 'No' ? 'text-blue-700' : 'text-gray-900'}`}>
@@ -290,7 +291,7 @@ const ReplaceParts = () => {
               >
                 <View className="flex-1">
                   <Text className={`text-xs ${activeFilter === 'Yes' ? 'text-blue-700' : 'text-violet-700'}`}>
-                    Admin Parts
+                    Returned
                   </Text>
                   <View className='flex-row items-center justify-between w-full mt-2'>
                     <Text className={`text-lg font-bold ${activeFilter === 'Yes' ? 'text-blue-700' : 'text-gray-900'}`}>
@@ -338,7 +339,7 @@ const ReplaceParts = () => {
           {/* Parts List */}
           {filteredParts.length > 0 ? (
             filteredParts.map((part) => {
-              const status = getPartStatus(part.part_accept)
+              const status = getPartStatus(part.accept_by_admin)
               // Apply status filter from dropdown
               if (selectedStatus !== 'all' && status !== selectedStatus) return null
 
@@ -396,14 +397,7 @@ const ReplaceParts = () => {
                         </Text>
                       </View>
 
-                      {/* Condition Badge */}
-                      <View className="flex-row">
-                        <View className={`px-2 py-1 rounded-full ${getStatusColor(status)}`}>
-                          <Text className="text-white text-xs">
-                            {status === 'returned' ? 'Admin Taken' : status === 'pending' ? 'With Technician' : 'Available'}
-                          </Text>
-                        </View>
-                      </View>
+                      
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -446,7 +440,7 @@ const ReplaceParts = () => {
 
             <View className="bg-white rounded-lg p-4 mt-4">
               <Text className="text-gray-900 font-semibold mb-2">Part Details:</Text>
-              <Text className="text-gray-600">ID: {selectedPart.id}</Text>
+              <Text className="text-gray-600">Complaint ID: {selectedPart.id}</Text>
               <Text className="text-gray-600">QR Code: {selectedPart.qr_code}</Text>
               <Text className="text-gray-600">Transfer By: {selectedPart.transfer_by}</Text>
               <Text className="text-gray-600">Price: ₹{selectedPart.part_price}</Text>

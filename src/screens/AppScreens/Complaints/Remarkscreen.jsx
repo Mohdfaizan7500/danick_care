@@ -55,7 +55,7 @@ const Remarkscreen = () => {
     // State for Convert to AMC toggle
     const [convertToAMC, setConvertToAMC] = useState(false);
 
-    // Compute if form is complete
+    // Compute if form is complete (only needed when convertToAMC is false)
     const isFormComplete =
         (selectedCustomerType || '').trim() !== '' &&
         (remark || '').trim() !== '' &&
@@ -141,9 +141,9 @@ const Remarkscreen = () => {
     };
 
 
-    useEffect(()=>{
+    useEffect(() => {
         fetchExistingImages()
-    },[])
+    }, [])
     // ----- Camera permission functions -----
     const checkCameraPermission = async () => {
         if (Platform.OS === 'ios') {
@@ -470,8 +470,14 @@ const Remarkscreen = () => {
         setImageToDelete(null);
     };
 
-    // Handle next button with UpdateRemark API call
+    // Handle next button
     const handleNext = async () => {
+        // If convertToAMC is true, directly navigate to AMCList
+        if (convertToAMC) {
+            navigation.navigate('AMCList', { complaintData: complaintData });
+            return;
+        }
+
         // Check if both images are uploaded (have IDs)
         if (!image1Id || !image2Id) {
             toast.custom(
@@ -482,11 +488,6 @@ const Remarkscreen = () => {
                 />,
                 { duration: 3000 }
             );
-            return;
-        }
-
-        if (convertToAMC) {
-            navigation.navigate('AMCList');
             return;
         }
 
@@ -575,10 +576,6 @@ const Remarkscreen = () => {
         </View>
     );
 
-    const handleConvertToAMC = () => {
-        navigation.navigate('AMCList');
-    }
-
     return (
         <SafeAreaView className="flex-1 bg-white">
             <View className="absolute inset-0 z-50 pointer-events-none">
@@ -591,7 +588,7 @@ const Remarkscreen = () => {
                 titleStyle="font-bold text-2xl ml-5"
                 showBackButton={true}
                 containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
-               
+
             />
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -630,158 +627,172 @@ const Remarkscreen = () => {
                         />
                     </View>
 
-                    {/* Customer Type Dropdown */}
-                    <View className="mb-4">
-                        <Text className="text-text-primary font-semibold text-base mb-1">
-                            Select Customer Type
-                        </Text>
-                        <TouchableOpacity
-                            onPress={() => setCustomerTypeDropdownVisible(true)}
-                            className="border border-ui-border rounded-xl px-4 py-3 bg-background-secondary flex-row justify-between items-center"
-                        >
-                            <Text className={selectedCustomerType ? 'text-text-primary' : 'text-text-tertiary'}>
-                                {selectedCustomerType || 'Choose Customer Type (A, B, C, D)'}
+                    {/* Customer Type Dropdown - Only show when convertToAMC is false */}
+                    {!convertToAMC && (
+                        <View className="mb-4">
+                            <Text className="text-text-primary font-semibold text-base mb-1">
+                                Select Customer Type
                             </Text>
-                            <Icon name="chevron-down" size={20} color="#666" />
-                        </TouchableOpacity>
-                    </View>
+                            <TouchableOpacity
+                                onPress={() => setCustomerTypeDropdownVisible(true)}
+                                className="border border-ui-border rounded-xl px-4 py-3 bg-background-secondary flex-row justify-between items-center"
+                            >
+                                <Text className={selectedCustomerType ? 'text-text-primary' : 'text-text-tertiary'}>
+                                    {selectedCustomerType || 'Choose Customer Type (A, B, C, D)'}
+                                </Text>
+                                <Icon name="chevron-down" size={20} color="#666" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
-                    {/* Remark */}
-                    <View className="mb-4">
-                        <Text className="text-text-primary font-semibold text-base mb-1">
-                            Remark
-                        </Text>
-                        <TextInput
-                            className="border border-ui-border rounded-xl px-4 py-3 text-text-primary bg-background-secondary"
-                            placeholder="Add any remarks"
-                            multiline
-                            numberOfLines={4}
-                            textAlignVertical="top"
-                            value={remark}
-                            onChangeText={setRemark}
-                        />
-                    </View>
+                    {/* Remark - Only show when convertToAMC is false */}
+                    {!convertToAMC && (
+                        <View className="mb-4">
+                            <Text className="text-text-primary font-semibold text-base mb-1">
+                                Remark
+                            </Text>
+                            <TextInput
+                                className="border border-ui-border rounded-xl px-4 py-3 text-text-primary bg-background-secondary"
+                                placeholder="Add any remarks"
+                                multiline
+                                numberOfLines={4}
+                                textAlignVertical="top"
+                                value={remark}
+                                onChangeText={setRemark}
+                            />
+                        </View>
+                    )}
 
-                    {/* Image Upload Section */}
-                    <Text className="text-text-primary font-semibold text-base mb-2">
-                        Capture Images
-                    </Text>
-                    <View className='flex-row justify-between gap-4'>
-                        {/* Image 1 - Before Working */}
-                        <View className="flex-1 mb-4">
-                            <Text className="text-text-secondary text-sm mb-1">Before Working Image</Text>
-                            {image1Uri ? (
-                                <View className="relative">
-                                    <Image
-                                        source={{ uri: image1Uri }}
-                                        className="w-full h-[200px] rounded-xl bg-gray-200"
-                                        resizeMode="cover"
-                                    />
-                                    <TouchableOpacity
-                                        onPress={() => showDeleteConfirmation(1)}
-                                        disabled={deletingImage1}
-                                        className="absolute top-2 right-2 bg-white/80 rounded-full p-1"
-                                    >
-                                        {deletingImage1 ? (
-                                            <ActivityIndicator size="small" color="#ff4444" />
-                                        ) : (
-                                            <Icon name="trash-outline" size={22} color="#ff4444" />
-                                        )}
-                                    </TouchableOpacity>
-                                    {uploadingImage1 && (
-                                        <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center">
-                                            <ActivityIndicator size="large" color="#fff" />
-                                            <Text className="text-white mt-2">Uploading...</Text>
+                    {/* Image Upload Section - Only show when convertToAMC is false */}
+                    {!convertToAMC && (
+                        <>
+                            <Text className="text-text-primary font-semibold text-base mb-2">
+                                Capture Images
+                            </Text>
+                            <View className='flex-row justify-between gap-4'>
+                                {/* Image 1 - Before Working */}
+                                <View className="flex-1 mb-4">
+                                    <Text className="text-text-secondary text-sm mb-1">Before Working Image</Text>
+                                    {image1Uri ? (
+                                        <View className="relative">
+                                            <Image
+                                                source={{ uri: image1Uri }}
+                                                className="w-full h-[200px] rounded-xl bg-gray-200"
+                                                resizeMode="cover"
+                                            />
+                                            <TouchableOpacity
+                                                onPress={() => showDeleteConfirmation(1)}
+                                                disabled={deletingImage1}
+                                                className="absolute top-2 right-2 bg-white/80 rounded-full p-1"
+                                            >
+                                                {deletingImage1 ? (
+                                                    <ActivityIndicator size="small" color="#ff4444" />
+                                                ) : (
+                                                    <Icon name="trash-outline" size={22} color="#ff4444" />
+                                                )}
+                                            </TouchableOpacity>
+                                            {uploadingImage1 && (
+                                                <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center">
+                                                    <ActivityIndicator size="large" color="#fff" />
+                                                    <Text className="text-white mt-2">Uploading...</Text>
+                                                </View>
+                                            )}
+                                            {image1Id && !uploadingImage1 && !deletingImage1 && (
+                                                <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1">
+                                                    <Text className="text-white text-xs">Uploaded ✓</Text>
+                                                </View>
+                                            )}
                                         </View>
-                                    )}
-                                    {image1Id && !uploadingImage1 && !deletingImage1 && (
-                                        <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1">
-                                            <Text className="text-white text-xs">Uploaded ✓</Text>
-                                        </View>
+                                    ) : (
+                                        <TouchableOpacity
+                                            onPress={() => captureImage(1)}
+                                            disabled={loadingImages}
+                                            className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary"
+                                            style={{ minHeight: 200 }}
+                                        >
+                                            <Icon name="camera-outline" size={40} color="#666" />
+                                            <Text className="text-text-primary font-semibold text-base mt-2 text-center">
+                                                Capture Before Working
+                                            </Text>
+                                            <Text className="text-text-tertiary text-sm text-center mt-1">
+                                                Tap to open camera
+                                            </Text>
+                                        </TouchableOpacity>
                                     )}
                                 </View>
-                            ) : (
-                                <TouchableOpacity
-                                    onPress={() => captureImage(1)}
-                                    disabled={loadingImages}
-                                    className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary"
-                                    style={{ minHeight: 200 }}
-                                >
-                                    <Icon name="camera-outline" size={40} color="#666" />
-                                    <Text className="text-text-primary font-semibold text-base mt-2 text-center">
-                                        Capture Before Working
-                                    </Text>
-                                    <Text className="text-text-tertiary text-sm text-center mt-1">
-                                        Tap to open camera
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
 
-                        {/* Image 2 - After Working */}
-                        <View className="flex-1 mb-4">
-                            <Text className="text-text-secondary text-sm mb-1">After Working Image</Text>
-                            {image2Uri ? (
-                                <View className="relative">
-                                    <Image
-                                        source={{ uri: image2Uri }}
-                                        className="w-full h-[200px] rounded-xl bg-gray-200"
-                                        resizeMode="cover"
-                                    />
-                                    <TouchableOpacity
-                                        onPress={() => showDeleteConfirmation(2)}
-                                        disabled={deletingImage2}
-                                        className="absolute top-2 right-2 bg-white/80 rounded-full p-1"
-                                    >
-                                        {deletingImage2 ? (
-                                            <ActivityIndicator size="small" color="#ff4444" />
-                                        ) : (
-                                            <Icon name="trash-outline" size={22} color="#ff4444" />
-                                        )}
-                                    </TouchableOpacity>
-                                    {uploadingImage2 && (
-                                        <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center">
-                                            <ActivityIndicator size="large" color="#fff" />
-                                            <Text className="text-white mt-2">Uploading...</Text>
+                                {/* Image 2 - After Working */}
+                                <View className="flex-1 mb-4">
+                                    <Text className="text-text-secondary text-sm mb-1">After Working Image</Text>
+                                    {image2Uri ? (
+                                        <View className="relative">
+                                            <Image
+                                                source={{ uri: image2Uri }}
+                                                className="w-full h-[200px] rounded-xl bg-gray-200"
+                                                resizeMode="cover"
+                                            />
+                                            <TouchableOpacity
+                                                onPress={() => showDeleteConfirmation(2)}
+                                                disabled={deletingImage2}
+                                                className="absolute top-2 right-2 bg-white/80 rounded-full p-1"
+                                            >
+                                                {deletingImage2 ? (
+                                                    <ActivityIndicator size="small" color="#ff4444" />
+                                                ) : (
+                                                    <Icon name="trash-outline" size={22} color="#ff4444" />
+                                                )}
+                                            </TouchableOpacity>
+                                            {uploadingImage2 && (
+                                                <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center">
+                                                    <ActivityIndicator size="large" color="#fff" />
+                                                    <Text className="text-white mt-2">Uploading...</Text>
+                                                </View>
+                                            )}
+                                            {image2Id && !uploadingImage2 && !deletingImage2 && (
+                                                <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1">
+                                                    <Text className="text-white text-xs">Uploaded ✓</Text>
+                                                </View>
+                                            )}
                                         </View>
-                                    )}
-                                    {image2Id && !uploadingImage2 && !deletingImage2 && (
-                                        <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1">
-                                            <Text className="text-white text-xs">Uploaded ✓</Text>
-                                        </View>
+                                    ) : (
+                                        <TouchableOpacity
+                                            onPress={() => captureImage(2)}
+                                            disabled={loadingImages}
+                                            className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary"
+                                            style={{ minHeight: 200 }}
+                                        >
+                                            <Icon name="camera-outline" size={40} color="#666" />
+                                            <Text className="text-text-primary font-semibold text-base mt-2 text-center">
+                                                Capture After Working
+                                            </Text>
+                                            <Text className="text-text-tertiary text-sm text-center mt-1">
+                                                Tap to open camera
+                                            </Text>
+                                        </TouchableOpacity>
                                     )}
                                 </View>
-                            ) : (
-                                <TouchableOpacity
-                                    onPress={() => captureImage(2)}
-                                    disabled={loadingImages}
-                                    className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary"
-                                    style={{ minHeight: 200 }}
-                                >
-                                    <Icon name="camera-outline" size={40} color="#666" />
-                                    <Text className="text-text-primary font-semibold text-base mt-2 text-center">
-                                        Capture After Working
-                                    </Text>
-                                    <Text className="text-text-tertiary text-sm text-center mt-1">
-                                        Tap to open camera
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </View>
+                            </View>
+                        </>
+                    )}
 
-                    {/* Next Button - enabled only when all fields are filled and images uploaded */}
+                    {/* Next Button */}
                     <TouchableOpacity
                         onPress={handleNext}
-                        disabled={!isFormComplete || uploadingImage1 || uploadingImage2 || deletingImage1 || deletingImage2 || loadingImages || submitting}
-                        className={`py-4 rounded-xl items-center mb-8 ${isFormComplete && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2 && !loadingImages && !submitting ? 'bg-black' : 'bg-gray-400'
-                            }`}
+                        disabled={!convertToAMC && (!isFormComplete || uploadingImage1 || uploadingImage2 || deletingImage1 || deletingImage2 || loadingImages || submitting)}
+                        className={`py-4 rounded-xl items-center mb-8 ${
+                            convertToAMC 
+                                ? 'bg-black' 
+                                : (isFormComplete && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2 && !loadingImages && !submitting)
+                                    ? 'bg-black'
+                                    : 'bg-gray-400'
+                        }`}
                     >
                         <Text className="text-white font-semibold text-base">
                             {submitting ? 'Submitting...' :
                                 loadingImages ? 'Loading Images...' :
                                     uploadingImage1 || uploadingImage2 ? 'Uploading Images...' :
-                                        deletingImage1 || deletingImage2 ? 'Deleting Image...' : 'Next'}
+                                        deletingImage1 || deletingImage2 ? 'Deleting Image...' :
+                                            convertToAMC ? 'Next' : 'Next'}
                         </Text>
                     </TouchableOpacity>
                 </ScrollView>

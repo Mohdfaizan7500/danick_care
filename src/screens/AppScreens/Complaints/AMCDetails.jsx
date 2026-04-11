@@ -21,7 +21,7 @@ import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-cam
 import { request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
 import StatusMessage from '../../../components/StatusMessage';
 import { LinkQrCodeIcon } from '../../../assets/svgIcons/SVGIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const AMCDetails = () => {
   const [qrCodeNumbers, setQrCodeNumbers] = useState({});
@@ -36,6 +36,17 @@ const AMCDetails = () => {
   const [selectedPartName, setSelectedPartName] = useState('');
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const navigation = useNavigation();
+
+  const route = useRoute();
+  console.log('AMCDetails route params:', route.params);
+
+  const { amc, complaintData } = route.params || {};
+  console.log('AMC Data:', amc);
+  console.log('Complaint Data:', complaintData);
+
+  // Get parts from AMC data
+  const spareParts = amc?.parts || [];
+  console.log('Spare Parts from AMC:', spareParts);
 
   const device = useCameraDevice('back');
 
@@ -59,90 +70,6 @@ const AMCDetails = () => {
       keyboardDidHideListener.remove();
     };
   }, []);
-
-  // Dummy AC Spare Parts Data
-  const spareParts = [
-    {
-      id: 1,
-      name: 'Compressor',
-      price: '₹8,500',
-      image: 'https://www.aldahome.com/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/d/a/daikin-1.8-ton-rotary-compressor-highly-r22.jpg',
-      description: 'Rotary compressor for 1.5 ton AC',
-      compatibility: 'Daikin, Voltas, LG'
-    },
-    {
-      id: 2,
-      name: 'Condenser Coil',
-      price: '₹3,200',
-      image: 'https://www.aldahome.com/media/catalog/product/cache/6517c62f5899ad6aa0ba23ceb3eeff97/s/a/sansui-split-ac-condenser-coil-1-5-ton-3-star.jpg',
-      description: 'Copper condenser coil',
-      compatibility: 'All brands'
-    },
-    {
-      id: 3,
-      name: 'PCB Board',
-      price: '₹2,500',
-      image: 'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcRz16XpavGwgAOnW0g7Uf62no0Jo2IhjgYiXmy7yABtQekWZWMf',
-      description: 'Main control PCB board',
-      compatibility: 'Samsung, LG, Hitachi'
-    },
-    {
-      id: 4,
-      name: 'Fan Motor',
-      price: '₹1,800',
-      image: 'https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcS6YKJMFME0ADiMWMv949TunLfLKZpLyLcXILPQs6N-hBEe9AdNQrz_4LU65Gq7sXFd8mFbCJ3L_v6LnvSbI9njG_xHZYMWiA',
-      description: 'Outdoor fan motor',
-      compatibility: 'Universal'
-    },
-    {
-      id: 5,
-      name: 'Capacitor',
-      price: '₹450',
-      image: 'https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcTvqNs-6TjLM4p-hKQknb9jes3Py6x-uDEZ0KCgFp2j4sFD-Xp9v60ENYvoKdoECC_Jw1iRil9Qepwkz0MsEtiZkAv0LYLmQg',
-      description: 'Run capacitor 25MFD',
-      compatibility: 'All brands'
-    },
-    {
-      id: 6,
-      name: 'Thermostat',
-      price: '₹650',
-      image: 'https://rukminim2.flixcart.com/image/480/640/xif0q/electronic-hobby-kit/e/i/v/geyser-thermostat-and-thermostat-cut-out-suitable-for-v-guard-10-original-imahhfemejtbtsbm.jpeg?q=90',
-      description: 'Digital thermostat sensor',
-      compatibility: 'Universal'
-    },
-    {
-      id: 7,
-      name: 'Remote Control',
-      price: '₹350',
-      image: 'data:image/jpeg;base64,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',
-      description: 'LCD display remote',
-      compatibility: 'All brands'
-    },
-    {
-      id: 8,
-      name: 'Air Filter',
-      price: '₹280',
-      image: 'https://via.placeholder.com/60x60?text=Filter',
-      description: 'Anti-bacterial air filter',
-      compatibility: 'Universal'
-    },
-    {
-      id: 9,
-      name: 'Expansion Valve',
-      price: '₹1,200',
-      image: 'https://via.placeholder.com/60x60?text=Valve',
-      description: 'TXV expansion valve',
-      compatibility: 'Daikin, Voltas'
-    },
-    {
-      id: 10,
-      name: 'Blower Wheel',
-      price: '₹950',
-      image: 'https://via.placeholder.com/60x60?text=Blower',
-      description: 'Indoor blower wheel assembly',
-      compatibility: 'LG, Samsung'
-    },
-  ];
 
   // Request camera permission
   const requestCameraPermission = async () => {
@@ -211,7 +138,7 @@ const AMCDetails = () => {
   };
 
   const handleImagePress = (imageUrl, partName) => {
-    setSelectedImage(imageUrl);
+    setSelectedImage(imageUrl || 'https://via.placeholder.com/200');
     setSelectedPartName(partName);
     setShowImageModal(true);
   };
@@ -252,7 +179,7 @@ const AMCDetails = () => {
         <StatusMessage
           type='success'
           title='QR Code Linked Successfully!'
-          description={`QR Code: ${qrCode} linked to ${spareParts.find(part => part.id === partId)?.name}`}
+          description={`QR Code: ${qrCode} linked to ${spareParts.find(part => part.id === partId)?.part_name || 'part'}`}
         />,
         { duration: 2000 }
       );
@@ -272,7 +199,24 @@ const AMCDetails = () => {
       <StatusMessage type='info' title='Proceeding to next step...' />,
       { duration: 2000 }
     );
-    setTimeout(() => { navigation.navigate('AMCBilling'); }, 2000);
+    setTimeout(() => { 
+      navigation.navigate('AMCBilling', { 
+        linkedParts: linkedItems.map(id => ({
+          id,
+          part_name: spareParts.find(part => part.id === id)?.part_name,
+          qr_code: qrCodeNumbers[id]
+        })),
+        amc,
+        complaintData 
+      }); 
+    }, 2000);
+  };
+
+  // Get image URL helper
+  const getImageUrl = (partName) => {
+    // You can map part names to specific images or use a default
+    const defaultImage = 'https://via.placeholder.com/60x60?text=Part';
+    return defaultImage;
   };
 
   return (
@@ -294,103 +238,108 @@ const AMCDetails = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 50 }}
       >
+        {/* AMC Info Header - Now inside ScrollView */}
+        <View className="bg-white rounded-xl p-4 mb-4 mt-2 shadow-sm">
+          <Text className="text-lg font-bold text-gray-800">{amc?.name || 'AMC Plan'}</Text>
+          <Text className="text-sm text-gray-600 mt-1">Valid: {amc?.valid || '1 Year'}</Text>
+          <Text className="text-sm text-teal-600 font-semibold mt-1">Price: ₹{amc?.price || '0'}</Text>
+        </View>
+
         {/* Spare Parts List */}
-        <View className="mb-4 mt-4">
+        <View className="mb-4">
           <Text className="text-lg font-bold text-gray-800 mb-3">
-            AC Spare Parts ({spareParts.length})
+            Spare Parts to Link ({spareParts.length})
           </Text>
 
-          {spareParts.map((part) => (
-            <View key={part.id} className="bg-white rounded-xl p-3 mb-3 shadow-sm">
-              {/* Top row: Image and basic details */}
-              <View className="flex-row items-center">
-                {/* Left side image - Touchable for modal */}
-                {
-                  part.image ? (
-                    <TouchableOpacity onPress={() => handleImagePress(part.image, part.name)}>
-
-                      <Image source={{ uri: part.image }} className="w-14 h-14 rounded-lg bg-gray-200" />
-                    </TouchableOpacity>
-                  ) : (
-                    <View className="w-14 h-14 rounded-lg bg-green-100 flex items-center justify-center">
-                      <Icon name="cube-outline" size={24} color="#10b981" />
-                    </View>
-                  )
-                }
-
-
-                {/* Right side details */}
-                <View className="flex-1 ml-3">
-                  <Text className="text-base font-semibold text-gray-800 mb-1">{part.name}</Text>
-                  {linkedItems.includes(part.id) && (
-                    <View className="bg-green-500 px-2 py-0.5 rounded mt-1 self-start">
-                      <Text className="text-white text-xs font-semibold">✓ QR Linked</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              {/* QR Code Section for each spare part */}
-              <View className="pt-3 flex-row border-gray-100">
-                {/* QR Input with Scan Icon */}
-                <View className="flex-row flex-1 items-center">
-                  <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-lg bg-white px-3">
-                    <Icon name="qr-code-outline" size={18} color="#666" />
-                    <TextInput
-                      className="flex-1 ml-2 text-sm text-gray-800 py-3"
-                      placeholder="Enter QR Code Number"
-                      placeholderTextColor={'gray'}
-                      value={qrCodeNumbers[part.id] || ''}
-                      onChangeText={(value) => handleQrCodeChange(part.id, value)}
-                      keyboardType="default"
-                      editable={!loadingStates[part.id] && !linkedItems.includes(part.id)}
-                    />
-                    {(qrCodeNumbers[part.id] || '').length > 0 && (
-                      <TouchableOpacity
-                        onPress={() => handleQrCodeChange(part.id, '')}
-                        className="ml-2"
-                        disabled={linkedItems.includes(part.id)}
-                      >
-                        <Icon name="close-circle-outline" size={18} color="#999" />
-                      </TouchableOpacity>
+          {spareParts.length > 0 ? (
+            spareParts.map((part, index) => (
+              <View key={part.id || index} className="bg-white rounded-xl p-3 mb-3 shadow-sm">
+                {/* Top row: Image and basic details */}
+                <View className="flex-row items-center">
+                  {/* Right side details */}
+                  <View className="flex-row gap-5 ml-3">
+                    <Text className="text-base font-semibold text-gray-800">
+                      {part.part_name}
+                    </Text>
+                    {linkedItems.includes(part.id || index) && (
+                      <View className="bg-green-500 px-2 py-0.5 rounded mt-1 self-start">
+                        <Text className="text-white text-xs font-semibold">✓ QR Linked</Text>
+                      </View>
                     )}
                   </View>
-
-                  {/* Scan Button */}
-                  <TouchableOpacity
-                    onPress={() => handleScan(part.id)}
-                    disabled={linkedItems.includes(part.id)}
-                    className={`rounded-r-lg px-4 py-3 border items-center justify-center ${linkedItems.includes(part.id)
-                      ? 'bg-gray-500 border-gray-500'
-                      : 'bg-teal-500 border-teal-500'
-                      }`}
-                  >
-                    <Icon name="camera-outline" size={18} color="white" />
-                  </TouchableOpacity>
                 </View>
 
-                {/* Link Button for each spare part */}
-                <TouchableOpacity
-                  style={{ width: 40 }}
-                  className={`py-2.5 ml-2 px-2 rounded-lg items-center ${linkedItems.includes(part.id) ? 'bg-gray-500' : 'bg-orange-500'
+                {/* QR Code Section for each spare part */}
+                <View className="pt-2 flex-row border-gray-100">
+                  {/* QR Input with Scan Icon */}
+                  <View className="flex-row flex-1 items-center">
+                    <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-lg bg-white px-3">
+                      <Icon name="qr-code-outline" size={18} color="#666" />
+                      <TextInput
+                        className="flex-1 ml-2 text-sm text-gray-800 py-3"
+                        placeholder="Enter QR Code Number"
+                        placeholderTextColor={'gray'}
+                        value={qrCodeNumbers[part.id || index] || ''}
+                        onChangeText={(value) => handleQrCodeChange(part.id || index, value)}
+                        keyboardType="default"
+                        editable={!loadingStates[part.id || index] && !linkedItems.includes(part.id || index)}
+                      />
+                      {(qrCodeNumbers[part.id || index] || '').length > 0 && (
+                        <TouchableOpacity
+                          onPress={() => handleQrCodeChange(part.id || index, '')}
+                          className="ml-2"
+                          disabled={linkedItems.includes(part.id || index)}
+                        >
+                          <Icon name="close-circle-outline" size={18} color="#999" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* Scan Button */}
+                    <TouchableOpacity
+                      onPress={() => handleScan(part.id || index)}
+                      disabled={linkedItems.includes(part.id || index)}
+                      className={`rounded-r-lg px-4 py-3 border items-center justify-center ${
+                        linkedItems.includes(part.id || index)
+                          ? 'bg-gray-500 border-gray-500'
+                          : 'bg-teal-500 border-teal-500'
+                      }`}
+                    >
+                      <Icon name="camera-outline" size={18} color="white" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Link Button for each spare part */}
+                  <TouchableOpacity
+                    style={{ width: 40 }}
+                    className={`py-2.5 ml-2 px-2 rounded-lg items-center ${
+                      linkedItems.includes(part.id || index) ? 'bg-gray-500' : 'bg-orange-500'
                     }`}
-                  onPress={() => handleLinkQR(part.id)}
-                  disabled={loadingStates[part.id] || linkedItems.includes(part.id)}
-                >
-                  {loadingStates[part.id] ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <LinkQrCodeIcon color="white" size={16} />
-                  )}
-                </TouchableOpacity>
+                    onPress={() => handleLinkQR(part.id || index)}
+                    disabled={loadingStates[part.id || index] || linkedItems.includes(part.id || index)}
+                  >
+                    {loadingStates[part.id || index] ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <LinkQrCodeIcon color="white" size={16} />
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
+            ))
+          ) : (
+            <View className="bg-white rounded-xl p-8 items-center justify-center">
+              <Icon name="cube-outline" size={60} color="#CCCCCC" />
+              <Text className="text-gray-500 text-center mt-4">
+                No spare parts found for this AMC plan
+              </Text>
             </View>
-          ))}
+          )}
         </View>
       </ScrollView>
 
       {/* Next Button - Hide when keyboard is visible */}
-      {!isKeyboardVisible && (
+      {!isKeyboardVisible && spareParts.length > 0 && (
         <TouchableOpacity
           className="bg-teal-500 py-3.5 mx-5 rounded-xl items-center absolute bottom-3 left-0 right-0"
           onPress={handleNext}

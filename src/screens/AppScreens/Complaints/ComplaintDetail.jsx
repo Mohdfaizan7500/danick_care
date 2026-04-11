@@ -240,7 +240,7 @@ const ComplaintDetail = () => {
         }
 
         // Check if upload_image is "1", navigate directly to next screen
-        if (complaint.upload_image === "1") {
+        if (complaint.upload_image === "1" && complaint.verify_otp === "1") {
             console.log('Upload image already completed, navigating to remarks screen');
             navigation.replace('Remarkscreen', {
                 complaintData: complaint,

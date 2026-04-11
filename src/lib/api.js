@@ -222,6 +222,33 @@ export const getAMCList = async (payload) => {
     }
 };
 
+export const AMCConvertList = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/AMCConvertList', payload);
+        console.log('Get AMC Convert List response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in AMCConvertList:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const AMCQRCodeInsertPart = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/AMCQRCodeInsertPart', payload);
+        console.log('Get AMC QR Code Insert Part response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in AMCQRCodeInsertPart:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+
 export const technicianAssignPart = async (payload) => {
     console.log('payload', payload)
     try {
