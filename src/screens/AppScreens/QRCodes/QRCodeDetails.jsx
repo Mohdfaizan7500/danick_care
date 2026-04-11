@@ -26,7 +26,7 @@ const QRCodeDetails = () => {
   const [expandedCommission, setExpandedCommission] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [hasStoragePermission, setHasStoragePermission] = useState(false);
-  
+
   // Dialog state
   const [dialogVisible, setDialogVisible] = useState(false);
   const [dialogConfig, setDialogConfig] = useState({
@@ -233,7 +233,6 @@ const QRCodeDetails = () => {
   const openPDF = async (filePath) => {
     try {
       if (Platform.OS === 'android') {
-        // For Android, use content:// URI if possible, otherwise file://
         await ReactNativeBlobUtil.android.actionViewIntent(filePath, 'application/pdf');
       } else if (Platform.OS === 'ios') {
         await ReactNativeBlobUtil.ios.openDocument(filePath);
@@ -246,7 +245,60 @@ const QRCodeDetails = () => {
     }
   };
 
-  // Handle PDF download with react-native-blob-util - Saves to Downloads folder
+  // Download using DownloadManager on Android
+  const downloadWithDownloadManager = async (downloadUrl, fileName, destinationPath) => {
+    try {
+      const { DownloadManager } = ReactNativeBlobUtil;
+      
+      // For Android 10+, use MediaStore for better compatibility
+      const isAndroidQOrAbove = Platform.Version >= 29;
+      
+      const downloadOptions = {
+        path: destinationPath,
+        description: `Downloading invoice ${fileName}`,
+        title: fileName,
+        useDownloadManager: true, // Use Android's DownloadManager
+        mediaScannable: true, // Make file visible in gallery/file managers
+        notification: true, // Show download notification
+      };
+      
+      // For Android 10+, add mime type for better handling
+      if (isAndroidQOrAbove) {
+        downloadOptions.mime = 'application/pdf';
+      }
+      
+      const configOptions = {
+        fileCache: false,
+        path: destinationPath,
+        appendExt: 'pdf',
+        addAndroidDownloads: downloadOptions,
+      };
+      
+      const response = await ReactNativeBlobUtil
+        .config(configOptions)
+        .fetch('GET', downloadUrl);
+      
+      return response.path();
+    } catch (error) {
+      console.error('DownloadManager error:', error);
+      throw error;
+    }
+  };
+
+  // Fallback download method (direct download)
+  const downloadDirectly = async (downloadUrl, filePath) => {
+    const { config, fs } = ReactNativeBlobUtil;
+    
+    const response = await config({
+      fileCache: false,
+      path: filePath,
+      overwrite: true,
+    }).fetch('GET', downloadUrl);
+    
+    return response.path();
+  };
+
+  // Modified handleDownloadPDF function to save to /storage/emulated/0/Downloads/
   const handleDownloadPDF = async () => {
     const invoiceUrl = complaintDetails?.invoice;
 
@@ -298,29 +350,26 @@ const QRCodeDetails = () => {
       const timestamp = new Date().getTime();
       const fileName = `Invoice_${complaintDetails.id || complaintDetails.csn || 'complaint'}_${timestamp}.pdf`;
 
-      let downloadPath;
-      let finalPath;
+      let finalPath = '';
 
       if (Platform.OS === 'android') {
-        // For Android, save directly to Downloads folder without DownloadManager
-        // so we can access the file path immediately
-        const { config, fs } = ReactNativeBlobUtil;
+        // Use Downloads directory
+        const { fs } = ReactNativeBlobUtil;
+        const downloadPath = `${fs.dirs.DownloadDir}/${fileName}`;
         
-        // Get the Downloads directory path
-        const downloadsDir = fs.dirs.DownloadDir;
-        downloadPath = `${downloadsDir}/${fileName}`;
+        console.log('Download path:', downloadPath);
+        console.log('Saving to Downloads folder:', fs.dirs.DownloadDir);
         
-        console.log('Download path for Android:', downloadPath);
-        
-        // Download file directly without DownloadManager
-        const response = await config({
-          fileCache: false,
-          path: downloadPath,
-          overwrite: true,
-        }).fetch('GET', invoiceUrl);
-        
-        finalPath = response.path();
-        console.log('Download completed at:', finalPath);
+        // Try using DownloadManager first
+        try {
+          finalPath = await downloadWithDownloadManager(invoiceUrl, fileName, downloadPath);
+          console.log('DownloadManager completed, file at:', finalPath);
+        } catch (dmError) {
+          console.log('DownloadManager failed, falling back to direct download:', dmError);
+          // Fallback to direct download if DownloadManager fails
+          finalPath = await downloadDirectly(invoiceUrl, downloadPath);
+          console.log('Direct download completed, file at:', finalPath);
+        }
         
         // Verify file exists
         const exists = await fs.exists(finalPath);
@@ -351,14 +400,9 @@ const QRCodeDetails = () => {
         // iOS: Save to documents directory
         const { config, fs } = ReactNativeBlobUtil;
         const documentsDir = fs.dirs.DocumentDir;
-        downloadPath = `${documentsDir}/${fileName}`;
+        const downloadPath = `${documentsDir}/${fileName}`;
         
-        const response = await config({
-          fileCache: false,
-          path: downloadPath,
-        }).fetch('GET', invoiceUrl);
-        
-        finalPath = response.path();
+        finalPath = await downloadDirectly(invoiceUrl, downloadPath);
         console.log('Download completed on iOS:', finalPath);
         
         toast.custom(
@@ -828,15 +872,15 @@ const QRCodeDetails = () => {
           <Text className="text-gray-700 text-base leading-6 mb-4">
             {dialogConfig.message}
           </Text>
-          
-          <View className="flex-row space-x-3 mt-2">
+
+          <View className="flex-row gap-5 mt-2">
             <TouchableOpacity
               onPress={closeDialog}
               className="flex-1 bg-gray-200 py-3 rounded-lg"
             >
               <Text className="text-gray-700 font-semibold text-center">Close</Text>
             </TouchableOpacity>
-            
+
             {dialogConfig.onConfirm && (
               <TouchableOpacity
                 onPress={handleDialogAction}
