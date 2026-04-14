@@ -3,7 +3,7 @@ import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // const BASE_URL = 'https://dummyjson.com/';
-const BASE_URL = 'http://192.168.1.43:5001/';
+const BASE_URL = 'http://192.168.1.38:5001/';
 // const BASE_URL = 'http://api.dainikcare.com/';
 
 
@@ -243,6 +243,19 @@ export const AMCQRCodeInsertPart = async (payload) => {
         return response;
     } catch (error) {
         console.error('API error in AMCQRCodeInsertPart:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const AMCQRCodeRemove = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/RemoveQRCode', payload);
+        console.log('RemoveQRCode Part response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in RemoveQRCode:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
