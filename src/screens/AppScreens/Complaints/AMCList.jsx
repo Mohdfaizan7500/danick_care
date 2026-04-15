@@ -267,7 +267,7 @@ const AMCList = () => {
                             <Text className="text-yellow-700 font-semibold ml-2">Important Note:</Text>
                         </View>
                         <Text className="text-yellow-700 text-sm">
-                            ⚠️ अगर आप AMC cancel करना चाहते हैं, तो सभी QR codes को detach करना अनिवार्य है।
+                            ⚠️ अगर आप AMC cancel करना चाहते हैं, तो सभी QR codes को हटाना अनिवार्य है।
                         </Text>
                         <Text className="text-yellow-700 text-sm mt-1">
                             ⚠️ If you want to cancel the AMC, you must detach all QR codes first.

@@ -13,6 +13,7 @@ import {
   Keyboard,
   Linking,
   BackHandler,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -21,10 +22,17 @@ import Header from '../../../components/Header';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import { request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
 import StatusMessage from '../../../components/StatusMessage';
-import { LinkQrCodeIcon } from '../../../assets/svgIcons/SVGIcons';
+import { BucketIcon, LinkQrCodeIcon } from '../../../assets/svgIcons/SVGIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { AMCQRCodeInsertPart, AMCQRCodeRemove } from '../../../lib/api';
+import { 
+  AMCQRCodeInsertPart, 
+  AMCQRCodeRemove, 
+  FetchPartsForReplaced,
+  AMCPartQRCodeUpdatePart,
+  RemoveAMCPart 
+} from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
+import DialogBox from '../../../components/DilaogBox';
 
 const AMCDetails = () => {
   const { user } = useAuth();
@@ -41,6 +49,17 @@ const AMCDetails = () => {
   const [selectedPartName, setSelectedPartName] = useState('');
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [billingId, setBillingId] = useState(null);
+  
+  // New states for part replacement
+  const [showReplaceModal, setShowReplaceModal] = useState(false);
+  const [selectedReplacePart, setSelectedReplacePart] = useState(null);
+  const [availableParts, setAvailableParts] = useState([]);
+  const [loadingParts, setLoadingParts] = useState(false);
+  const [selectedReplacementPart, setSelectedReplacementPart] = useState(null);
+  const [replacedParts, setReplacedParts] = useState({}); // Store replaced part info
+  const [replaceLoadingStates, setReplaceLoadingStates] = useState({});
+  const [removeReplaceLoadingStates, setRemoveReplaceLoadingStates] = useState({});
+
   const navigation = useNavigation();
 
   const route = useRoute();
@@ -98,19 +117,16 @@ const AMCDetails = () => {
   useEffect(() => {
     const backAction = () => {
       if (linkedItems.length > 0) {
-        // Show toast message if there are linked QR codes
         toast.custom(
           <StatusMessage
             type='error'
             title='Cannot Go Back'
             message={`Please remove all linked QR code(s) first. \n(कृपया पहले सभी लिंक किए गए QR कोड हटाएं)`}
-
           />,
           { duration: 3000 }
         );
-        return true; // Prevent back action
+        return true;
       }
-      // Allow back action if no linked items
       navigation.goBack();
       return true;
     };
@@ -216,7 +232,6 @@ const AMCDetails = () => {
     setLoadingStates(prev => ({ ...prev, [partId]: true }));
 
     try {
-      // Prepare payload for API
       const payload = {
         technician_id: technicianId,
         amc_id: amc?.id?.toString() || '',
@@ -228,12 +243,10 @@ const AMCDetails = () => {
 
       console.log('Linking QR Code with payload:', payload);
 
-      // Call API to insert part with QR code
       const response = await AMCQRCodeInsertPart(payload);
       console.log('AMC QR Code Insert Part response:', response);
 
       if (response?.data?.success) {
-        // Success - mark as linked
         if (!linkedItems.includes(partId)) {
           setLinkedItems([...linkedItems, partId]);
         }
@@ -247,12 +260,11 @@ const AMCDetails = () => {
           { duration: 2000 }
         );
       } else {
-        // Failed to link
         toast.custom(
           <StatusMessage
             type='error'
             title='Failed to Link QR Code'
-            description={response?.data?.msg || response?.data?.message || 'Please try again'}
+            message={response?.data?.msg || response?.data?.message || 'Please try again'}
           />,
           { duration: 3000 }
         );
@@ -263,12 +275,185 @@ const AMCDetails = () => {
         <StatusMessage
           type='error'
           title='Error Linking QR Code'
-          description={error.message || 'Please try again'}
+          message={error.message || 'Please try again'}
         />,
         { duration: 3000 }
       );
     } finally {
       setLoadingStates(prev => ({ ...prev, [partId]: false }));
+    }
+  };
+
+  // Handle Replace Part (Bucket Icon Click)
+  const handleReplacePart = async (partId, partName) => {
+    // Check if part is already replaced
+    if (replacedParts[partId]) {
+      toast.custom(
+        <StatusMessage
+          type='info'
+          title='Part Already Replaced'
+          description={`${partName} has already been replaced with ${replacedParts[partId].replacement_part_name}`}
+        />,
+        { duration: 3000 }
+      );
+      return;
+    }
+
+    setSelectedReplacePart({ id: partId, name: partName });
+    setLoadingParts(true);
+    setShowReplaceModal(true);
+
+    try {
+      const payload = {
+        technician_id: technicianId,
+        part_name: partName,
+      };
+
+      console.log('Fetching replacement parts with payload:', payload);
+      const response = await FetchPartsForReplaced(payload);
+      console.log('FetchPartsForReplaced response:', response);
+
+      if (response?.data?.success && response?.data?.data) {
+        setAvailableParts(response.data.data);
+        if (response.data.data.length === 0) {
+          toast.custom(
+            <StatusMessage
+              type='warning'
+              title='No Replacement Parts Available'
+              description={`No replacement parts found for ${partName}`}
+            />,
+            { duration: 3000 }
+          );
+        }
+      } else {
+        toast.custom(
+          <StatusMessage
+            type='error'
+            title='Failed to Fetch Parts'
+            message={response?.data?.msg || 'Please try again'}
+          />,
+          { duration: 3000 }
+        );
+        setShowReplaceModal(false);
+      }
+    } catch (error) {
+      console.error('Error fetching replacement parts:', error);
+      toast.custom(
+        <StatusMessage
+          type='error'
+          title='Error'
+          message={error.message || 'Failed to fetch replacement parts'}
+        />,
+        { duration: 3000 }
+      );
+      setShowReplaceModal(false);
+    } finally {
+      setLoadingParts(false);
+    }
+  };
+
+  // Handle selecting a replacement part
+  const handleSelectReplacement = (part) => {
+    setSelectedReplacementPart(part);
+  };
+
+  // Handle confirming the replacement with API call
+  const handleConfirmReplacement = async () => {
+    if (!selectedReplacementPart) {
+      toast.custom(
+        <StatusMessage
+          type='error'
+          title='No Part Selected'
+          description='Please select a replacement part'
+        />,
+        { duration: 2000 }
+      );
+      return;
+    }
+
+    const partId = selectedReplacePart.id;
+    const partName = selectedReplacePart.name;
+    
+    setReplaceLoadingStates(prev => ({ ...prev, [partId]: true }));
+
+    try {
+      // Prepare payload for API
+      const payload = {
+        technician_id: technicianId,
+        amc_id: amc?.id?.toString() || '',
+        comp_id: complaintData?.id?.toString() || '',
+        billing_id: billingId,
+        qr_code: selectedReplacementPart.qr_code,
+      };
+
+      console.log('Updating part with replacement API payload:', payload);
+      const response = await AMCPartQRCodeUpdatePart(payload);
+      console.log('AMCPartQRCodeUpdatePart response:', response);
+
+      if (response?.data?.success) {
+        // Store the replaced part information locally
+        setReplacedParts(prev => ({
+          ...prev,
+          [partId]: {
+            original_part_name: partName,
+            replacement_part_id: selectedReplacementPart.id,
+            replacement_part_name: selectedReplacementPart.part_name,
+            replacement_qr_code: selectedReplacementPart.qr_code,
+            replacement_image: selectedReplacementPart.part_image,
+            replacement_price: selectedReplacementPart.part_price,
+            replacement_description: selectedReplacementPart.description,
+          }
+        }));
+
+        // Auto-fill the QR code with the replacement part's QR code
+        setQrCodeNumbers(prev => ({
+          ...prev,
+          [partId]: selectedReplacementPart.qr_code
+        }));
+
+        // Auto-link the replacement part if not already linked
+        if (!linkedItems.includes(partId)) {
+          setLinkedItems(prev => [...prev, partId]);
+        }
+
+        // Show success toast
+        toast.custom(
+          <StatusMessage
+            type='success'
+            title='Part Replaced Successfully!'
+            description={`${partName} replaced with ${selectedReplacementPart.part_name}`}
+          />,
+          { duration: 3000 }
+        );
+
+        // Close modal and reset states
+        setShowReplaceModal(false);
+        setSelectedReplacePart(null);
+        setSelectedReplacementPart(null);
+        setAvailableParts([]);
+      } else {
+        // Failed to update
+        toast.custom(
+          <StatusMessage
+            type='error'
+            title='Failed to Replace Part'
+            message={response?.data?.msg || response?.data?.message || 'Please try again'}
+          />,
+          { duration: 3000 }
+        );
+      }
+    } catch (error) {
+      console.error('Error replacing part:', error);
+      toast.custom(
+        <StatusMessage
+          type='error'
+          title='Error Replacing Part'
+          message={error.message || 'Please try again'}
+        />,
+        { duration: 3000 }
+      );
+    } finally {
+      setReplaceLoadingStates(prev => ({ ...prev, [partId]: false }));
     }
   };
 
@@ -284,7 +469,6 @@ const AMCDetails = () => {
     setRemovalLoadingStates(prev => ({ ...prev, [partId]: true }));
 
     try {
-      // Prepare payload for removal API
       const payload = {
         technician_id: technicianId,
         qr_code: qrCode,
@@ -292,15 +476,19 @@ const AMCDetails = () => {
 
       console.log('Removing QR Code with payload:', payload);
 
-      // Call API to remove QR code
       const response = await AMCQRCodeRemove(payload);
       console.log('AMC QR Code Remove response:', response);
 
       if (response?.data?.success) {
-        // Success - remove from linked items
         setLinkedItems(prev => prev.filter(id => id !== partId));
+        
+        // Also remove replaced part info if exists
+        if (replacedParts[partId]) {
+          const newReplacedParts = { ...replacedParts };
+          delete newReplacedParts[partId];
+          setReplacedParts(newReplacedParts);
+        }
 
-        // Clear the QR code input for this part
         setQrCodeNumbers(prev => ({
           ...prev,
           [partId]: ''
@@ -315,7 +503,6 @@ const AMCDetails = () => {
           { duration: 2000 }
         );
       } else {
-        // Failed to remove
         toast.custom(
           <StatusMessage
             type='error'
@@ -337,6 +524,75 @@ const AMCDetails = () => {
       );
     } finally {
       setRemovalLoadingStates(prev => ({ ...prev, [partId]: false }));
+    }
+  };
+
+  // Handle removing the replacement with API call
+  const handleRemoveReplacement = async (partId, partName) => {
+    const replacedInfo = replacedParts[partId];
+    if (!replacedInfo) return;
+
+    setRemoveReplaceLoadingStates(prev => ({ ...prev, [partId]: true }));
+
+    try {
+      // Prepare payload for API
+      const payload = {
+        technician_id: technicianId,
+        amc_id: amc?.id?.toString() || '',
+        comp_id: complaintData?.id?.toString() || '',
+        billing_id: billingId,
+        qr_code: replacedInfo.replacement_qr_code,
+      };
+
+      console.log('Removing replacement part with payload:', payload);
+      const response = await RemoveAMCPart(payload);
+      console.log('RemoveAMCPart response:', response);
+
+      if (response?.data?.success) {
+        // Remove from linked items
+        setLinkedItems(prev => prev.filter(id => id !== partId));
+        
+        // Remove replaced part info
+        const newReplacedParts = { ...replacedParts };
+        delete newReplacedParts[partId];
+        setReplacedParts(newReplacedParts);
+
+        // Clear the QR code
+        setQrCodeNumbers(prev => ({
+          ...prev,
+          [partId]: ''
+        }));
+
+        toast.custom(
+          <StatusMessage
+            type='success'
+            title='Replacement Removed Successfully!'
+            description={`Replacement for ${partName} has been removed.`}
+          />,
+          { duration: 3000 }
+        );
+      } else {
+        toast.custom(
+          <StatusMessage
+            type='error'
+            title='Failed to Remove Replacement'
+            message={response?.data?.msg || response?.data?.message || 'Please try again'}
+          />,
+          { duration: 3000 }
+        );
+      }
+    } catch (error) {
+      console.error('Error removing replacement:', error);
+      toast.custom(
+        <StatusMessage
+          type='error'
+          title='Error Removing Replacement'
+          message={error.message || 'Please try again'}
+        />,
+        { duration: 3000 }
+      );
+    } finally {
+      setRemoveReplaceLoadingStates(prev => ({ ...prev, [partId]: false }));
     }
   };
 
@@ -363,7 +619,8 @@ const AMCDetails = () => {
         linkedParts: linkedItems.map(id => ({
           id,
           part_name: spareParts.find(part => part.id === id)?.part_name,
-          qr_code: qrCodeNumbers[id]
+          qr_code: qrCodeNumbers[id],
+          replaced_with: replacedParts[id] || null
         })),
         amc,
         complaintData,
@@ -372,7 +629,6 @@ const AMCDetails = () => {
     }, 2000);
   };
 
-  // Custom back button handler for the header
   const handleHeaderBack = () => {
     if (linkedItems.length > 0) {
       toast.custom(
@@ -388,10 +644,47 @@ const AMCDetails = () => {
     }
   };
 
-  // Get image URL helper
-  const getImageUrl = (partName) => {
-    const defaultImage = 'https://via.placeholder.com/60x60?text=Part';
-    return defaultImage;
+  // Render replacement part item in modal
+  const renderReplacementItem = ({ item }) => {
+    const isSelected = selectedReplacementPart?.id === item.id;
+    
+    return (
+      <TouchableOpacity
+        onPress={() => handleSelectReplacement(item)}
+        className={`flex-row p-3 mb-2 rounded-lg border ${isSelected ? 'border-teal-500 bg-teal-50' : 'border-gray-200 bg-white'}`}
+      >
+        <View className="w-16 h-16 bg-gray-100 rounded-lg mr-3 overflow-hidden">
+          {item.part_image ? (
+            <Image 
+              source={{ uri: item.part_image }} 
+              className="w-full h-full"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="w-full h-full items-center justify-center">
+              <Icon name="image-outline" size={24} color="#999" />
+            </View>
+          )}
+        </View>
+        
+        <View className="flex-1">
+          <Text className="text-base font-semibold text-gray-800">{item.part_name}</Text>
+          <Text className="text-xs text-gray-600 mt-1" numberOfLines={2}>
+            {item.description || 'No description available'}
+          </Text>
+          <View className="flex-row justify-between mt-2">
+            <Text className="text-sm font-semibold text-teal-600">₹{item.part_price}</Text>
+            <Text className="text-xs text-gray-500">QR: {item.qr_code}</Text>
+          </View>
+        </View>
+        
+        {isSelected && (
+          <View className="justify-center ml-2">
+            <Icon name="checkmark-circle" size={24} color="#14B8A6" />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
   };
 
   return (
@@ -414,7 +707,7 @@ const AMCDetails = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 50 }}
       >
-        {/* AMC Info Header - Now inside ScrollView */}
+        {/* AMC Info Header */}
         <View className="bg-white rounded-xl p-4 mb-4 mt-2 shadow-sm">
           <Text className="text-lg font-bold text-gray-800">{amc?.name || 'AMC Plan'}</Text>
           <Text className="text-sm text-gray-600 mt-1">Valid: {amc?.valid || '1 Year'}</Text>
@@ -423,7 +716,6 @@ const AMCDetails = () => {
             <Text className="text-xs text-gray-500 mt-2">Billing ID: {billingId}</Text>
           )}
 
-          {/* Progress indicator */}
           {spareParts.length > 0 && (
             <View className="mt-3">
               <View className="flex-row justify-between mb-1">
@@ -441,7 +733,6 @@ const AMCDetails = () => {
             </View>
           )}
 
-          {/* Warning message when QR codes are linked */}
           {linkedItems.length > 0 && linkedItems.length < spareParts.length && (
             <View className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
               <Text className="text-yellow-700 text-xs text-center">
@@ -450,7 +741,6 @@ const AMCDetails = () => {
             </View>
           )}
 
-          {/* Success message when all parts are linked */}
           {allPartsLinked && (
             <View className="mt-3 bg-green-50 border border-green-200 rounded-lg p-2">
               <Text className="text-green-700 text-xs text-center">
@@ -472,6 +762,9 @@ const AMCDetails = () => {
               const partName = part.part_name;
               const isLinked = linkedItems.includes(partId);
               const currentQrCode = qrCodeNumbers[partId];
+              const replacedInfo = replacedParts[partId];
+              const isReplacing = replaceLoadingStates[partId];
+              const isRemovingReplace = removeReplaceLoadingStates[partId];
 
               return (
                 <View key={partId} className="bg-white rounded-xl p-3 mb-3 shadow-sm">
@@ -486,10 +779,15 @@ const AMCDetails = () => {
                           <Text className="text-white text-xs font-semibold">✓ QR Linked</Text>
                         </View>
                       )}
+                      {replacedInfo && (
+                        <View className="bg-orange-500 px-2 py-0.5 rounded ml-2">
+                          <Text className="text-white text-xs font-semibold">Replaced</Text>
+                        </View>
+                      )}
                     </View>
 
-                    {/* Remove button in header for linked items */}
-                    {isLinked && (
+                    {/* Remove button for linked items */}
+                    {isLinked && !replacedInfo &&(
                       <TouchableOpacity
                         onPress={() => handleRemoveQR(partId, partName, currentQrCode)}
                         disabled={removalLoadingStates[partId]}
@@ -507,55 +805,131 @@ const AMCDetails = () => {
                     )}
                   </View>
 
-                  {/* QR Code Section */}
+                  {/* QR Code Section - Display replaced part info or input form */}
                   <View className="pt-2 border-t border-gray-100">
-                    {isLinked ? (
-                      // Show linked QR code as readonly
+                    {isLinked && replacedInfo ? (
+                      // Display replaced part information with image and details
+                      <View>
+                        {/* Replacement Part Card */}
+                        <View className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                          <View className="flex-row">
+                            {/* Part Image */}
+                            <TouchableOpacity
+                              onPress={() => handleImagePress(replacedInfo.replacement_image, replacedInfo.replacement_part_name)}
+                              className="w-20 h-20 bg-gray-200 rounded-lg mr-3 overflow-hidden"
+                            >
+                              {replacedInfo.replacement_image ? (
+                                <Image 
+                                  source={{ uri: replacedInfo.replacement_image }} 
+                                  className="w-full h-full"
+                                  resizeMode="cover"
+                                />
+                              ) : (
+                                <View className="w-full h-full items-center justify-center">
+                                  <Icon name="image-outline" size={24} color="#999" />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+
+                            {/* Part Details */}
+                            <View className="flex-1">
+                              <Text className="text-sm font-semibold text-gray-800">
+                                {replacedInfo.replacement_part_name}
+                              </Text>
+                              <Text className="text-xs text-gray-600 mt-1" numberOfLines={2}>
+                                {replacedInfo.replacement_description || 'Replacement part for this component'}
+                              </Text>
+                              <View className="flex-row justify-between items-center mt-2">
+                                <Text className="text-base font-bold text-teal-600">
+                                  ₹{replacedInfo.replacement_price}
+                                </Text>
+                                <Text className="text-xs text-gray-500">
+                                  QR: {replacedInfo.replacement_qr_code}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+
+                          {/* Remove Replacement Button */}
+                          <TouchableOpacity
+                            onPress={() => handleRemoveReplacement(partId, partName)}
+                            disabled={isRemovingReplace}
+                            className="mt-3 bg-red-500 py-2 rounded-lg flex-row items-center justify-center"
+                          >
+                            {isRemovingReplace ? (
+                              <ActivityIndicator size="small" color="white" />
+                            ) : (
+                              <>
+                                <Icon name="close-circle-outline" size={18} color="white" />
+                                <Text className="text-white text-sm font-medium ml-2">
+                                  Remove Replacement
+                                </Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : isLinked && !replacedInfo ? (
+                      // Show linked QR code without replacement
                       <View className="flex-row items-center bg-gray-50 rounded-lg p-3">
                         <Icon name="qr-code" size={20} color="#4CAF50" />
                         <Text className="text-sm text-gray-700 ml-2 flex-1">{currentQrCode}</Text>
                       </View>
                     ) : (
                       // Show input and scan for unlinked items
-                      <View className="flex-row items-center">
-                        <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-lg bg-white px-3">
-                          <Icon name="qr-code-outline" size={18} color="#666" />
-                          <TextInput
-                            className="flex-1 ml-2 text-sm text-gray-800 py-3"
-                            placeholder="Enter QR Code Number"
-                            placeholderTextColor={'gray'}
-                            value={currentQrCode || ''}
-                            onChangeText={(value) => handleQrCodeChange(partId, value)}
-                            keyboardType="default"
-                          />
-                          {(currentQrCode || '').length > 0 && (
-                            <TouchableOpacity
-                              onPress={() => handleQrCodeChange(partId, '')}
-                              className="ml-2"
-                            >
-                              <Icon name="close-circle-outline" size={18} color="#999" />
-                            </TouchableOpacity>
-                          )}
+                      <View>
+                        <View className="flex-row items-center">
+                          <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-lg bg-white px-3">
+                            <Icon name="qr-code-outline" size={18} color="#666" />
+                            <TextInput
+                              className="flex-1 ml-2 text-sm text-gray-800 py-3"
+                              placeholder="Enter QR Code Number"
+                              placeholderTextColor={'gray'}
+                              value={currentQrCode || ''}
+                              onChangeText={(value) => handleQrCodeChange(partId, value)}
+                              keyboardType="default"
+                            />
+                            {(currentQrCode || '').length > 0 && (
+                              <TouchableOpacity
+                                onPress={() => handleQrCodeChange(partId, '')}
+                                className="ml-2"
+                              >
+                                <Icon name="close-circle-outline" size={18} color="#999" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+
+                          {/* Scan Button */}
+                          <TouchableOpacity
+                            onPress={() => handleScan(partId)}
+                            className="rounded-r-lg px-4 py-3 border items-center justify-center bg-teal-500 border-teal-500"
+                          >
+                            <Icon name="camera-outline" size={18} color="white" />
+                          </TouchableOpacity>
+
+                          {/* Replace Part Button (Bucket Icon) - Only show for unlinked items */}
+                          <TouchableOpacity
+                            className="py-2.5 px-3 rounded-lg items-center bg-red-500 ml-2"
+                            onPress={() => handleReplacePart(partId, partName)}
+                            disabled={loadingStates[partId]}
+                          >
+                            <BucketIcon color="white" size={16} />
+                          </TouchableOpacity>
                         </View>
 
-                        {/* Scan Button */}
+                        {/* Link Button - Separate row for better layout */}
                         <TouchableOpacity
-                          onPress={() => handleScan(partId)}
-                          className="rounded-r-lg px-4 py-3 border items-center justify-center bg-teal-500 border-teal-500"
-                        >
-                          <Icon name="camera-outline" size={18} color="white" />
-                        </TouchableOpacity>
-
-                        {/* Link Button */}
-                        <TouchableOpacity
-                          className="py-2.5 px-3 rounded-lg items-center bg-orange-500 ml-2"
+                          className="py-2.5 px-4 rounded-lg items-center bg-orange-500 mt-2"
                           onPress={() => handleLinkQR(partId, partName, index)}
                           disabled={loadingStates[partId]}
                         >
                           {loadingStates[partId] ? (
                             <ActivityIndicator size="small" color="white" />
                           ) : (
-                            <LinkQrCodeIcon color="white" size={16} />
+                            <View className="flex-row items-center">
+                              <LinkQrCodeIcon color="white" size={16} />
+                              <Text className="text-white text-sm font-medium ml-2">Link QR Code</Text>
+                            </View>
                           )}
                         </TouchableOpacity>
                       </View>
@@ -575,7 +949,7 @@ const AMCDetails = () => {
         </View>
       </ScrollView>
 
-      {/* Next Button - Only enabled when all parts are linked */}
+      {/* Next Button */}
       {!isKeyboardVisible && spareParts.length > 0 && (
         <TouchableOpacity
           className={`py-3.5 mx-5 rounded-xl items-center absolute bottom-3 left-0 right-0 ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'
@@ -588,6 +962,73 @@ const AMCDetails = () => {
           </Text>
         </TouchableOpacity>
       )}
+
+      {/* Replacement Parts Modal */}
+      <DialogBox
+        visible={showReplaceModal}
+        onClose={() => {
+          setShowReplaceModal(false);
+          setSelectedReplacePart(null);
+          setSelectedReplacementPart(null);
+          setAvailableParts([]);
+        }}
+        title={`Replace ${selectedReplacePart?.name || 'Part'}`}
+        size="lg"
+        modalAnimationType="slide"
+        closeOnBackdropPress={!loadingParts}
+        footer={
+          <View className="flex-row space-x-3">
+            <TouchableOpacity
+              onPress={() => {
+                setShowReplaceModal(false);
+                setSelectedReplacePart(null);
+                setSelectedReplacementPart(null);
+                setAvailableParts([]);
+              }}
+              className="flex-1 bg-gray-200 rounded-lg py-3"
+            >
+              <Text className="text-gray-700 text-center font-medium">Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleConfirmReplacement}
+              className="flex-1 bg-teal-500 rounded-lg py-3"
+              disabled={!selectedReplacementPart}
+            >
+              <Text className="text-white text-center font-medium">
+                Replace Part
+              </Text>
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        {loadingParts ? (
+          <View className="py-10 items-center">
+            <ActivityIndicator size="large" color="#14B8A6" />
+            <Text className="text-gray-600 mt-4">Loading replacement parts...</Text>
+          </View>
+        ) : availableParts.length > 0 ? (
+          <>
+            <Text className="text-sm text-gray-600 mb-3">
+              Select a replacement part for {selectedReplacePart?.name}:
+            </Text>
+            <FlatList
+              data={availableParts}
+              renderItem={renderReplacementItem}
+              keyExtractor={(item) => item.id.toString()}
+              showsVerticalScrollIndicator={false}
+              maxHeight={400}
+              className="mb-2"
+            />
+          </>
+        ) : (
+          <View className="py-10 items-center">
+            <Icon name="alert-circle-outline" size={50} color="#FFA500" />
+            <Text className="text-gray-600 text-center mt-4">
+              No replacement parts available for {selectedReplacePart?.name}
+            </Text>
+          </View>
+        )}
+      </DialogBox>
 
       {/* Image Modal */}
       <Modal
@@ -703,7 +1144,6 @@ const AMCDetails = () => {
               </TouchableOpacity>
             </View>
           )}
-          {/* Close Button */}
           <TouchableOpacity
             onPress={() => {
               setShowScanner(false);
@@ -714,7 +1154,6 @@ const AMCDetails = () => {
             <Icon name="close" size={24} color="white" />
           </TouchableOpacity>
 
-          {/* Scanner Frame Overlay */}
           <View className="absolute top-0 left-0 right-0 bottom-0 justify-center items-center">
             <View className="w-64 h-64 border-2 border-white rounded-lg" />
             <Text className="text-white mt-4 text-lg">Align QR code within frame</Text>

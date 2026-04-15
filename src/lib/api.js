@@ -251,11 +251,11 @@ export const AMCQRCodeInsertPart = async (payload) => {
 export const AMCQRCodeRemove = async (payload) => {
     console.log('payload', payload)
     try {
-        const response = await apiClient.post('TechnicianAPI/RemoveQRCode', payload);
-        console.log('RemoveQRCode Part response:', response);
+        const response = await apiClient.post('TechnicianAPI/RemoveAMCQRCode', payload);
+        console.log('RemoveAMCQRCode Part response:', response);
         return response;
     } catch (error) {
-        console.error('API error in RemoveQRCode:', error);
+        console.error('API error in RemoveAMCQRCode:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -665,6 +665,31 @@ export const TechnicianReplacePart = async (payload) => {
     }
 };
 
+export const AMCPartQRCodeUpdatePart = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/AMCPartQRCodeUpdatePart', payload);
+        console.log('AMCPartQRCodeUpdatePart api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in AMCPartQRCodeUpdatePart:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const RemoveAMCPart = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/RemoveAMCPart', payload);
+        console.log('RemoveAMCPart api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in RemoveAMCPart:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
 
 
 
