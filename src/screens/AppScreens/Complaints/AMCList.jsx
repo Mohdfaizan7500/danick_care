@@ -4,7 +4,8 @@ import Header from '../../../components/Header'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import Icon from 'react-native-vector-icons/Ionicons';
-import { AMCConvertList } from '../../../lib/api' // Update the import path as needed
+import { AMCConvertList } from '../../../lib/api'
+import DialogBox from '../../../components/DilaogBox'
 
 const AMCList = () => {
     const navigation = useNavigation();
@@ -15,6 +16,8 @@ const AMCList = () => {
     const [loading, setLoading] = useState(false)
     const [amcData, setAmcData] = useState([])
     const [refreshing, setRefreshing] = useState(false)
+    const [selectedAMC, setSelectedAMC] = useState(null)
+    const [showConfirmModal, setShowConfirmModal] = useState(false)
 
     // Get city_id and service_name from complaintData
     const cityId = complaintData?.city_id || '1'
@@ -53,7 +56,20 @@ const AMCList = () => {
     }
 
     const handleAMCPress = (amc) => {
-        navigation.navigate('ComplaintAMCDetails', { amc, complaintData })
+        setSelectedAMC(amc)
+        setShowConfirmModal(true)
+    }
+
+    const handleConfirmConversion = () => {
+        setShowConfirmModal(false)
+        if (selectedAMC) {
+            navigation.navigate('ComplaintAMCDetails', { amc: selectedAMC, complaintData })
+        }
+    }
+
+    const handleCancelConversion = () => {
+        setShowConfirmModal(false)
+        setSelectedAMC(null)
     }
 
     // Parse HTML content to extract features
@@ -70,7 +86,6 @@ const AMCList = () => {
             }
         }
         
-        // If no features found with regex, return empty array
         return features
     }
 
@@ -214,6 +229,73 @@ const AMCList = () => {
                     )
                 }
             />
+
+            {/* Confirmation Dialog */}
+            <DialogBox
+                visible={showConfirmModal}
+                onClose={handleCancelConversion}
+                title="Confirm AMC Conversion"
+                size="md"
+                showCloseButton={true}
+                closeIconName="close"
+                closeIconSize={24}
+                closeIconColor="#666"
+                modalAnimationType="fade"
+                closeOnBackdropPress={true}
+            >
+                <View className="py-2">
+                    {/* Warning Icon */}
+                    <View className="items-center mb-4">
+                        <View className="w-16 h-16 rounded-full bg-orange-100 items-center justify-center">
+                            <Icon name="alert-circle" size={40} color="#F97316" />
+                        </View>
+                    </View>
+
+                    {/* Question Text */}
+                    <Text className="text-lg font-semibold text-center text-gray-800 mb-3">
+                        क्या आप इस complaint को AMC में convert करना चाहते हैं?
+                    </Text>
+                    
+                    <Text className="text-base text-center text-gray-600 mb-4">
+                        Do you want to convert this complaint to AMC?
+                    </Text>
+
+                    {/* Important Note Box */}
+                    <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                        <View className="flex-row items-center mb-2">
+                            <Icon name="information-circle" size={20} color="#D97706" />
+                            <Text className="text-yellow-700 font-semibold ml-2">Important Note:</Text>
+                        </View>
+                        <Text className="text-yellow-700 text-sm">
+                            ⚠️ अगर आप AMC cancel करना चाहते हैं, तो सभी QR codes को detach करना अनिवार्य है।
+                        </Text>
+                        <Text className="text-yellow-700 text-sm mt-1">
+                            ⚠️ If you want to cancel the AMC, you must detach all QR codes first.
+                        </Text>
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View className="flex-row mt-2">
+                        <TouchableOpacity
+                            onPress={handleCancelConversion}
+                            className="flex-1 bg-gray-200 py-3 rounded-lg mr-2"
+                        >
+                            <Text className="text-gray-700 text-center font-semibold text-base">
+                                नहीं / No
+                            </Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                            onPress={handleConfirmConversion}
+                            className="flex-1 bg-teal-500 py-3 rounded-lg ml-2"
+                        >
+                            <Text className="text-white text-center font-semibold text-base">
+                                हाँ / Yes
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </DialogBox>
         </SafeAreaView>
     )
 }

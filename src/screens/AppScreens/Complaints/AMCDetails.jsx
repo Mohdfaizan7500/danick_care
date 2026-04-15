@@ -100,10 +100,11 @@ const AMCDetails = () => {
       if (linkedItems.length > 0) {
         // Show toast message if there are linked QR codes
         toast.custom(
-          <StatusMessage 
-            type='error' 
-            title='Cannot Go Back' 
-            message={`Please remove all linked QR code(s) first`} 
+          <StatusMessage
+            type='error'
+            title='Cannot Go Back'
+            message={`Please remove all linked QR code(s) first. \n(कृपया पहले सभी लिंक किए गए QR कोड हटाएं)`}
+
           />,
           { duration: 3000 }
         );
@@ -226,7 +227,7 @@ const AMCDetails = () => {
       };
 
       console.log('Linking QR Code with payload:', payload);
-      
+
       // Call API to insert part with QR code
       const response = await AMCQRCodeInsertPart(payload);
       console.log('AMC QR Code Insert Part response:', response);
@@ -236,7 +237,7 @@ const AMCDetails = () => {
         if (!linkedItems.includes(partId)) {
           setLinkedItems([...linkedItems, partId]);
         }
-        
+
         toast.custom(
           <StatusMessage
             type='success'
@@ -290,7 +291,7 @@ const AMCDetails = () => {
       };
 
       console.log('Removing QR Code with payload:', payload);
-      
+
       // Call API to remove QR code
       const response = await AMCQRCodeRemove(payload);
       console.log('AMC QR Code Remove response:', response);
@@ -298,13 +299,13 @@ const AMCDetails = () => {
       if (response?.data?.success) {
         // Success - remove from linked items
         setLinkedItems(prev => prev.filter(id => id !== partId));
-        
+
         // Clear the QR code input for this part
         setQrCodeNumbers(prev => ({
           ...prev,
           [partId]: ''
         }));
-        
+
         toast.custom(
           <StatusMessage
             type='success'
@@ -343,10 +344,10 @@ const AMCDetails = () => {
     if (!allPartsLinked) {
       const remainingCount = spareParts.length - linkedItems.length;
       toast.custom(
-        <StatusMessage 
-          type='error' 
-          title='Cannot Proceed' 
-          message={`Please link all spare parts first (${remainingCount} remaining)`} 
+        <StatusMessage
+          type='error'
+          title='Cannot Proceed'
+          message={`Please link all spare parts first (${remainingCount} remaining)`}
         />,
         { duration: 3000 }
       );
@@ -357,8 +358,8 @@ const AMCDetails = () => {
       <StatusMessage type='info' title='Proceeding to next step...' />,
       { duration: 2000 }
     );
-    setTimeout(() => { 
-      navigation.navigate('AMCBilling', { 
+    setTimeout(() => {
+      navigation.navigate('AMCBilling', {
         linkedParts: linkedItems.map(id => ({
           id,
           part_name: spareParts.find(part => part.id === id)?.part_name,
@@ -366,8 +367,8 @@ const AMCDetails = () => {
         })),
         amc,
         complaintData,
-        billingId 
-      }); 
+        billingId
+      });
     }, 2000);
   };
 
@@ -375,10 +376,10 @@ const AMCDetails = () => {
   const handleHeaderBack = () => {
     if (linkedItems.length > 0) {
       toast.custom(
-        <StatusMessage 
-          type='error' 
-          title='Cannot Go Back' 
-          message={`Please remove all linked QR code(s) first`} 
+        <StatusMessage
+          type='error'
+          title='Cannot Go Back'
+          message={`Please remove all linked QR code(s) first. \nकृपया पहले सभी लिंक किए गए QR कोड हटाएं`}
         />,
         { duration: 3000 }
       );
@@ -421,7 +422,7 @@ const AMCDetails = () => {
           {billingId && (
             <Text className="text-xs text-gray-500 mt-2">Billing ID: {billingId}</Text>
           )}
-          
+
           {/* Progress indicator */}
           {spareParts.length > 0 && (
             <View className="mt-3">
@@ -432,14 +433,14 @@ const AMCDetails = () => {
                 </Text>
               </View>
               <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <View 
+                <View
                   className="h-full bg-teal-500 rounded-full"
                   style={{ width: `${(linkedItems.length / spareParts.length) * 100}%` }}
                 />
               </View>
             </View>
           )}
-          
+
           {/* Warning message when QR codes are linked */}
           {linkedItems.length > 0 && linkedItems.length < spareParts.length && (
             <View className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
@@ -448,7 +449,7 @@ const AMCDetails = () => {
               </Text>
             </View>
           )}
-          
+
           {/* Success message when all parts are linked */}
           {allPartsLinked && (
             <View className="mt-3 bg-green-50 border border-green-200 rounded-lg p-2">
@@ -471,7 +472,7 @@ const AMCDetails = () => {
               const partName = part.part_name;
               const isLinked = linkedItems.includes(partId);
               const currentQrCode = qrCodeNumbers[partId];
-              
+
               return (
                 <View key={partId} className="bg-white rounded-xl p-3 mb-3 shadow-sm">
                   {/* Top row with remove button if linked */}
@@ -486,7 +487,7 @@ const AMCDetails = () => {
                         </View>
                       )}
                     </View>
-                    
+
                     {/* Remove button in header for linked items */}
                     {isLinked && (
                       <TouchableOpacity
@@ -577,9 +578,8 @@ const AMCDetails = () => {
       {/* Next Button - Only enabled when all parts are linked */}
       {!isKeyboardVisible && spareParts.length > 0 && (
         <TouchableOpacity
-          className={`py-3.5 mx-5 rounded-xl items-center absolute bottom-3 left-0 right-0 ${
-            allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'
-          }`}
+          className={`py-3.5 mx-5 rounded-xl items-center absolute bottom-3 left-0 right-0 ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'
+            }`}
           onPress={handleNext}
           disabled={!allPartsLinked}
         >
