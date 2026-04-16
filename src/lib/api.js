@@ -3,7 +3,7 @@ import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // const BASE_URL = 'https://dummyjson.com/';
-const BASE_URL = 'http://192.168.1.38:5001/';
+const BASE_URL = 'http://192.168.1.41:5001/';
 // const BASE_URL = 'http://api.dainikcare.com/';
 
 
@@ -686,6 +686,58 @@ export const RemoveAMCPart = async (payload) => {
         return response;
     } catch (error) {
         console.error('API error in RemoveAMCPart:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const PendingComplaints = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/PendingComplaints', payload);
+        console.log('RemoveAMCPart api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in PendingComplaints:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const AcceptComplaint = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/AcceptComplaint', payload);
+        console.log('AcceptComplaint api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in AcceptComplaint:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const PendingComplaintCount = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/PendingComplaintCount', payload);
+        console.log('PendingComplaintCount api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in PendingComplaintCount:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const TechnicianServices = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/TechnicianServices', payload);
+        console.log('TechnicianServices api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in TechnicianServices:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }

@@ -401,7 +401,7 @@ export const CalenderIcon = (props) => (
       strokeWidth={1.66}
       strokeLinecap="round"
       strokeLinejoin="round"
-    {...props}
+      {...props}
 
     />
     <Path
@@ -417,7 +417,7 @@ export const CalenderIcon = (props) => (
       strokeWidth={1.66}
       strokeLinecap="round"
       strokeLinejoin="round"
-    {...props}
+      {...props}
 
     />
     <Path
@@ -426,7 +426,7 @@ export const CalenderIcon = (props) => (
       strokeWidth={1.66}
       strokeLinecap="round"
       strokeLinejoin="round"
-    {...props}
+      {...props}
 
     />
   </Svg>
@@ -482,5 +482,142 @@ export const DownloadIcon = (props) => (
     {...props}
   >
     <Path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z" />
+  </Svg>
+);
+
+export const PendingIcon = (props) => (
+  <Svg
+    xmlns="http://www.w3.org/2000/svg"
+    height="24px"
+    viewBox="0 -960 960 960"
+    width="24px"
+    fill="#e3e3e3"
+    {...props}
+  >
+    <Path d="M440-600v-120H320v-80h120v-120h80v120h120v80H520v120h-80ZM223.5-103.5Q200-127 200-160t23.5-56.5Q247-240 280-240t56.5 23.5Q360-193 360-160t-23.5 56.5Q313-80 280-80t-56.5-23.5Zm400 0Q600-127 600-160t23.5-56.5Q647-240 680-240t56.5 23.5Q760-193 760-160t-23.5 56.5Q713-80 680-80t-56.5-23.5ZM40-800v-80h131l170 360h280l156-280h91L692-482q-11 20-29.5 31T622-440H324l-44 80h480v80H280q-45 0-68.5-39t-1.5-79l54-98-144-304H40Z" />
+  </Svg>
+);
+
+export const OrderIcon = (props) => (
+  <Svg
+    width={20}
+    height={20}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <G clipPath="url(#clip0_4103_623)">
+      <Path
+        d="M5.83325 17.5833C5.83325 18.0892 6.244 18.5 6.74992 18.5C7.25584 18.5 7.66659 18.0892 7.66659 17.5833C7.66659 17.0774 7.25584 16.6666 6.74992 16.6666C6.244 16.6666 5.83325 17.0774 5.83325 17.5833V17.5833"
+        stroke="#6E6E6E"
+        strokeWidth={1.66667}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+
+      />
+      <Path
+        d="M16 17.5833C16 18.0892 16.4107 18.5 16.9167 18.5C17.4226 18.5 17.8333 18.0892 17.8333 17.5833C17.8333 17.0774 17.4226 16.6666 16.9167 16.6666C16.4107 16.6666 16 17.0774 16 17.5833Z"
+        stroke="#6E6E6E"
+        strokeWidth={1.66667}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+
+      />
+      <Path
+        d="M1.70825 0.708313H3.54159L5.97992 12.0933C6.16443 12.9534 6.93382 13.5612 7.81325 13.5416H16.7783C17.6378 13.5403 18.381 12.9419 18.5658 12.1025L20.0783 5.29165H4.52242"
+        stroke="#6E6E6E"
+        strokeWidth={1.66667}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+
+      />
+    </G>
+    <Defs>
+      <ClipPath id="clip0_4103_623">
+        <Rect width={20} height={20} fill="white" />
+      </ClipPath>
+    </Defs>
+  </Svg>
+);
+
+export const CheckCircleIcon = (props) => (
+  <Svg
+    width={20}
+    height={20}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <G clipPath="url(#clip0_984_46445)">
+      <Path
+        d="M18.159 8.32843C18.5394 10.1953 18.2683 12.1361 17.3909 13.8273C16.5135 15.5185 15.0828 16.8577 13.3375 17.6217C11.5922 18.3858 9.63772 18.5284 7.8 18.0258C5.96227 17.5232 4.35239 16.4057 3.23883 14.8598C2.12527 13.3139 1.57533 11.433 1.68073 9.53067C1.78613 7.62837 2.5405 5.8197 3.81803 4.40628C5.09556 2.99286 6.81904 2.06012 8.70104 1.76361C10.583 1.46711 12.5098 1.82475 14.16 2.77692"
+        stroke="#00A63E"
+        strokeWidth={1.66587}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+
+      />
+      <Path
+        d="M7.49658 9.16257L9.99539 11.6614L18.3247 3.33203"
+        stroke="#00A63E"
+        strokeWidth={1.66587}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+
+      />
+    </G>
+    <Defs>
+      <ClipPath id="clip0_984_46445">
+        <Rect width={19.9904} height={19.9904} fill="white" />
+      </ClipPath>
+    </Defs>
+  </Svg>
+);
+
+
+
+export const CrossCircleIcon = (props) => (
+  <Svg
+    width={20}
+    height={20}
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <Path
+      d="M9.99536 18.3247C14.5955 18.3247 18.3247 14.5955 18.3247 9.99536C18.3247 5.39519 14.5955 1.66602 9.99536 1.66602C5.39519 1.66602 1.66602 5.39519 1.66602 9.99536C1.66602 14.5955 5.39519 18.3247 9.99536 18.3247Z"
+      stroke="#99A1AF"
+      strokeWidth={1.66587}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    {...props}
+
+    />
+    <Path
+      d="M12.4942 7.49609L7.49658 12.4937"
+      stroke="#99A1AF"
+      strokeWidth={1.66587}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    {...props}
+
+    />
+    <Path
+      d="M7.49658 7.49609L12.4942 12.4937"
+      stroke="#99A1AF"
+      strokeWidth={1.66587}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    {...props}
+
+    />
   </Svg>
 );

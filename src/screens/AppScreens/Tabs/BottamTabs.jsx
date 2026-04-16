@@ -1,16 +1,18 @@
 import { StyleSheet, Text, Alert, Pressable, View } from 'react-native';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Home from './Home';
+import Orders from './Orders';
 import Profile from './Profile';
 import Parts from './Parts';
 import Scan from '../Scan/Scan';
-import { HomeIcon, PartIcon, ProfileIcon, ScanIcon } from '../../../assets/svgIcons/SVGIcons';
+import { HomeIcon, OrderIcon, PartIcon, PendingIcon, ProfileIcon, ScanIcon } from '../../../assets/svgIcons/SVGIcons';
 import { Colors } from '../../../constants/Color';
 import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PendingComplaintCount } from '../../../lib/api';
 
 const Tab = createBottomTabNavigator();
 
@@ -45,9 +47,81 @@ const CustomTabBarButton = ({ children, onPress, isOnline, style, ...props }) =>
   );
 };
 
+// Custom badge component
+const Badge = ({ count }) => {
+  if (!count || count === 0) return null;
+
+  return (
+    <View style={styles.badgeContainer}>
+      <Text style={styles.badgeText}>
+        {count > 99 ? '99+' : count}
+      </Text>
+    </View>
+  );
+};
+
 const BottomTabs = () => {
-  const { IsOnline } = useAuth();
+  const { IsOnline, user } = useAuth(); // Assuming user object contains technician_id and city_id
   const insets = useSafeAreaInsets();
+  const [orderCount, setOrderCount] = useState(0);
+
+  const refreshOrderCount = (newCount) => {
+    if (newCount !== undefined) {
+      setOrderCount(newCount);
+    } else {
+      // Fetch fresh count if no value provided
+      fetchOrderCount();
+    }
+  };
+
+  // Fetch order count on mount and periodically
+  useEffect(() => {
+    if (IsOnline) {
+      fetchOrderCount();
+
+      // Refresh count every 30 seconds
+      const interval = setInterval(fetchOrderCount, 30000);
+
+      return () => clearInterval(interval);
+    }
+  }, [IsOnline, user]); // Re-run when user changes
+
+  const fetchOrderCount = async () => {
+    try {
+      if (!IsOnline) return;
+
+      // Get technician_id and city_id from auth context
+      const technicianId = user?.id || user?.id || "1";
+      const cityId = user?.city_id || "1";
+
+      const payload = {
+        city_id: cityId,
+        technician_id: technicianId
+      };
+
+      console.log('Fetching order count with payload on bottomtab:', payload);
+
+      const response = await PendingComplaintCount(payload);
+
+      // Handle response
+      if (response?.data?.success) {
+        const count = response.data.Pendingcomplaints || 0;
+        setOrderCount(count);
+        console.log('Order count updated:', count);
+      } else if (response?.success) {
+        const count = response.Pendingcomplaints || 0;
+        setOrderCount(count);
+        console.log('Order count updated:', count);
+      } else {
+        console.log('Unexpected response format:', response);
+        setOrderCount(0);
+      }
+
+    } catch (error) {
+      console.error('Error fetching order count:', error);
+      // Don't show alert to user for count errors, just log
+    }
+  };
 
   return (
     <Tab.Navigator
@@ -59,7 +133,6 @@ const BottomTabs = () => {
           backgroundColor: Colors.background.primary,
           borderTopWidth: 1,
           borderTopColor: Colors.ui.border,
-          // Fixed base height + bottom safe area inset to avoid clipping on iOS
           height: 80 + insets.bottom,
           paddingBottom: 20,
         },
@@ -70,7 +143,7 @@ const BottomTabs = () => {
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
-          paddingVertical: 0, // remove default padding that might cause misalignment
+          paddingVertical: 0,
         },
         headerStyle: {
           backgroundColor: Colors.brand.primary,
@@ -107,6 +180,37 @@ const BottomTabs = () => {
           ),
           headerTitle: 'Home',
         }}
+      />
+
+
+      <Tab.Screen
+        name="Orders"
+        component={Orders}
+        options={{
+          tabBarIcon: ({ color, size, focused }) => (
+            <View>
+              <OrderIcon
+                stroke={focused ? Colors.brand.primary : Colors.gray[600]}
+                size={size}
+              />
+              <Badge count={orderCount} />
+            </View>
+          ),
+          tabBarLabel: ({ focused }) => (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{
+                color: focused ? Colors.brand.primary : Colors.gray[600],
+                fontSize: 12,
+                fontWeight: focused ? '600' : '500'
+              }}>
+                Orders
+              </Text>
+              
+            </View>
+          ),
+          headerTitle: 'Orders',
+        }}
+        initialParams={{ refreshBadgeCount: refreshOrderCount }}
       />
 
       <Tab.Screen
@@ -185,4 +289,39 @@ const BottomTabs = () => {
 
 export default BottomTabs;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  badgeContainer: {
+    position: 'absolute',
+    top: -10,
+    right: -12,
+    backgroundColor: '#FF4444',
+    borderRadius: 100,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+  labelBadge: {
+    backgroundColor: '#FF4444',
+    borderRadius: 9,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+    marginLeft: 4,
+  },
+  labelBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+});

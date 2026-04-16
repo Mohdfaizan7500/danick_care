@@ -62,6 +62,13 @@ const Profile = () => {
       route: 'ReplaceParts'
     },
     {
+      id: 'services',
+      icon: <ReplaceIcon width={22} height={22} fill={'black'} />,
+      title: 'Services',
+      subtitle: 'Services provided by partner',
+      route: 'Services'
+    },
+    {
       id: 'terms',
       icon: <TermsIcon width={22} height={22} fill={'black'} />,
       title: 'Terms & Conditions',
@@ -106,7 +113,7 @@ const Profile = () => {
       if (response?.data?.success) {
         // Call logout function from context to clear all data
         await logout();
-        
+
         // Optional: set offline status
         if (setIsOnline) {
           await setIsOnline(false);
@@ -114,7 +121,7 @@ const Profile = () => {
 
         toast.custom(<StatusMessage type='success' title={'Logout successful!'} />, { duration: 200 });
         setLogoutDialogVisible(false);
-        
+
         // Navigate to login screen (you need to implement this based on your navigation structure)
         // navigation.reset({
         //   index: 0,

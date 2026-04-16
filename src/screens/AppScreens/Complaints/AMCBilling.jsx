@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import DialogBox from '../../../components/DilaogBox';
+import { useRoute } from '@react-navigation/native';
 
 const AMCBilling = () => {
   const [subtotal, setSubtotal] = useState(12500); // Example subtotal
@@ -15,6 +16,10 @@ const AMCBilling = () => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const route = useRoute();
+  const complaintdata = route.params;
+  console.log(complaintdata)
 
   // Calculate discount amount
   const calculateDiscountAmount = () => {

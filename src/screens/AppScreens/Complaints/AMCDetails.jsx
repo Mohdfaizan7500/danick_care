@@ -597,18 +597,18 @@ const AMCDetails = () => {
   };
 
   const handleNext = () => {
-    if (!allPartsLinked) {
-      const remainingCount = spareParts.length - linkedItems.length;
-      toast.custom(
-        <StatusMessage
-          type='error'
-          title='Cannot Proceed'
-          message={`Please link all spare parts first (${remainingCount} remaining)`}
-        />,
-        { duration: 3000 }
-      );
-      return;
-    }
+    // if (!allPartsLinked) {
+    //   const remainingCount = spareParts.length - linkedItems.length;
+    //   toast.custom(
+    //     <StatusMessage
+    //       type='error'
+    //       title='Cannot Proceed'
+    //       message={`Please link all spare parts first (${remainingCount} remaining)`}
+    //     />,
+    //     { duration: 3000 }
+    //   );
+    //   return;
+    // }
 
     toast.custom(
       <StatusMessage type='info' title='Proceeding to next step...' />,
@@ -955,7 +955,7 @@ const AMCDetails = () => {
           className={`py-3.5 mx-5 rounded-xl items-center absolute bottom-3 left-0 right-0 ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'
             }`}
           onPress={handleNext}
-          disabled={!allPartsLinked}
+          // disabled={!allPartsLinked}
         >
           <Text className="text-white text-lg font-bold">
             {allPartsLinked ? 'Next' : `Link ${spareParts.length - linkedItems.length} More`}
@@ -977,7 +977,7 @@ const AMCDetails = () => {
         modalAnimationType="slide"
         closeOnBackdropPress={!loadingParts}
         footer={
-          <View className="flex-row space-x-3">
+          <View className="flex-row gap-4">
             <TouchableOpacity
               onPress={() => {
                 setShowReplaceModal(false);
