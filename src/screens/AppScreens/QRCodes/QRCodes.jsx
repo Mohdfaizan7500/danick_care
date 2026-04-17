@@ -175,7 +175,7 @@ const QRCodes = () => {
 
                 // Transform API data to match component structure
                 const formattedProducts = apiData.map((item, index) => ({
-                    id: item.qr_id || index.toString(),
+                    id: `${item.qr_id}_${index}`,
                     qrCodeNumber: item.qr_id,
                     complaintId: item.complaint_id || 'N/A',
                     partName: item.part_name || 'Spare Part',

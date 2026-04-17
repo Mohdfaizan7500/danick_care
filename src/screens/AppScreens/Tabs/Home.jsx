@@ -44,49 +44,60 @@ import { openSettings } from 'react-native-permissions';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-// Carousel images
-const carouselImages = [
-  {
-    id: 1,
-    image:
-      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCg65BGb7qcT77GG52LOysgmpeFT82tJtBhQ&s',
-  },
-  {
-    id: 2,
-    image:
-      'https://www.creativehatti.com/wp-content/uploads/2023/05/Skilled-maintenance-services-landscape-template-17-small.jpg',
-  },
-  {
-    id: 3,
-    image:
-      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQPBrmXwxsAUF8alwa1ArjE7c5SOlvKbY0BwQ&s',
-  },
-  {
-    id: 4,
-    image:
-      'https://static.vecteezy.com/system/resources/previews/009/674/443/non_2x/business-design-drawing-air-conditioning-repair-beauty-repairwoman-technician-repairing-air-conditioner-cooler-unit-repair-maintenance-professional-service-flat-cartoon-style-illustration-vector.jpg',
-  },
-  {
-    id: 5,
-    image:
-      'https://5.imimg.com/data5/SELLER/Default/2024/12/477202864/OX/SK/EW/110823530/cooler-maintenance-service.jpg',
-  },
-];
-
 const Home = () => {
   const insets = useSafeAreaInsets();
-  const [activeIndex, setActiveIndex] = useState(0);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [count, setCount] = useState(null);
   const [checkingConnection, setCheckingConnection] = useState(false);
 
-  const flatListRef = useRef(null);
   const navigation = useNavigation();
   const { IsOnline, user, imagUrl, profileData, updateProfileData, setIsOnline } = useAuth();
 
   // ---------- Network state ----------
   const [isConnected, setIsConnected] = useState(true);
+
+  // Helper function to get valid image URL
+  const getValidImageUrl = (imagePath) => {
+    if (!imagePath) {
+      return null;
+    }
+
+    // Check if it's already a valid URL (starts with http:// or https://)
+    const isValidUrl = imagePath.startsWith('http://') || imagePath.startsWith('https://');
+    
+    if (isValidUrl) {
+      return imagePath;
+    }
+    
+    // If not a valid URL, construct URL using imagUrl + imagePath
+    // Remove leading slashes from imagePath if present to avoid double slashes
+    const cleanImagePath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+    const baseUrl = imagUrl?.endsWith('/') ? imagUrl : `${imagUrl}/`;
+    
+    return `${baseUrl}${cleanImagePath}`;
+  };
+
+  // Get profile image source
+  const getProfileImageSource = () => {
+    if (profileData?.profile_photo) {
+      const imageUrl = getValidImageUrl(profileData.profile_photo);
+      if (imageUrl) {
+        return { uri: imageUrl };
+      }
+    }
+    // Fallback to default image
+    return require('../../../assets/images/profileImage.jpg');
+  };
+
+  // Get user profile object
+  const userProfile = {
+    name: profileData?.technician_name || 'John Doe',
+    profileImage: getProfileImageSource(),
+    isActive: profileData?.login_status !== 'Online',
+    notificationCount: 3,
+    walletBalance: '₹2,500',
+  };
 
   // ---------- Location Permission Functions ----------
   const checkLocationPermission = async () => {
@@ -224,17 +235,6 @@ const Home = () => {
     }
   };
 
-  // ---------- User data from context ----------
-  const userProfile = {
-    name: profileData?.technician_name || 'John Doe',
-    profileImage: profileData?.profile_photo
-      ? `${imagUrl}${profileData.profile_photo}`
-      : 'https://randomuser.me/api/portraits/men/1.jpg',
-    isActive: profileData?.login_status !== 'Online',
-    notificationCount: 3,
-    walletBalance: '₹2,500',
-  };
-
   // ---------- Fetch profile on mount ----------
   const fetchProfile = async () => {
     if (!user?.id) {
@@ -249,6 +249,7 @@ const Home = () => {
 
       if (data) {
         console.log('Profile data fetched:', data);
+        console.log('Profile photo path:', data.profile_photo);
         await updateProfileData(data);
         const isOnline = data?.login_status === 'Online';
         console.log("Active status set:", isOnline);
@@ -378,19 +379,6 @@ const Home = () => {
     }
   }, [user?.id]);
 
-  // ---------- Auto‑scroll for carousel ----------
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (flatListRef.current) {
-        const nextIndex = (activeIndex + 1) % carouselImages.length;
-        flatListRef.current.scrollToIndex({ index: nextIndex, animated: true });
-        setActiveIndex(nextIndex);
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [activeIndex]);
-
   // ---------- Network listener ----------
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
@@ -428,31 +416,6 @@ const Home = () => {
     else if (cardName === 'Fresh') navigation.navigate('QRCodes', { status: "Fresh" });
   };
 
-  // ---------- Carousel helpers ----------
-  const renderCarouselItem = ({ item }) => (
-    <View style={{ width: screenWidth }} className="px-5">
-      <View className="bg-white rounded-2xl overflow-hidden">
-        <Image
-          source={{ uri: item.image }}
-          className="w-full h-48"
-          resizeMode="cover"
-        />
-      </View>
-    </View>
-  );
-
-  const handleScroll = event => {
-    const scrollPosition = event.nativeEvent.contentOffset.x;
-    const index = Math.round(scrollPosition / screenWidth);
-    if (index !== activeIndex) setActiveIndex(index);
-  };
-
-  const getItemLayout = (data, index) => ({
-    length: screenWidth,
-    offset: screenWidth * index,
-    index,
-  });
-
   const formatNumberToK = (num) => {
     const number = parseFloat(num);
     if (isNaN(number)) return '0';
@@ -482,11 +445,11 @@ const Home = () => {
           <View className="flex-row items-center flex-1">
             <View className="relative">
               <Image
-                source={{ uri: userProfile.profileImage }}
+                source={userProfile.profileImage}
                 className="w-12 h-12 rounded-full border-2 border-white"
               />
               <View
-                className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${userProfile.IsOnline ? 'bg-green-500' : 'bg-gray-400'
+                className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${IsOnline ? 'bg-green-500' : 'bg-gray-400'
                   }`}
               />
             </View>
@@ -498,10 +461,10 @@ const Home = () => {
                 </Text>
               </View>
               <Text
-                className={`text-xs font-medium ${userProfile.IsOnline ? 'text-green-600' : 'text-gray-500'
+                className={`text-xs font-medium ${IsOnline ? 'text-green-600' : 'text-gray-500'
                   }`}
               >
-                {userProfile.IsOnline ? '● Active' : '● Inactive'}
+                {IsOnline ? '● Active' : '● Inactive'}
               </Text>
             </View>
           </View>
@@ -572,8 +535,11 @@ const Home = () => {
         <View className="flex-row items-center flex-1">
           <View className="relative">
             <Image
-              source={{ uri: userProfile.profileImage }}
+              source={userProfile.profileImage}
               className="w-12 h-12 rounded-full border-2 border-white"
+              onError={(error) => {
+                console.log('Profile image loading error:', error.nativeEvent.error);
+              }}
             />
             <View
               className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${IsOnline ? 'bg-green-500' : 'bg-gray-400'
@@ -590,7 +556,7 @@ const Home = () => {
             <Text
               className={`text-xs font-medium ${IsOnline ? 'text-green-600' : 'text-gray-500'
                 }`}
-            >
+              >
               {IsOnline ? '● Active' : '● Inactive'}
             </Text>
           </View>
@@ -714,7 +680,7 @@ const Home = () => {
             </View>
 
             {/* Business Metrics */}
-            <View>
+            <View className="mb-6">
               <Text className="text-gray-800 font-bold text-lg mb-3">
                 Business Metrics
               </Text>

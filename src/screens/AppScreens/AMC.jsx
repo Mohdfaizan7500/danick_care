@@ -305,7 +305,7 @@ const AMC = () => {
             filteredServices.map((service, index) => (
               <TouchableOpacity
                 onPress={() => handleCardPress(service)}
-                key={service.id || index}
+                key={ index}
                 className="w-[48%] bg-ui-card rounded-xl p-3 mb-3 border border-ui-border"
                 activeOpacity={0.7}
               >

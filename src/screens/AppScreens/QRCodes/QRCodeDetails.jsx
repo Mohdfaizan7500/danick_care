@@ -249,10 +249,10 @@ const QRCodeDetails = () => {
   const downloadWithDownloadManager = async (downloadUrl, fileName, destinationPath) => {
     try {
       const { DownloadManager } = ReactNativeBlobUtil;
-      
+
       // For Android 10+, use MediaStore for better compatibility
       const isAndroidQOrAbove = Platform.Version >= 29;
-      
+
       const downloadOptions = {
         path: destinationPath,
         description: `Downloading invoice ${fileName}`,
@@ -261,23 +261,23 @@ const QRCodeDetails = () => {
         mediaScannable: true, // Make file visible in gallery/file managers
         notification: true, // Show download notification
       };
-      
+
       // For Android 10+, add mime type for better handling
       if (isAndroidQOrAbove) {
         downloadOptions.mime = 'application/pdf';
       }
-      
+
       const configOptions = {
         fileCache: false,
         path: destinationPath,
         appendExt: 'pdf',
         addAndroidDownloads: downloadOptions,
       };
-      
+
       const response = await ReactNativeBlobUtil
         .config(configOptions)
         .fetch('GET', downloadUrl);
-      
+
       return response.path();
     } catch (error) {
       console.error('DownloadManager error:', error);
@@ -288,20 +288,22 @@ const QRCodeDetails = () => {
   // Fallback download method (direct download)
   const downloadDirectly = async (downloadUrl, filePath) => {
     const { config, fs } = ReactNativeBlobUtil;
-    
+
     const response = await config({
       fileCache: false,
       path: filePath,
       overwrite: true,
     }).fetch('GET', downloadUrl);
-    
+
     return response.path();
   };
 
   // Modified handleDownloadPDF function to save to /storage/emulated/0/Downloads/
   const handleDownloadPDF = async () => {
     const invoiceUrl = complaintDetails?.invoice;
+    const invoiceData = complaintDetails?.invoice; // Could be URL, file path, or other data
 
+    // Check if invoice exists at all
     if (!invoiceUrl) {
       toast.custom(
         <StatusMessage
@@ -310,6 +312,48 @@ const QRCodeDetails = () => {
           message='No PDF invoice available for this complaint'
         />
       );
+      return;
+    }
+
+    // Check if invoice is a valid URL/link
+    const isValidUrl = (url) => {
+      if (!url) return false;
+      const urlPattern = /^(https?:\/\/|ftp:\/\/|file:\/\/)/i;
+      return urlPattern.test(url);
+    };
+
+    const isHttpUrl = (url) => {
+      return url && (url.startsWith('http://') || url.startsWith('https://'));
+    };
+
+    // If not a valid link, display what's available
+    if (!isValidUrl(invoiceUrl)) {
+      const dataType = typeof invoiceData;
+      let availableInfo = '';
+
+      if (dataType === 'string') {
+        availableInfo = `String data: ${invoiceUrl.substring(0, 100)}${invoiceUrl.length > 100 ? '...' : ''}`;
+      } else if (dataType === 'object') {
+        availableInfo = `Object data: ${JSON.stringify(invoiceData, null, 2)}`;
+      } else {
+        availableInfo = `Data type: ${dataType}, Value: ${String(invoiceData)}`;
+      }
+
+      toast.custom(
+        <StatusMessage
+          type='error'
+          title='Download Link Not Available'
+          message={`The invoice data is not a valid download link.\n\nAvailable data:\n${availableInfo}`}
+        />
+      );
+
+      // Log for debugging
+      console.log('Invalid invoice URL/data:', {
+        originalData: complaintDetails?.invoice,
+        dataType: typeof complaintDetails?.invoice,
+        fullComplaintDetails: complaintDetails
+      });
+
       return;
     }
 
@@ -356,10 +400,11 @@ const QRCodeDetails = () => {
         // Use Downloads directory
         const { fs } = ReactNativeBlobUtil;
         const downloadPath = `${fs.dirs.DownloadDir}/${fileName}`;
-        
+
         console.log('Download path:', downloadPath);
         console.log('Saving to Downloads folder:', fs.dirs.DownloadDir);
-        
+        console.log('Download URL:', invoiceUrl);
+
         // Try using DownloadManager first
         try {
           finalPath = await downloadWithDownloadManager(invoiceUrl, fileName, downloadPath);
@@ -370,21 +415,21 @@ const QRCodeDetails = () => {
           finalPath = await downloadDirectly(invoiceUrl, downloadPath);
           console.log('Direct download completed, file at:', finalPath);
         }
-        
+
         // Verify file exists
         const exists = await fs.exists(finalPath);
         if (exists) {
           const fileInfo = await fs.stat(finalPath);
           console.log('File size:', fileInfo.size, 'bytes');
-          
+
           toast.custom(
-            <StatusMessage 
-              type='success' 
-              title='Download Complete' 
-              message={`PDF saved to Downloads folder`} 
+            <StatusMessage
+              type='success'
+              title='Download Complete'
+              message={`PDF saved to Downloads folder`}
             />
           );
-          
+
           // Show DialogBox with option to open PDF
           showDialog(
             'Download Complete',
@@ -401,14 +446,14 @@ const QRCodeDetails = () => {
         const { config, fs } = ReactNativeBlobUtil;
         const documentsDir = fs.dirs.DocumentDir;
         const downloadPath = `${documentsDir}/${fileName}`;
-        
+
         finalPath = await downloadDirectly(invoiceUrl, downloadPath);
         console.log('Download completed on iOS:', finalPath);
-        
+
         toast.custom(
           <StatusMessage type='success' title='Download Complete' message='PDF downloaded successfully!' />
         );
-        
+
         // Show DialogBox for iOS
         showDialog(
           'Download Complete',
@@ -418,7 +463,7 @@ const QRCodeDetails = () => {
           () => openPDF(finalPath)
         );
       }
-      
+
     } catch (error) {
       console.error('PDF Download Error:', error);
       toast.custom(

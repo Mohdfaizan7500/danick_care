@@ -743,6 +743,56 @@ export const TechnicianServices = async (payload) => {
     }
 };
 
+export const ProceedAMC = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/ProceedAMC', payload);
+        console.log('ProceedAMC api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in ProceedAMC:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const CheckProceedAMC = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/CheckProceedAMC', payload);
+        console.log('CheckProceedAMC api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in CheckProceedAMC:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const AMCComplaintDetails = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/AMCComplaintDetails', payload);
+        console.log('AMCComplaintDetails api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in AMCComplaintDetails:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+export const DeletAMCRecordWithParts = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/DeletAMCRecordWithParts', payload);
+        console.log('DeletAMCRecordWithParts api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in DeletAMCRecordWithParts:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
 
 
 

@@ -14,6 +14,7 @@ import {
   Linking,
   BackHandler,
   FlatList,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -29,7 +30,9 @@ import {
   AMCQRCodeRemove, 
   FetchPartsForReplaced,
   AMCPartQRCodeUpdatePart,
-  RemoveAMCPart 
+  RemoveAMCPart,
+  AMCComplaintDetails,
+  DeletAMCRecordWithParts 
 } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import DialogBox from '../../../components/DilaogBox';
@@ -49,6 +52,13 @@ const AMCDetails = () => {
   const [selectedPartName, setSelectedPartName] = useState('');
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [billingId, setBillingId] = useState(null);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [deletingRecord, setDeletingRecord] = useState(false);
+  
+  // New states for fetched AMC complaint details
+  const [loadingComplaintDetails, setLoadingComplaintDetails] = useState(false);
+  const [fetchedComplaint, setFetchedComplaint] = useState(null);
+  const [fetchedAmcDetails, setFetchedAmcDetails] = useState(null);
   
   // New states for part replacement
   const [showReplaceModal, setShowReplaceModal] = useState(false);
@@ -65,12 +75,13 @@ const AMCDetails = () => {
   const route = useRoute();
   console.log('AMCDetails route params:', route.params);
 
-  const { amc, complaintData } = route.params || {};
+  const { amc, complaintData, amcComplaintId } = route.params || {};
   console.log('AMC Data:', amc);
   console.log('Complaint Data:', complaintData);
+  console.log('AMC Complaint ID:', amcComplaintId);
 
-  // Get parts from AMC data
-  const spareParts = amc?.parts || [];
+  // Get parts from AMC data (use fetched data if available)
+  const spareParts = fetchedAmcDetails?.parts || amc?.parts || [];
   console.log('Spare Parts from AMC:', spareParts);
 
   const device = useCameraDevice('back');
@@ -79,17 +90,160 @@ const AMCDetails = () => {
   // Check if all parts are linked
   const allPartsLinked = spareParts.length > 0 && linkedItems.length === spareParts.length;
 
-  // Generate random billing ID on component mount
+  // Fetch AMC Complaint Details on mount
   useEffect(() => {
-    generateBillingId();
+    fetchAMCComplaintDetails();
   }, []);
 
-  // Generate 6 digit random number for billing ID
+  // Fetch AMC Complaint Details
+  const fetchAMCComplaintDetails = async () => {
+    // Use amcComplaintId from params or from complaintData
+    const complaintId = amcComplaintId || complaintData?.id;
+    
+    if (!complaintId) {
+      console.log('No complaint ID available for AMCComplaintDetails');
+      generateBillingId();
+      return;
+    }
+
+    setLoadingComplaintDetails(true);
+    
+    try {
+      const payload = {
+        amc_complaint_id: complaintId.toString(),
+        technician_id: technicianId,
+      };
+      
+      console.log('Fetching AMC Complaint Details with payload:', payload);
+      const response = await AMCComplaintDetails(payload);
+      console.log('AMCComplaintDetails response:', response);
+      
+      if (response?.data?.success) {
+        const complaint = response.data.complaint;
+        const amcDetailsData = response.data.amc_details;
+        
+        setFetchedComplaint(complaint);
+        setFetchedAmcDetails(amcDetailsData);
+        
+        // Set billing ID from complaint data if available
+        if (complaint?.billing_id) {
+          setBillingId(complaint.billing_id);
+        } else {
+          generateBillingId();
+        }
+        
+        toast.custom(
+          <StatusMessage 
+            type='success' 
+            title='AMC Details Loaded' 
+            message={`Loaded details for ${amcDetailsData?.name || 'AMC Plan'}`}
+          />,
+          { duration: 2000 }
+        );
+      } else {
+        console.error('Failed to load AMC complaint details:', response?.data);
+        generateBillingId();
+        toast.custom(
+          <StatusMessage 
+            type='warning' 
+            title='Information' 
+            message='Could not load AMC details. Using provided data.' 
+          />,
+          { duration: 2000 }
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching AMC complaint details:', error);
+      generateBillingId();
+      toast.custom(
+        <StatusMessage 
+          type='error' 
+          title='Error' 
+          message={error.message || 'Failed to load AMC details'} 
+        />,
+        { duration: 3000 }
+      );
+    } finally {
+      setLoadingComplaintDetails(false);
+    }
+  };
+
+  // Generate random billing ID on component mount
   const generateBillingId = () => {
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     const newBillingId = `AMC${randomNum}`;
     setBillingId(newBillingId);
     console.log('Generated Billing ID:', newBillingId);
+  };
+
+  // Handle delete AMC record with parts
+  const handleDeleteAMCRecord = async () => {
+    const amcId = fetchedAmcDetails?.id?.toString() || amc?.id?.toString();
+    const complaintId = fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString();
+    
+    if (!amcId || !complaintId || !billingId) {
+      toast.custom(
+        <StatusMessage 
+          type='error' 
+          title='Cannot Delete' 
+          message='Missing required information to delete AMC record.' 
+        />,
+        { duration: 3000 }
+      );
+      return;
+    }
+
+    setDeletingRecord(true);
+    
+    try {
+      const payload = {
+        amc_id: amcId,
+        complaint_id: complaintId,
+        billing_id: billingId,
+      };
+      
+      console.log('Deleting AMC record with payload:', payload);
+      const response = await DeletAMCRecordWithParts(payload);
+      console.log('DeletAMCRecordWithParts response:', response);
+      
+      if (response?.data?.success) {
+        toast.custom(
+          <StatusMessage 
+            type='success' 
+            title='Success' 
+            message='AMC record has been deleted successfully.' 
+          />,
+          { duration: 2000 }
+        );
+        
+        // Navigate back after successful deletion
+        setTimeout(() => {
+          navigation.goBack();
+        }, 1500);
+      } else {
+        toast.custom(
+          <StatusMessage 
+            type='error' 
+            title='Failed to Delete' 
+            message={response?.data?.msg || response?.data?.message || 'Please try again.'} 
+          />,
+          { duration: 3000 }
+        );
+      }
+    } catch (error) {
+      console.error('Error deleting AMC record:', error);
+      toast.custom(
+        <StatusMessage 
+          type='error' 
+          title='Error' 
+          message={error.message || 'Failed to delete AMC record. Please try again.'} 
+        />,
+        { duration: 3000 }
+      );
+    } finally {
+      setDeletingRecord(false);
+      setShowDeleteConfirmModal(false);
+    }
   };
 
   // Keyboard listeners
@@ -234,8 +388,8 @@ const AMCDetails = () => {
     try {
       const payload = {
         technician_id: technicianId,
-        amc_id: amc?.id?.toString() || '',
-        comp_id: complaintData?.id?.toString() || '',
+        amc_id: fetchedAmcDetails?.id?.toString() || amc?.id?.toString() || '',
+        comp_id: fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString() || '',
         billing_id: billingId,
         part_name: partName,
         qr_code: qrCode,
@@ -380,8 +534,8 @@ const AMCDetails = () => {
       // Prepare payload for API
       const payload = {
         technician_id: technicianId,
-        amc_id: amc?.id?.toString() || '',
-        comp_id: complaintData?.id?.toString() || '',
+        amc_id: fetchedAmcDetails?.id?.toString() || amc?.id?.toString() || '',
+        comp_id: fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString() || '',
         billing_id: billingId,
         qr_code: selectedReplacementPart.qr_code,
       };
@@ -538,8 +692,8 @@ const AMCDetails = () => {
       // Prepare payload for API
       const payload = {
         technician_id: technicianId,
-        amc_id: amc?.id?.toString() || '',
-        comp_id: complaintData?.id?.toString() || '',
+        amc_id: fetchedAmcDetails?.id?.toString() || amc?.id?.toString() || '',
+        comp_id: fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString() || '',
         billing_id: billingId,
         qr_code: replacedInfo.replacement_qr_code,
       };
@@ -589,7 +743,7 @@ const AMCDetails = () => {
           title='Error Removing Replacement'
           message={error.message || 'Please try again'}
         />,
-        { duration: 3000 }
+          { duration: 3000 }
       );
     } finally {
       setRemoveReplaceLoadingStates(prev => ({ ...prev, [partId]: false }));
@@ -597,19 +751,6 @@ const AMCDetails = () => {
   };
 
   const handleNext = () => {
-    // if (!allPartsLinked) {
-    //   const remainingCount = spareParts.length - linkedItems.length;
-    //   toast.custom(
-    //     <StatusMessage
-    //       type='error'
-    //       title='Cannot Proceed'
-    //       message={`Please link all spare parts first (${remainingCount} remaining)`}
-    //     />,
-    //     { duration: 3000 }
-    //   );
-    //   return;
-    // }
-
     toast.custom(
       <StatusMessage type='info' title='Proceeding to next step...' />,
       { duration: 2000 }
@@ -622,8 +763,8 @@ const AMCDetails = () => {
           qr_code: qrCodeNumbers[id],
           replaced_with: replacedParts[id] || null
         })),
-        amc,
-        complaintData,
+        amc: fetchedAmcDetails || amc,
+        complaintData: fetchedComplaint || complaintData,
         billingId
       });
     }, 2000);
@@ -687,8 +828,43 @@ const AMCDetails = () => {
     );
   };
 
+  // Custom header right component with delete icon
+  const renderHeaderRight = () => {
+    if (linkedItems.length > 0) {
+      return (
+        <TouchableOpacity
+          onPress={() => setShowDeleteConfirmModal(true)}
+          className="mr-2"
+        >
+          <Icon name="trash-outline" size={24} color="#EF4444" />
+        </TouchableOpacity>
+      );
+    }
+    return null;
+  };
+
+  // Show loading indicator while fetching complaint details
+  if (loadingComplaintDetails) {
+    return (
+      <SafeAreaView className="flex-1 bg-white">
+        <Header
+          title="Spare Parts QR Linking"
+          titlePosition="left"
+          titleStyle="font-bold text-2xl ml-5"
+          showBackButton={true}
+          onBackPress={handleHeaderBack}
+          containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
+        />
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#14B8A6" />
+          <Text className="text-gray-600 mt-4">Loading AMC details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <SafeAreaView className="flex-1 bg-white">
       <View className="absolute inset-0 z-50 pointer-events-none">
         <Toaster />
       </View>
@@ -699,21 +875,32 @@ const AMCDetails = () => {
         titleStyle="font-bold text-2xl ml-5"
         showBackButton={true}
         onBackPress={handleHeaderBack}
+        showRightIcon={linkedItems.length > 0}
+        customRightIconComponent={renderHeaderRight()}
         containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
       />
 
       <ScrollView
-        className="flex-1 px-4"
+        className="flex-1 px-4 bg-gray-100"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 50 }}
       >
         {/* AMC Info Header */}
         <View className="bg-white rounded-xl p-4 mb-4 mt-2 shadow-sm">
-          <Text className="text-lg font-bold text-gray-800">{amc?.name || 'AMC Plan'}</Text>
-          <Text className="text-sm text-gray-600 mt-1">Valid: {amc?.valid || '1 Year'}</Text>
-          <Text className="text-sm text-teal-600 font-semibold mt-1">Price: ₹{amc?.price || '0'}</Text>
+          <Text className="text-lg font-bold text-gray-800">{fetchedAmcDetails?.name || amc?.name || 'AMC Plan'}</Text>
+          <Text className="text-sm text-gray-600 mt-1">Valid: {fetchedAmcDetails?.valid || amc?.valid || '1 Year'}</Text>
+          <Text className="text-sm text-teal-600 font-semibold mt-1">Price: ₹{fetchedAmcDetails?.price || amc?.price || '0'}</Text>
           {billingId && (
             <Text className="text-xs text-gray-500 mt-2">Billing ID: {billingId}</Text>
+          )}
+
+          {/* Show complaint info if available */}
+          {fetchedComplaint && (
+            <View className="mt-3 pt-3 border-t border-gray-100">
+              <Text className="text-xs text-gray-500">Complaint ID: {fetchedComplaint.complaint_id}</Text>
+              <Text className="text-xs text-gray-500">Status: {fetchedComplaint.status}</Text>
+              <Text className="text-xs text-gray-500">Total Service: {fetchedComplaint.total_service}</Text>
+            </View>
           )}
 
           {spareParts.length > 0 && (
@@ -952,10 +1139,9 @@ const AMCDetails = () => {
       {/* Next Button */}
       {!isKeyboardVisible && spareParts.length > 0 && (
         <TouchableOpacity
-          className={`py-3.5 mx-5 rounded-xl items-center absolute bottom-3 left-0 right-0 ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'
+          className={`py-3.5 mx-5 rounded-xl items-center absolute bottom-10 left-0 right-0 ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'
             }`}
           onPress={handleNext}
-          // disabled={!allPartsLinked}
         >
           <Text className="text-white text-lg font-bold">
             {allPartsLinked ? 'Next' : `Link ${spareParts.length - linkedItems.length} More`}
@@ -1028,6 +1214,48 @@ const AMCDetails = () => {
             </Text>
           </View>
         )}
+      </DialogBox>
+
+      {/* Delete Confirmation Modal */}
+      <DialogBox
+        visible={showDeleteConfirmModal}
+        onClose={() => setShowDeleteConfirmModal(false)}
+        title="Delete AMC Record"
+        size="sm"
+        modalAnimationType="fade"
+        closeOnBackdropPress={!deletingRecord}
+        footer={
+          <View className="flex-row gap-4">
+            <TouchableOpacity
+              onPress={() => setShowDeleteConfirmModal(false)}
+              className="flex-1 bg-gray-200 rounded-lg py-3"
+              disabled={deletingRecord}
+            >
+              <Text className="text-gray-700 text-center font-medium">Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleDeleteAMCRecord}
+              className="flex-1 bg-red-500 rounded-lg py-3"
+              disabled={deletingRecord}
+            >
+              {deletingRecord ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text className="text-white text-center font-medium">Delete</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        <View className="py-4 items-center">
+          <Icon name="alert-circle" size={50} color="#EF4444" />
+          <Text className="text-lg font-semibold text-gray-800 text-center mt-3">
+            Are you sure?
+          </Text>
+          <Text className="text-gray-600 text-center mt-2">
+            This will delete the entire AMC record along with all linked parts. This action cannot be undone.
+          </Text>
+        </View>
       </DialogBox>
 
       {/* Image Modal */}

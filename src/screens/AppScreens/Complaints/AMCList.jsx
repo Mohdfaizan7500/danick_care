@@ -1,11 +1,14 @@
-import { Text, View, FlatList, Image, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native'
+import { Text, View, FlatList, Image, TouchableOpacity, StatusBar, ActivityIndicator, Alert } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import Header from '../../../components/Header'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import Icon from 'react-native-vector-icons/Ionicons';
-import { AMCConvertList } from '../../../lib/api'
+import { AMCConvertList, ProceedAMC } from '../../../lib/api'
 import DialogBox from '../../../components/DilaogBox'
+import { useAuth } from '../../../context/AuthContext'
+import { toast } from 'sonner-native'
+import StatusMessage from '../../../components/StatusMessage'
 
 const AMCList = () => {
     const navigation = useNavigation();
@@ -18,6 +21,10 @@ const AMCList = () => {
     const [refreshing, setRefreshing] = useState(false)
     const [selectedAMC, setSelectedAMC] = useState(null)
     const [showConfirmModal, setShowConfirmModal] = useState(false)
+    const [processingAMC, setProcessingAMC] = useState(false)
+
+    // Get user from auth context
+    const { user } = useAuth()
 
     // Get city_id and service_name from complaintData
     const cityId = complaintData?.city_id || '1'
@@ -38,7 +45,10 @@ const AMCList = () => {
             console.log('AMC List response:', response)
             
             if (response?.data?.success) {
-                setAmcData(response.data.data || [])
+                const data = response.data.data || []
+                // Remove duplicates based on id
+                const uniqueData = removeDuplicates(data)
+                setAmcData(uniqueData)
             } else {
                 console.error('Failed to load AMC list:', response?.data)
             }
@@ -47,6 +57,20 @@ const AMCList = () => {
         } finally {
             setLoading(false)
         }
+    }
+
+    // Function to remove duplicate items based on id
+    const removeDuplicates = (data) => {
+        const seen = new Set()
+        return data.filter(item => {
+            const id = item.id?.toString()
+            if (seen.has(id)) {
+                console.warn(`Duplicate item found with id: ${id}`)
+                return false
+            }
+            seen.add(id)
+            return true
+        })
     }
 
     const onRefresh = async () => {
@@ -60,10 +84,65 @@ const AMCList = () => {
         setShowConfirmModal(true)
     }
 
-    const handleConfirmConversion = () => {
+    const handleConfirmConversion = async () => {
         setShowConfirmModal(false)
-        if (selectedAMC) {
-            navigation.navigate('ComplaintAMCDetails', { amc: selectedAMC, complaintData })
+        
+        if (!selectedAMC) return
+        
+        setProcessingAMC(true)
+        
+        try {
+            // Prepare payload for ProceedAMC API
+            const payload = {
+                amc_id: selectedAMC.id?.toString(),
+                complaint_id: complaintData?.id?.toString(),
+                technician_id: user?.id?.toString()
+            }
+            
+            console.log('ProceedAMC payload:', payload)
+            
+            const response = await ProceedAMC(payload)
+            console.log('ProceedAMC response:', response)
+            
+            // Check if response is successful
+            if (response?.data?.success || response?.success) {
+                // Show success message
+                toast.custom(
+                    <StatusMessage 
+                        type='success' 
+                        title='Success!' 
+                        message='AMC plan has been successfully applied to this complaint.' 
+                    />,
+                    { duration: 2000 }
+                )
+                
+                // Navigate to next screen with response data
+                navigation.navigate('ComplaintAMCDetails', { 
+                    amc: selectedAMC, 
+                    complaintData,
+                    proceedResponse: response?.data 
+                })
+            } else {
+                // Handle API error response
+                const errorMessage = response?.data?.message || response?.message || 'Failed to proceed with AMC plan. Please try again.'
+                toast.custom(
+                    <StatusMessage type='error' title='Failed' message={errorMessage} />,
+                    { duration: 2000 }
+                )
+            }
+        } catch (error) {
+            console.error('Error proceeding with AMC:', error)
+            toast.custom(
+                <StatusMessage 
+                    type='error' 
+                    title='Error' 
+                    message={error.message || 'Something went wrong. Please try again.'} 
+                />,
+                { duration: 2000 }
+            )
+        } finally {
+            setProcessingAMC(false)
+            setSelectedAMC(null)
         }
     }
 
@@ -99,9 +178,12 @@ const AMCList = () => {
         }).format(numPrice)
     }
 
-    const renderItem = ({ item }) => {
+    const renderItem = ({ item, index }) => {
         const features = parseFeatures(item.content)
         const imageUrl = item.image1 ? `https://dainikcare.com/dainik_care_admin/${item.image1}` : null
+        
+        // Generate a unique key for features using index
+        const getFeatureKey = (feature, featureIndex) => `${item.id}_feature_${featureIndex}_${feature.substring(0, 10)}`
         
         return (
             <TouchableOpacity
@@ -143,8 +225,8 @@ const AMCList = () => {
                     </View>
 
                     <View className="mb-4">
-                        {features.map((feature, index) => (
-                            <View key={index} className="flex-row items-center mb-1.5">
+                        {features.map((feature, featureIndex) => (
+                            <View key={getFeatureKey(feature, featureIndex)} className="flex-row items-center mb-1.5">
                                 <Text className="text-sm text-teal-500 mr-2 font-bold">✓</Text>
                                 <Text className="text-sm text-gray-600 flex-1">{feature}</Text>
                             </View>
@@ -153,8 +235,8 @@ const AMCList = () => {
                         {features.length === 0 && item.parts && item.parts.length > 0 && (
                             <View>
                                 <Text className="text-sm font-semibold text-gray-700 mb-1">Covered Parts:</Text>
-                                {item.parts.slice(0, 3).map((part, index) => (
-                                    <View key={index} className="flex-row items-center mb-1.5">
+                                {item.parts.slice(0, 3).map((part, partIndex) => (
+                                    <View key={`${item.id}_part_${partIndex}_${part.part_id || partIndex}`} className="flex-row items-center mb-1.5">
                                         <Text className="text-sm text-teal-500 mr-2 font-bold">•</Text>
                                         <Text className="text-sm text-gray-600 flex-1">{part.part_name}</Text>
                                     </View>
@@ -171,8 +253,11 @@ const AMCList = () => {
                     <TouchableOpacity 
                         className="bg-teal-500 py-3 rounded-lg items-center mt-2.5"
                         onPress={() => handleAMCPress(item)}
+                        disabled={processingAMC}
                     >
-                        <Text className="text-white text-base font-bold">Buy Now</Text>
+                        <Text className="text-white text-base font-bold">
+                            {processingAMC && selectedAMC?.id === item.id ? 'Processing...' : 'Buy Now'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </TouchableOpacity>
@@ -181,7 +266,7 @@ const AMCList = () => {
 
     if (loading && !refreshing) {
         return (
-            <SafeAreaView className="flex-1 bg-gray-100">
+            <SafeAreaView className="flex-1 bg-white">
                 <StatusBar backgroundColor={'#fff'} barStyle={'dark-content'} />
                 <Header
                     title="AMC"
@@ -199,7 +284,7 @@ const AMCList = () => {
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-100">
+        <SafeAreaView className="flex-1 bg-white">
             <StatusBar backgroundColor={'#fff'} barStyle={'dark-content'} />
 
             <Header
@@ -210,10 +295,31 @@ const AMCList = () => {
                 containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
             />
 
+            {/* Loading overlay for AMC processing */}
+            {processingAMC && (
+                <View className="absolute inset-0 bg-black/50 z-50 justify-center items-center">
+                    <View className="bg-white rounded-lg p-6 items-center">
+                        <ActivityIndicator size="large" color="#10b981" />
+                        <Text className="text-gray-800 font-semibold mt-4">
+                            Processing AMC Plan...
+                        </Text>
+                        <Text className="text-gray-500 text-sm mt-2">
+                            Please wait while we process your request
+                        </Text>
+                    </View>
+                </View>
+            )}
+
             <FlatList
                 data={amcData}
                 renderItem={renderItem}
-                keyExtractor={item => item.id.toString()}
+                keyExtractor={(item, index) => {
+                    // Use index as fallback if id is duplicate or missing
+                    const uniqueKey = item?.id 
+                        ? `${item.id}_${index}` 
+                        : `item_${index}_${Date.now()}`
+                    return uniqueKey
+                }}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ padding: 15 }}
                 refreshing={refreshing}
@@ -250,6 +356,21 @@ const AMCList = () => {
                             <Icon name="alert-circle" size={40} color="#F97316" />
                         </View>
                     </View>
+
+                    {/* AMC Details */}
+                    {selectedAMC && (
+                        <View className="mb-4 p-3 bg-gray-50 rounded-lg">
+                            <Text className="text-center text-gray-800 font-semibold">
+                                {selectedAMC.name}
+                            </Text>
+                            <Text className="text-center text-teal-600 font-bold mt-1">
+                                {formatPrice(selectedAMC.price)}
+                            </Text>
+                            <Text className="text-center text-gray-500 text-sm mt-1">
+                                Validity: {selectedAMC.valid || '1 Year'}
+                            </Text>
+                        </View>
+                    )}
 
                     {/* Question Text */}
                     <Text className="text-lg font-semibold text-center text-gray-800 mb-3">
@@ -288,9 +409,10 @@ const AMCList = () => {
                         <TouchableOpacity
                             onPress={handleConfirmConversion}
                             className="flex-1 bg-teal-500 py-3 rounded-lg ml-2"
+                            disabled={processingAMC}
                         >
                             <Text className="text-white text-center font-semibold text-base">
-                                हाँ / Yes
+                                {processingAMC ? 'Processing...' : 'हाँ / Yes'}
                             </Text>
                         </TouchableOpacity>
                     </View>

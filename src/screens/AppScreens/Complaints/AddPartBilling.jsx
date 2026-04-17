@@ -40,6 +40,21 @@ const AddPartBilling = () => {
     // Ensure importedPart is always an array (fallback to empty array)
     const safeImportedPart = Array.isArray(importedPart) ? importedPart : [];
 
+
+    const getImageUrl = (imagePath, baseUrl) => {
+        if (!imagePath) return null;
+
+        // Check if it's already a full URL
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+            return imagePath;
+        }
+
+        // Otherwise, construct URL with base URL
+        const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
+        const base = baseUrl?.endsWith('/') ? baseUrl : `${baseUrl}/`;
+        return `${base}${cleanPath}`;
+    };
+
     // Fetch parts from API when component mounts
     const fetchParts = async (isRefresh = false) => {
         if (!complaintData) {
@@ -81,7 +96,7 @@ const AddPartBilling = () => {
                 name: part.part_name || 'Part',
                 partNumber: part.id?.toString() || '',
                 price: parseFloat(part.part_price) || 0,
-                imageUrl: part.part_image,
+                imageUrl: getImageUrl(part.imageUrl || part.part_image, imagUrl),
                 description: part.description || '',
                 transfer_by: part.transfer_by,
                 part_accept: part.part_accept, // Keep as string or null
@@ -262,10 +277,10 @@ const AddPartBilling = () => {
         const cardOpacity = isAssigned ? 0.6 : 1;
 
         const cardClasses = `flex-row items-center p-3 mb-4 rounded-2xl border ${isSelected
-                ? 'bg-green-50 border-primary-sage600'
-                : isAssigned
-                    ? 'bg-gray-100 border-gray-300'
-                    : 'bg-white border-ui-border'
+            ? 'bg-green-50 border-primary-sage600'
+            : isAssigned
+                ? 'bg-gray-100 border-gray-300'
+                : 'bg-white border-ui-border'
             }`;
 
         return (
@@ -290,18 +305,18 @@ const AddPartBilling = () => {
                         </View>
                     )
                 }
-               
+
                 <View className="flex-1 ml-3">
                     <Text className={`font-semibold text-base ${isAssigned ? 'text-gray-500' : 'text-text-primary'}`}>
                         {item.name}
                     </Text>
                     <View className='flex-row gap-5'>
-                    <Text className={`text-sm ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
-                        Part #: {item.partNumber}
-                    </Text>
-                    <Text className={`text-sm ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
-                        QR Code: {item.qr_code}
-                    </Text>
+                        <Text className={`text-sm ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
+                            Part #: {item.partNumber}
+                        </Text>
+                        <Text className={`text-sm ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
+                            QR Code: {item.qr_code}
+                        </Text>
                     </View>
                     {item.description && (
                         <Text className={`text-xs mt-1 ${isAssigned ? 'text-gray-400' : 'text-text-tertiary'}`} numberOfLines={2}>
@@ -428,8 +443,8 @@ const AddPartBilling = () => {
                     data={filteredParts}
                     keyExtractor={(item) => item.id}
                     renderItem={renderPartItem}
-                    contentContainerStyle={{ 
-                        paddingHorizontal: 16, 
+                    contentContainerStyle={{
+                        paddingHorizontal: 16,
                         paddingBottom: 16,
                         flexGrow: 1,
                         ...(filteredParts.length === 0 && { justifyContent: 'center' })

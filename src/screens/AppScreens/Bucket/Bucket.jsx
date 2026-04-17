@@ -75,7 +75,7 @@ const Bucket = () => {
     received: 0
   });
   const tabTimeoutRef = useRef(null);
-  const { user } = useAuth();
+  const { user, imagUrl } = useAuth();
   const technician_id = user?.id;
 
   // Search state
@@ -108,6 +108,20 @@ const Bucket = () => {
       default:
         return '';
     }
+  };
+
+  const getImageUrl = (imagePath, baseUrl) => {
+    if (!imagePath) return null;
+
+    // Check if it's already a full URL
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+
+    // Otherwise, construct URL with base URL
+    const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
+    const base = baseUrl?.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    return `${base}${cleanPath}`;
   };
 
   const fetchParts = async (transfer_by, isRefresh = false) => {
@@ -144,7 +158,7 @@ const Bucket = () => {
             item.transfer_by === 'admin' ? 'Admin' :
               item.transfer_by === 'replace' ? 'Replace' : 'Unknown',
         price: item.part_price,
-        imageUrl: item.part_image,
+        imageUrl: getImageUrl(item.imageUrl || item.part_image, imagUrl),
         parentType: item.transfer_by,
         addedDate: item.created_at || new Date().toLocaleDateString(),
         description: item.description,
@@ -613,7 +627,7 @@ const Bucket = () => {
               ) : null}
               {item.part_accept == 0 && (
                 <Text className="text-xs text-ui-info mt-1">
-                  {selectedTab == 'Received' ? `Received From: ${item.technician_name}`:`Transferred To: ${item.technician_name}` }
+                  {selectedTab == 'Received' ? `Received From: ${item.technician_name}` : `Transferred To: ${item.technician_name}`}
                 </Text>
               )}
             </View>

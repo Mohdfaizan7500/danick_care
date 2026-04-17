@@ -19,7 +19,7 @@ const AMCBilling = () => {
 
   const route = useRoute();
   const complaintdata = route.params;
-  console.log(complaintdata)
+  console.log("",complaintdata)
 
   // Calculate discount amount
   const calculateDiscountAmount = () => {

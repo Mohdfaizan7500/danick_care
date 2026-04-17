@@ -78,6 +78,8 @@ const Billing = () => {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef(null);
 
+
+
   // Check if it's a recomplaint
   const isRecomplaint = complaintData?.recomplaint === 'Yes';
 
@@ -85,6 +87,20 @@ const Billing = () => {
   const totalPartsPrice = parts?.reduce((sum, part) => sum + part.price, 0) || 0;
   const totalBeforeDiscount = baseAmount + totalPartsPrice;
   const totalPayable = totalBeforeDiscount - discount;
+
+  const getImageUrl = (imagePath, baseUrl) => {
+    if (!imagePath) return null;
+
+    // Check if it's already a full URL
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+
+    // Otherwise, construct URL with base URL
+    const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
+    const base = baseUrl?.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    return `${base}${cleanPath}`;
+  };
 
   // Keyboard listeners for Android 13+
   useEffect(() => {
@@ -153,7 +169,7 @@ const Billing = () => {
           partNumber: part.id?.toString() || '',
           qr_code: part.qr_code || null,
           price: parseFloat(part.part_price) || 0,
-          imageUrl: part?.part_image,
+          imageUrl: getImageUrl(part.imageUrl || part.part_image, imagUrl),
           description: part.description || '',
           transfer_by: part.transfer_by || 'market',
           status: part.status || '0',
@@ -492,7 +508,7 @@ const Billing = () => {
         price: sourceMap[part.id] === 'recomplaint'
           ? 0
           : (parseFloat(part.part_price || part.price || 0) || 0),
-        imageUrl: part.part_image || part.imageUrl || null,
+        imageUrl: getImageUrl(part.imageUrl || part.part_image, imagUrl),
         description: part.description || '',
         transfer_by: part.transfer_by || part.transferredBy || null,
         part_accept: part.part_accept || part.accepted || null,

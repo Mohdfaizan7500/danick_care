@@ -19,6 +19,7 @@ import StatusMessage from '../../../components/StatusMessage';
 import { getAllTechnician, partTransferToTechnician } from '../../../lib/api';
 
 const BucketpartDetails = () => {
+  
   const navigation = useNavigation();
   const route = useRoute();
   const { item } = route.params;

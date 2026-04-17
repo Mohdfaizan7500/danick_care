@@ -76,7 +76,7 @@ const Complaints = () => {
   const scrollViewRef = useRef(null);
   const timeoutRef = useRef(null);
   const flatListRef = useRef(null);
-  const { user } = useAuth();
+  const { user,imagUrl } = useAuth();
   const technicianId = user?.id || '1';
 
   const route = useRoute();

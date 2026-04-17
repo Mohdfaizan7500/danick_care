@@ -19,7 +19,7 @@ import StatusMessage from '../../../components/StatusMessage';
 import { launchCamera } from 'react-native-image-picker';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import DialogBox from '../../../components/DilaogBox';
-import { UploadComplaintImage, deletComplaintImage, getComplaintImage, UpdateRemark } from '../../../lib/api';
+import { UploadComplaintImage, deletComplaintImage, getComplaintImage, UpdateRemark, CheckProceedAMC } from '../../../lib/api';
 import ToggleSwitch from 'toggle-switch-react-native';
 
 const Remarkscreen = () => {
@@ -54,6 +54,9 @@ const Remarkscreen = () => {
 
     // State for Convert to AMC toggle
     const [convertToAMC, setConvertToAMC] = useState(false);
+    const [isAMCLocked, setIsAMCLocked] = useState(false); // New state to lock the toggle
+    const [checkingAMC, setCheckingAMC] = useState(true); // Loading state for AMC check
+    const [amcComplaintId, setAmcComplaintId] = useState(null);
 
     // Compute if form is complete (only needed when convertToAMC is false)
     const isFormComplete =
@@ -63,6 +66,72 @@ const Remarkscreen = () => {
         image2Uri !== null &&
         image1Id !== null &&
         image2Id !== null;
+
+    // Function to check if AMC already proceeded
+    const checkAMCStatus = async () => {
+        setCheckingAMC(true);
+        try {
+            const payload = {
+                complaint_id: complaintData?.id?.toString() || '',
+                technician_id: complaintData?.technician_id?.toString() || '62'
+            };
+
+            console.log('Checking AMC status with payload:', payload);
+            const response = await CheckProceedAMC(payload);
+            console.log('CheckProceedAMC response:', response);
+
+            if (response?.data?.success) {
+                const status = response.data.status;
+                const msg = response.data.msg;
+                const amcComplaintIdFromResponse = response.data.amc_complaint_id;
+
+                if (status === '1') {
+                    // AMC already proceeded - set toggle to true and lock it
+                    setConvertToAMC(true);
+                    setIsAMCLocked(true);
+                    setAmcComplaintId(amcComplaintIdFromResponse); // Store the AMC complaint ID
+
+                    toast.custom(
+                        <StatusMessage
+                            type="info"
+                            title={msg || "AMC Already Proceed"}
+                            description={`AMC ID: ${amcComplaintIdFromResponse} has already been processed for this complaint`}
+                            className="mx-4 mb-6"
+                        />,
+                        { duration: 3000 }
+                    );
+                } else {
+                    // AMC not proceeded yet - toggle is free and defaults to false
+                    setConvertToAMC(false);
+                    setIsAMCLocked(false);
+                    setAmcComplaintId(null);
+                }
+            } else {
+                // If API returns unsuccessful, keep toggle free
+                setConvertToAMC(false);
+                setIsAMCLocked(false);
+                setAmcComplaintId(null);
+                console.log('CheckProceedAMC unsuccessful:', response?.data?.msg);
+            }
+        } catch (error) {
+            console.error('Error checking AMC status:', error);
+            // On error, keep toggle free and default to false
+            setConvertToAMC(false);
+            setIsAMCLocked(false);
+            setAmcComplaintId(null);
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title="Failed to check AMC status"
+                    description="Please proceed with caution"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
+        } finally {
+            setCheckingAMC(false);
+        }
+    };
 
     // Fetch existing images on component mount
     useEffect(() => {
@@ -81,7 +150,6 @@ const Remarkscreen = () => {
         if (complaintData.review !== '') {
             setSelectedCustomerType(complaintData.review);
         }
-
     }, []);
 
     // Function to fetch existing images from server
@@ -140,10 +208,11 @@ const Remarkscreen = () => {
         }
     };
 
-
     useEffect(() => {
-        fetchExistingImages()
-    }, [])
+        fetchExistingImages();
+        checkAMCStatus(); // Check AMC status when component mounts
+    }, []);
+
     // ----- Camera permission functions -----
     const checkCameraPermission = async () => {
         if (Platform.OS === 'ios') {
@@ -471,11 +540,30 @@ const Remarkscreen = () => {
     };
 
     // Handle next button
+    // Handle next button
     const handleNext = async () => {
-        // If convertToAMC is true, directly navigate to AMCList
+        // If convertToAMC is true, navigate to appropriate AMC screen
         if (convertToAMC) {
-            navigation.navigate('AMCList', { complaintData: complaintData });
-            return;
+            if (isAMCLocked) {
+                // AMC already proceeded - go to ComplaintAMCDetails with AMC data
+                const amcData = {
+                    amc_complaint_id: amcComplaintId,
+                    complaint_id: complaintData?.id,
+                    status: '1',
+                    msg: 'AMC Already Proceed'
+                };
+
+                navigation.navigate('ComplaintAMCDetails', {
+                    complaintData: complaintData,
+                    amcData: amcData,
+                    amcComplaintId: amcComplaintId // Pass the ID directly as well
+                });
+                return;
+            } else {
+                // AMC not proceeded yet - go to AMCList to select/create AMC
+                navigation.navigate('AMCList', { complaintData: complaintData });
+                return;
+            }
         }
 
         // Check if both images are uploaded (have IDs)
@@ -525,7 +613,7 @@ const Remarkscreen = () => {
                         image1Uri: image1Uri,
                         image2Uri: image2Uri,
                         complaintData: complaintData,
-                        convertToAMC: convertToAMC // Pass the AMC toggle state
+                        convertToAMC: convertToAMC
                     });
                 }, 500);
             } else {
@@ -588,34 +676,44 @@ const Remarkscreen = () => {
                 titleStyle="font-bold text-2xl ml-5"
                 showBackButton={true}
                 containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
-
             />
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 className="flex-1"
             >
                 <ScrollView className="flex-1 px-4 pt-4" showsVerticalScrollIndicator={false}>
-                    {/* Loading Indicator */}
-                    {loadingImages && (
+                    {/* Loading Indicator for AMC Check */}
+                    {checkingAMC && (
+                        <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center">
+                            <ActivityIndicator size="large" color="#000" />
+                            <Text className="text-text-primary mt-2">Checking AMC status...</Text>
+                        </View>
+                    )}
+
+                    {/* Loading Indicator for Images */}
+                    {loadingImages && !checkingAMC && (
                         <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center">
                             <ActivityIndicator size="large" color="#000" />
                             <Text className="text-text-primary mt-2">Loading existing images...</Text>
                         </View>
                     )}
 
+                    <Text className='text-black font-semibold text-sm'>Complaint: {complaintData?.service_name}</Text>
+
                     {/* Convert to AMC with Toggle Switch - Inline */}
-                    <View className="flex-row justify-between items-center mb-4 p-3 bg-gray-50 rounded-xl">
+                    <View className="flex-row justify-between items-center mb-4 mt-3 p-3 bg-gray-50 rounded-xl">
                         <View>
                             <Text className="text-text-primary font-semibold text-base">
                                 Convert to AMC
                             </Text>
                             <Text className="text-text-tertiary text-xs mt-1">
                                 {convertToAMC ? 'Yes, convert to AMC' : 'No, regular service'}
+                                {isAMCLocked && ' (AMC already processed)'}
                             </Text>
                         </View>
                         <ToggleSwitch
                             isOn={convertToAMC}
-                            onToggle={setConvertToAMC}
+                            onToggle={isAMCLocked ? undefined : setConvertToAMC}
                             onColor="#14B8A6"
                             offColor="#D1D5DB"
                             size="medium"
@@ -624,6 +722,7 @@ const Remarkscreen = () => {
                             thumbOnStyleCustom={{ backgroundColor: '#FFFFFF' }}
                             thumbOffStyleCustom={{ backgroundColor: '#FFFFFF' }}
                             animationSpeed={200}
+                            disabled={isAMCLocked || checkingAMC}
                         />
                     </View>
 
@@ -778,21 +877,20 @@ const Remarkscreen = () => {
                     {/* Next Button */}
                     <TouchableOpacity
                         onPress={handleNext}
-                        disabled={!convertToAMC && (!isFormComplete || uploadingImage1 || uploadingImage2 || deletingImage1 || deletingImage2 || loadingImages || submitting)}
-                        className={`py-4 rounded-xl items-center mb-8 ${
-                            convertToAMC 
-                                ? 'bg-black' 
-                                : (isFormComplete && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2 && !loadingImages && !submitting)
-                                    ? 'bg-black'
-                                    : 'bg-gray-400'
-                        }`}
+                        disabled={(!convertToAMC && (!isFormComplete || uploadingImage1 || uploadingImage2 || deletingImage1 || deletingImage2 || loadingImages || submitting)) || checkingAMC}
+                        className={`py-4 rounded-xl items-center mb-8 ${(convertToAMC && !checkingAMC) ||
+                            (!convertToAMC && isFormComplete && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2 && !loadingImages && !submitting && !checkingAMC)
+                            ? 'bg-black'
+                            : 'bg-gray-400'
+                            }`}
                     >
                         <Text className="text-white font-semibold text-base">
-                            {submitting ? 'Submitting...' :
-                                loadingImages ? 'Loading Images...' :
-                                    uploadingImage1 || uploadingImage2 ? 'Uploading Images...' :
-                                        deletingImage1 || deletingImage2 ? 'Deleting Image...' :
-                                            convertToAMC ? 'Next' : 'Next'}
+                            {checkingAMC ? 'Checking AMC Status...' :
+                                submitting ? 'Submitting...' :
+                                    loadingImages ? 'Loading Images...' :
+                                        uploadingImage1 || uploadingImage2 ? 'Uploading Images...' :
+                                            deletingImage1 || deletingImage2 ? 'Deleting Image...' :
+                                                'Next'}
                         </Text>
                     </TouchableOpacity>
                 </ScrollView>

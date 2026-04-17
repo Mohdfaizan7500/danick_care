@@ -14,6 +14,7 @@ import { logoutApi } from '../../../lib/api';
 
 const Profile = () => {
   const { user, logout, profileData, imagUrl, setAuthData, setIsOnline } = useAuth();
+  console.log("profileData:",profileData)
   const tech_id = user?.id;
   console.log('id:', tech_id);
   const navigation = useNavigation();
