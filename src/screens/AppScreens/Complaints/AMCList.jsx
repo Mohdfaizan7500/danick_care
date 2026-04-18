@@ -43,7 +43,7 @@ const AMCList = () => {
             }
             const response = await AMCConvertList(payload)
             console.log('AMC List response:', response)
-            
+
             if (response?.data?.success) {
                 const data = response.data.data || []
                 // Remove duplicates based on id
@@ -86,11 +86,11 @@ const AMCList = () => {
 
     const handleConfirmConversion = async () => {
         setShowConfirmModal(false)
-        
+
         if (!selectedAMC) return
-        
+
         setProcessingAMC(true)
-        
+
         try {
             // Prepare payload for ProceedAMC API
             const payload = {
@@ -98,30 +98,38 @@ const AMCList = () => {
                 complaint_id: complaintData?.id?.toString(),
                 technician_id: user?.id?.toString()
             }
-            
+
             console.log('ProceedAMC payload:', payload)
-            
+
             const response = await ProceedAMC(payload)
             console.log('ProceedAMC response:', response)
-            
+
             // Check if response is successful
+            // After successful ProceedAMC response
             if (response?.data?.success || response?.success) {
                 // Show success message
                 toast.custom(
-                    <StatusMessage 
-                        type='success' 
-                        title='Success!' 
-                        message='AMC plan has been successfully applied to this complaint.' 
+                    <StatusMessage
+                        type='success'
+                        title='Success!'
+                        message='AMC plan has been successfully applied to this complaint.'
                     />,
                     { duration: 2000 }
                 )
-                
+
+                // Extract the amc_complaint_id from response
+                const amcComplaintId = response?.data?.amc_complaint_id || response?.amc_complaint_id
+
+                console.log('AMC Complaint ID from response:', amcComplaintId)
+
                 // Navigate to next screen with response data
-                navigation.navigate('ComplaintAMCDetails', { 
-                    amc: selectedAMC, 
-                    complaintData,
-                    proceedResponse: response?.data 
+                navigation.replace('ComplaintAMCDetails', {
+                    amc: selectedAMC,
+                    complaintData: complaintData,
+                    proceedResponse: response?.data,
+                    amcComplaintId: amcComplaintId  // Pass the amc_complaint_id explicitly
                 })
+
             } else {
                 // Handle API error response
                 const errorMessage = response?.data?.message || response?.message || 'Failed to proceed with AMC plan. Please try again.'
@@ -133,10 +141,10 @@ const AMCList = () => {
         } catch (error) {
             console.error('Error proceeding with AMC:', error)
             toast.custom(
-                <StatusMessage 
-                    type='error' 
-                    title='Error' 
-                    message={error.message || 'Something went wrong. Please try again.'} 
+                <StatusMessage
+                    type='error'
+                    title='Error'
+                    message={error.message || 'Something went wrong. Please try again.'}
                 />,
                 { duration: 2000 }
             )
@@ -154,17 +162,17 @@ const AMCList = () => {
     // Parse HTML content to extract features
     const parseFeatures = (htmlContent) => {
         if (!htmlContent) return []
-        
+
         const features = []
         const regex = /<i class="fa fa-check-circle" style="color:green"><\/i>\s*(.*?)<br>/g
         let match
-        
+
         while ((match = regex.exec(htmlContent)) !== null) {
             if (match[1] && match[1].trim()) {
                 features.push(match[1].trim())
             }
         }
-        
+
         return features
     }
 
@@ -181,10 +189,10 @@ const AMCList = () => {
     const renderItem = ({ item, index }) => {
         const features = parseFeatures(item.content)
         const imageUrl = item.image1 ? `https://dainikcare.com/dainik_care_admin/${item.image1}` : null
-        
+
         // Generate a unique key for features using index
         const getFeatureKey = (feature, featureIndex) => `${item.id}_feature_${featureIndex}_${feature.substring(0, 10)}`
-        
+
         return (
             <TouchableOpacity
                 onPress={() => handleAMCPress(item)}
@@ -231,7 +239,7 @@ const AMCList = () => {
                                 <Text className="text-sm text-gray-600 flex-1">{feature}</Text>
                             </View>
                         ))}
-                       
+
                         {features.length === 0 && item.parts && item.parts.length > 0 && (
                             <View>
                                 <Text className="text-sm font-semibold text-gray-700 mb-1">Covered Parts:</Text>
@@ -250,7 +258,7 @@ const AMCList = () => {
                         )}
                     </View>
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         className="bg-teal-500 py-3 rounded-lg items-center mt-2.5"
                         onPress={() => handleAMCPress(item)}
                         disabled={processingAMC}
@@ -315,8 +323,8 @@ const AMCList = () => {
                 renderItem={renderItem}
                 keyExtractor={(item, index) => {
                     // Use index as fallback if id is duplicate or missing
-                    const uniqueKey = item?.id 
-                        ? `${item.id}_${index}` 
+                    const uniqueKey = item?.id
+                        ? `${item.id}_${index}`
                         : `item_${index}_${Date.now()}`
                     return uniqueKey
                 }}
@@ -376,7 +384,7 @@ const AMCList = () => {
                     <Text className="text-lg font-semibold text-center text-gray-800 mb-3">
                         क्या आप इस complaint को AMC में convert करना चाहते हैं?
                     </Text>
-                    
+
                     <Text className="text-base text-center text-gray-600 mb-4">
                         Do you want to convert this complaint to AMC?
                     </Text>
@@ -405,7 +413,7 @@ const AMCList = () => {
                                 नहीं / No
                             </Text>
                         </TouchableOpacity>
-                        
+
                         <TouchableOpacity
                             onPress={handleConfirmConversion}
                             className="flex-1 bg-teal-500 py-3 rounded-lg ml-2"

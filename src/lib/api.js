@@ -3,7 +3,7 @@ import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // const BASE_URL = 'https://dummyjson.com/';
-const BASE_URL = 'http://192.168.1.41:5001/';
+const BASE_URL = 'http://192.168.1.43:5001/';
 // const BASE_URL = 'http://api.dainikcare.com/';
 
 
@@ -784,7 +784,7 @@ export const AMCComplaintDetails = async (payload) => {
 export const DeletAMCRecordWithParts = async (payload) => {
     console.log('payload', payload)
     try {
-        const response = await apiClient.post('TechnicianAPI/DeletAMCRecordWithParts', payload);
+        const response = await apiClient.post('TechnicianAPI/DeleteAMCRecordWithParts', payload);
         console.log('DeletAMCRecordWithParts api  response:', response);
         return response;
     } catch (error) {

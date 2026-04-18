@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -9,9 +9,10 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
+    RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import { toast, Toaster } from 'sonner-native';
@@ -39,6 +40,7 @@ const Remarkscreen = () => {
     const [deletingImage2, setDeletingImage2] = useState(false);
     const [loadingImages, setLoadingImages] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     // State for Customer Type dropdown
     const [selectedCustomerType, setSelectedCustomerType] = useState('');
@@ -91,15 +93,7 @@ const Remarkscreen = () => {
                     setIsAMCLocked(true);
                     setAmcComplaintId(amcComplaintIdFromResponse); // Store the AMC complaint ID
 
-                    toast.custom(
-                        <StatusMessage
-                            type="info"
-                            title={msg || "AMC Already Proceed"}
-                            description={`AMC ID: ${amcComplaintIdFromResponse} has already been processed for this complaint`}
-                            className="mx-4 mb-6"
-                        />,
-                        { duration: 3000 }
-                    );
+
                 } else {
                     // AMC not proceeded yet - toggle is free and defaults to false
                     setConvertToAMC(false);
@@ -132,25 +126,6 @@ const Remarkscreen = () => {
             setCheckingAMC(false);
         }
     };
-
-    // Fetch existing images on component mount
-    useEffect(() => {
-        if (complaintData?.remark && complaintData.remark !== '') {
-            setRemark(complaintData.remark);
-        }
-        if (complaintData?.review && complaintData.review !== '') {
-            setSelectedCustomerType(complaintData.review);
-        }
-    }, [complaintData]);
-
-    useEffect(() => {
-        if (complaintData.remark !== '') {
-            setRemark(complaintData.remark);
-        }
-        if (complaintData.review !== '') {
-            setSelectedCustomerType(complaintData.review);
-        }
-    }, []);
 
     // Function to fetch existing images from server
     const fetchExistingImages = async () => {
@@ -208,10 +183,92 @@ const Remarkscreen = () => {
         }
     };
 
+    // Pull to refresh handler
+    const onRefresh = async () => {
+        setRefreshing(true);
+
+        try {
+            // Reset local states
+            setImage1Uri(null);
+            setImage2Uri(null);
+            setImage1Id(null);
+            setImage2Id(null);
+            setSelectedCustomerType('');
+            setRemark('');
+            setConvertToAMC(false);
+            setIsAMCLocked(false);
+            setAmcComplaintId(null);
+
+            // Re-fetch all data
+            await Promise.all([
+                fetchExistingImages(),
+                checkAMCStatus()
+            ]);
+
+            // Restore remark and customer type from complaintData if they exist
+            if (complaintData?.remark && complaintData.remark !== '') {
+                setRemark(complaintData.remark);
+            }
+            if (complaintData?.review && complaintData.review !== '') {
+                setSelectedCustomerType(complaintData.review);
+            }
+
+            toast.custom(
+                <StatusMessage
+                    type="success"
+                    title="Refreshed"
+                    description="All data has been updated successfully"
+                    className="mx-4 mb-6"
+                />,
+                { duration: 2000 }
+            );
+        } catch (error) {
+            console.error('Error refreshing:', error);
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title="Refresh Failed"
+                    description={error.message || "Please try again"}
+                    className="mx-4 mb-6"
+                />,
+                { duration: 3000 }
+            );
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
+    // UseFocusEffect to check AMC status when screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            console.log('Screen focused - checking AMC status and refreshing data');
+            checkAMCStatus();
+            fetchExistingImages();
+
+            // Restore remark and customer type from complaintData if they exist
+            if (complaintData?.remark && complaintData.remark !== '') {
+                setRemark(complaintData.remark);
+            }
+            if (complaintData?.review && complaintData.review !== '') {
+                setSelectedCustomerType(complaintData.review);
+            }
+
+            return () => {
+                // Cleanup if needed
+                console.log('Screen unfocused');
+            };
+        }, [complaintData?.id]) // Re-run when complaint ID changes
+    );
+
+    // Initial data load
     useEffect(() => {
-        fetchExistingImages();
-        checkAMCStatus(); // Check AMC status when component mounts
-    }, []);
+        if (complaintData?.remark && complaintData.remark !== '') {
+            setRemark(complaintData.remark);
+        }
+        if (complaintData?.review && complaintData.review !== '') {
+            setSelectedCustomerType(complaintData.review);
+        }
+    }, [complaintData]);
 
     // ----- Camera permission functions -----
     const checkCameraPermission = async () => {
@@ -315,7 +372,7 @@ const Remarkscreen = () => {
             });
 
             // Set different image_type and status for image 1 and image 2
-            const imageType = imageNumber === 1 ? 'after working' : 'after working';
+            const imageType = 'after working';
             const status = imageNumber === 1 ? '2' : '3';
 
             // Append other parameters
@@ -540,7 +597,6 @@ const Remarkscreen = () => {
     };
 
     // Handle next button
-    // Handle next button
     const handleNext = async () => {
         // If convertToAMC is true, navigate to appropriate AMC screen
         if (convertToAMC) {
@@ -681,9 +737,22 @@ const Remarkscreen = () => {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 className="flex-1"
             >
-                <ScrollView className="flex-1 px-4 pt-4" showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    className="flex-1 px-4 pt-4"
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={['#000000']}
+                            tintColor="#000000"
+                            title="Pull to refresh"
+                            titleColor="#000000"
+                        />
+                    }
+                >
                     {/* Loading Indicator for AMC Check */}
-                    {checkingAMC && (
+                    {checkingAMC && !refreshing && (
                         <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center">
                             <ActivityIndicator size="large" color="#000" />
                             <Text className="text-text-primary mt-2">Checking AMC status...</Text>
@@ -691,7 +760,7 @@ const Remarkscreen = () => {
                     )}
 
                     {/* Loading Indicator for Images */}
-                    {loadingImages && !checkingAMC && (
+                    {loadingImages && !refreshing && !checkingAMC && (
                         <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center">
                             <ActivityIndicator size="large" color="#000" />
                             <Text className="text-text-primary mt-2">Loading existing images...</Text>
@@ -722,7 +791,7 @@ const Remarkscreen = () => {
                             thumbOnStyleCustom={{ backgroundColor: '#FFFFFF' }}
                             thumbOffStyleCustom={{ backgroundColor: '#FFFFFF' }}
                             animationSpeed={200}
-                            disabled={isAMCLocked || checkingAMC}
+                            disabled={isAMCLocked || checkingAMC || refreshing}
                         />
                     </View>
 
@@ -805,7 +874,7 @@ const Remarkscreen = () => {
                                     ) : (
                                         <TouchableOpacity
                                             onPress={() => captureImage(1)}
-                                            disabled={loadingImages}
+                                            disabled={loadingImages || refreshing}
                                             className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary"
                                             style={{ minHeight: 200 }}
                                         >
@@ -856,7 +925,7 @@ const Remarkscreen = () => {
                                     ) : (
                                         <TouchableOpacity
                                             onPress={() => captureImage(2)}
-                                            disabled={loadingImages}
+                                            disabled={loadingImages || refreshing}
                                             className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary"
                                             style={{ minHeight: 200 }}
                                         >
@@ -877,20 +946,21 @@ const Remarkscreen = () => {
                     {/* Next Button */}
                     <TouchableOpacity
                         onPress={handleNext}
-                        disabled={(!convertToAMC && (!isFormComplete || uploadingImage1 || uploadingImage2 || deletingImage1 || deletingImage2 || loadingImages || submitting)) || checkingAMC}
-                        className={`py-4 rounded-xl items-center mb-8 ${(convertToAMC && !checkingAMC) ||
-                            (!convertToAMC && isFormComplete && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2 && !loadingImages && !submitting && !checkingAMC)
+                        disabled={(!convertToAMC && (!isFormComplete || uploadingImage1 || uploadingImage2 || deletingImage1 || deletingImage2 || loadingImages || submitting)) || checkingAMC || refreshing}
+                        className={`py-4 rounded-xl items-center mb-8 ${(convertToAMC && !checkingAMC && !refreshing) ||
+                            (!convertToAMC && isFormComplete && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2 && !loadingImages && !submitting && !checkingAMC && !refreshing)
                             ? 'bg-black'
                             : 'bg-gray-400'
                             }`}
                     >
                         <Text className="text-white font-semibold text-base">
-                            {checkingAMC ? 'Checking AMC Status...' :
-                                submitting ? 'Submitting...' :
-                                    loadingImages ? 'Loading Images...' :
-                                        uploadingImage1 || uploadingImage2 ? 'Uploading Images...' :
-                                            deletingImage1 || deletingImage2 ? 'Deleting Image...' :
-                                                'Next'}
+                            {refreshing ? 'Refreshing...' :
+                                checkingAMC ? 'Checking AMC Status...' :
+                                    submitting ? 'Submitting...' :
+                                        loadingImages ? 'Loading Images...' :
+                                            uploadingImage1 || uploadingImage2 ? 'Uploading Images...' :
+                                                deletingImage1 || deletingImage2 ? 'Deleting Image...' :
+                                                    'Next'}
                         </Text>
                     </TouchableOpacity>
                 </ScrollView>
