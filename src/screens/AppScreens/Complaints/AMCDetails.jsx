@@ -1134,9 +1134,22 @@ const AMCDetails = () => {
 
                           <TouchableOpacity
                             onPress={() => handleScan(partId)}
-                            className="rounded-r-lg px-4 py-3 border items-center justify-center bg-teal-500 border-teal-500"
+                            className="rounded-r-lg px-3 py-3  border items-center justify-center bg-teal-500 border-teal-500"
                           >
                             <Icon name="camera-outline" size={18} color="white" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                           className="py-2.5 px-3 rounded-lg items-center bg-orange-500 ml-2"
+                            onPress={() => handleLinkQR(partId, partName, index)}
+                            disabled={loadingStates[partId]}
+                          >
+                            {loadingStates[partId] ? (
+                              <ActivityIndicator size="small" color="white" />
+                            ) : (
+                              <View className="flex-row items-center">
+                                <LinkQrCodeIcon color="white" size={16} />
+                              </View>
+                            )}
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -1148,20 +1161,7 @@ const AMCDetails = () => {
                           </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity
-                          className="py-2.5 px-4 rounded-lg items-center bg-orange-500 mt-2"
-                          onPress={() => handleLinkQR(partId, partName, index)}
-                          disabled={loadingStates[partId]}
-                        >
-                          {loadingStates[partId] ? (
-                            <ActivityIndicator size="small" color="white" />
-                          ) : (
-                            <View className="flex-row items-center">
-                              <LinkQrCodeIcon color="white" size={16} />
-                              <Text className="text-white text-sm font-medium ml-2">Link QR Code</Text>
-                            </View>
-                          )}
-                        </TouchableOpacity>
+
                       </View>
                     )}
                   </View>
@@ -1181,15 +1181,17 @@ const AMCDetails = () => {
 
       {/* Next Button */}
       {!isKeyboardVisible && spareParts.length > 0 && (
-        <TouchableOpacity
-          className={`py-3.5 mx-5 rounded-xl items-center absolute bottom-10 left-0 right-0 ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'
-            }`}
-          onPress={handleNext}
-        >
-          <Text className="text-white text-lg font-bold">
-            {allPartsLinked ? 'Next' : `Link ${spareParts.length - linkedItems.length} More`}
-          </Text>
-        </TouchableOpacity>
+        <View className='bg-white w-full absolute bottom-0 py-5 left-0 right-0'>
+          <TouchableOpacity
+            className={`py-3.5 mx-5  rounded-xl items-center ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'
+              }`}
+            onPress={handleNext}
+          >
+            <Text className="text-white text-lg font-bold">
+              {allPartsLinked ? 'Next' : `Link ${spareParts.length - linkedItems.length} More`}
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Replacement Parts Modal */}

@@ -596,6 +596,19 @@ const Remarkscreen = () => {
         setImageToDelete(null);
     };
 
+    const handleTryTotoggle = () => {
+        console.log('try to toggel')
+        toast.custom(
+            <StatusMessage
+                type="error"
+                title="Cannot change AMC status"
+                message="Please delete the existing AMC complaint first before changing this option"
+                className="mx-4 mb-6"
+            />,
+            { duration: 3000 }
+        );
+    }
+
     // Handle next button
     const handleNext = async () => {
         // If convertToAMC is true, navigate to appropriate AMC screen
@@ -782,7 +795,7 @@ const Remarkscreen = () => {
                         </View>
                         <ToggleSwitch
                             isOn={convertToAMC}
-                            onToggle={isAMCLocked ? undefined : setConvertToAMC}
+                            onToggle={isAMCLocked ? handleTryTotoggle : setConvertToAMC}
                             onColor="#14B8A6"
                             offColor="#D1D5DB"
                             size="medium"
@@ -791,7 +804,6 @@ const Remarkscreen = () => {
                             thumbOnStyleCustom={{ backgroundColor: '#FFFFFF' }}
                             thumbOffStyleCustom={{ backgroundColor: '#FFFFFF' }}
                             animationSpeed={200}
-                            disabled={isAMCLocked || checkingAMC || refreshing}
                         />
                     </View>
 
