@@ -16,32 +16,32 @@ export default function App() {
   useNotification();
 
   // Setup navigation handler for notifications
-  useEffect(() => {
-    setNotificationNavigationHandler((notificationData) => {
-      console.log('Handling notification navigation:', notificationData);
+  // useEffect(() => {
+  //   setNotificationNavigationHandler((notificationData) => {
+  //     console.log('Handling notification navigation:', notificationData);
       
-      if (notificationData && navigationRef.current) {
-        // Navigate based on notification data
-        switch (notificationData.screen) {
-          case 'chat':
-            navigationRef.current?.navigate('Chat', { 
-              chatId: notificationData.chatId 
-            });
-            break;
-          case 'order':
-            navigationRef.current?.navigate('OrderDetails', { 
-              orderId: notificationData.orderId 
-            });
-            break;
-          case 'profile':
-            navigationRef.current?.navigate('Profile');
-            break;
-          default:
-            console.log('Unknown navigation target:', notificationData.screen);
-        }
-      }
-    });
-  }, []);
+  //     if (notificationData && navigationRef.current) {
+  //       // Navigate based on notification data
+  //       switch (notificationData.screen) {
+  //         case 'chat':
+  //           navigationRef.current?.navigate('Chat', { 
+  //             chatId: notificationData.chatId 
+  //           });
+  //           break;
+  //         case 'order':
+  //           navigationRef.current?.navigate('OrderDetails', { 
+  //             orderId: notificationData.orderId 
+  //           });
+  //           break;
+  //         case 'profile':
+  //           navigationRef.current?.navigate('Profile');
+  //           break;
+  //         default:
+  //           console.log('Unknown navigation target:', notificationData.screen);
+  //       }
+  //     }
+  //   });
+  // }, []);
 
   return (
     <AuthProvider>

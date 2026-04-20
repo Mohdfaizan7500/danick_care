@@ -3,7 +3,7 @@ import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // const BASE_URL = 'https://dummyjson.com/';
-const BASE_URL = 'http://192.168.1.43:5001/';
+const BASE_URL = 'http://192.168.1.37:5001/';
 // const BASE_URL = 'http://api.dainikcare.com/';
 
 

@@ -78,13 +78,9 @@ const AMCDetails = () => {
   console.log('AMCDetails route params:', route.params);
 
   const { amc, complaintData, amcComplaintId, } = route.params || {};
-  console.log('AMC Data:', amc);
-  console.log('Complaint Data:', complaintData);
-  console.log('AMC Complaint ID:', amcComplaintId);
 
   // Get parts from AMC data (use fetched data if available)
   const spareParts = fetchedAmcDetails?.parts || amc?.parts || [];
-  console.log('Spare Parts from AMC:', spareParts);
 
   const device = useCameraDevice('back');
   const technicianId = user?.id || '1';
@@ -109,8 +105,6 @@ const AMCDetails = () => {
       if (Object.keys(preFilledQrCodes).length > 0) {
         setQrCodeNumbers(preFilledQrCodes);
         setLinkedItems(preLinkedItems);
-        console.log('Auto-filled QR codes for parts:', preFilledQrCodes);
-        console.log('Auto-linked parts:', preLinkedItems);
       }
     }
   }, [spareParts]);
@@ -118,7 +112,6 @@ const AMCDetails = () => {
   // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      console.log('Screen focused - refreshing data');
       fetchAMCComplaintDetails();
       return () => {
         // Cleanup if needed
@@ -130,9 +123,7 @@ const AMCDetails = () => {
   const fetchAMCComplaintDetails = async () => {
     const complaintId = amcComplaintId || complaintData?.id;
 
-    console.log('Fetching AMC Complaint Details - Using complaintId:', complaintId);
-    console.log('amcComplaintId from params:', amcComplaintId);
-    console.log('complaintData?.id:', complaintData?.id);
+    
 
     if (!complaintId) {
       console.log('No complaint ID available for AMCComplaintDetails');
@@ -154,15 +145,14 @@ const AMCDetails = () => {
         const amcComplaintData = response.data.amc_complaint;
         const amcDetailsData = response.data.amc_details;
 
-        console.log('AMC Complaint Data:', amcComplaintData);
-        console.log('AMC Details Data:', amcDetailsData);
+        // console.log('AMC Complaint Data:', amcComplaintData);
+        // console.log('AMC Details Data:', amcDetailsData);
 
         setFetchedComplaint(amcComplaintData);
         setFetchedAmcDetails(amcDetailsData);
 
         if (amcComplaintData?.billing_id) {
           setBillingId(amcComplaintData.billing_id);
-          console.log('✅ Using billing_id from database:', amcComplaintData.billing_id);
         } else {
           console.warn('⚠️ No billing_id found in amc_complaint data');
         }
@@ -203,13 +193,10 @@ const AMCDetails = () => {
 
   // Handle delete AMC record with parts
   const handleDeleteAMCRecord = async () => {
-    const amcId = amcComplaintId?.toString() || fetchedAmcDetails?.id?.toString() || amc?.id?.toString();
+    const amcId = amcComplaintId?.toString() || fetchedComplaint?.id?.toString() ;
     const complaintId = fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString();
 
-    console.log('Delete - Using amcComplaintId:', amcComplaintId);
-    console.log('Delete - amcId:', amcId);
-    console.log('Delete - complaintId:', complaintId);
-    console.log('Delete - billingId:', billingId);
+    
 
     if (!amcId || !complaintId || !billingId) {
       toast.custom(
@@ -227,7 +214,7 @@ const AMCDetails = () => {
 
     try {
       const payload = {
-        amc_id: amcId,
+        amc_id: amcComplaintId,
         complaint_id: complaintId,
         billing_id: billingId,
       };
@@ -430,7 +417,7 @@ const AMCDetails = () => {
     try {
       const payload = {
         technician_id: technicianId,
-        amc_id: fetchedAmcDetails?.id?.toString() || amc?.id?.toString() || '',
+        amc_id: amcComplaintId ||fetchedComplaint?.id?.toString() || '',
         comp_id: fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString() || '',
         billing_id: billingId,
         part_name: partName,
@@ -566,7 +553,7 @@ const AMCDetails = () => {
     try {
       const payload = {
         technician_id: technicianId,
-        amc_id: fetchedAmcDetails?.id?.toString() || amc?.id?.toString() || '',
+        amc_id:amcComplaintId ||  fetchedComplaint?.id?.toString() || amc?.id?.toString() || '',
         comp_id: fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString() || '',
         billing_id: billingId,
         qr_code: selectedReplacementPart.qr_code,
@@ -661,7 +648,7 @@ const AMCDetails = () => {
         // Call RemoveAMCPart API for technician QR type
         const payload = {
           technician_id: technicianId,
-          amc_id: fetchedAmcDetails?.id?.toString() || amc?.id?.toString() || '',
+          amc_id:amcComplaintId || fetchedComplaint?.id?.toString() || amc?.id?.toString() || '',
           comp_id: fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString() || '',
           billing_id: billingId,
           qr_code: qrCode,
@@ -741,7 +728,7 @@ const AMCDetails = () => {
     try {
       const payload = {
         technician_id: technicianId,
-        amc_id: fetchedAmcDetails?.id?.toString() || amc?.id?.toString() || '',
+        amc_id:amcComplaintId || fetchedComplaint?.id?.toString() || amc?.id?.toString() || '',
         comp_id: fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString() || '',
         billing_id: billingId,
         qr_code: replacedInfo.replacement_qr_code,
@@ -870,9 +857,9 @@ const AMCDetails = () => {
 
     return <TouchableOpacity
       onPress={() => setShowDeleteConfirmModal(true)}
-      className="mr-2"
+      className=""
     >
-      <Icon name="trash-outline" size={24} color="#EF4444" />
+      <Icon name="trash-outline" size={20} color="#EF4444" />
     </TouchableOpacity>;
   };
 
@@ -1009,15 +996,7 @@ const AMCDetails = () => {
 
                     </View>
 
-                    {/* Show QR Type Badge */}
-                    {qrType && (
-                      <View className={`px-2 py-0.5 rounded ml-2 ${qrType === 'technician' ? 'bg-blue-500' : 'bg-purple-500'
-                        }`}>
-                        <Text className="text-white text-xs font-semibold">
-                          QR: {qrType}
-                        </Text>
-                      </View>
-                    )}
+                    
 
                     {isLinked && !replacedInfo && (
                       <TouchableOpacity
@@ -1181,7 +1160,7 @@ const AMCDetails = () => {
 
       {/* Next Button */}
       {!isKeyboardVisible && spareParts.length > 0 && (
-        <View className='bg-white w-full absolute bottom-0 py-5 left-0 right-0'>
+        <View className='bg-white w-full absolute bottom-0 py-3 border-t border-t-gray-200 left-0 right-0'>
           <TouchableOpacity
             className={`py-3.5 mx-5  rounded-xl items-center ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'
               }`}

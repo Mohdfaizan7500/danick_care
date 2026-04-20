@@ -6,14 +6,14 @@ import { AcceptComplaint, PendingComplaints, PendingComplaintCount } from '../..
 import DialogBox from '../../../components/DilaogBox'
 import { useAuth } from '../../../context/AuthContext'
 import Icon from 'react-native-vector-icons/MaterialIcons'
+import { useOrder } from '../../../context/OrderContext';
 
 const Orders = ({ route }) => {
     const { user } = useAuth();
     const city_id = user?.city_id;
     const technician_id = user?.id;
-    
-    // Get refresh callback from route params (passed from BottomTabs)
-    const { refreshBadgeCount } = route.params || {};
+
+    const { refreshOrderCount } = useOrder();
 
     const [complaints, setComplaints] = useState([])
     const [filteredComplaints, setFilteredComplaints] = useState([])
@@ -43,14 +43,14 @@ const Orders = ({ route }) => {
                 const count = response?.data?.Pendingcomplaints || 0
                 setPendingCount(count)
                 // Also update the badge count in BottomTabs if callback exists
-                if (refreshBadgeCount) {
-                    refreshBadgeCount(count)
+                if (refreshOrderCount) {
+                    refreshOrderCount(count)
                 }
             } else if (response?.success) {
                 const count = response?.Pendingcomplaints || 0
                 setPendingCount(count)
-                if (refreshBadgeCount) {
-                    refreshBadgeCount(count)
+                if (refreshOrderCount) {
+                    refreshOrderCount(count)
                 }
             } else {
                 console.log('Unexpected count response structure:', response)
@@ -155,7 +155,7 @@ const Orders = ({ route }) => {
                 // Update pending count
                 const newCount = Math.max(0, pendingCount - 1)
                 setPendingCount(newCount)
-                
+
                 // IMPORTANT: Refresh the badge count in BottomTabs
                 if (refreshBadgeCount) {
                     refreshBadgeCount(newCount)
@@ -168,7 +168,7 @@ const Orders = ({ route }) => {
                     type: 'error',
                     title: 'Error',
                     message: response?.data?.msg || response?.msg || 'Failed to accept complaint'
-                    
+
                 })
                 fetchPendingComplaints();
                 setDialogVisible(true)

@@ -13,7 +13,7 @@ import { toast } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PendingComplaintCount } from '../../../lib/api';
-
+import { OrderProvider } from '../../../context/OrderContext';
 const Tab = createBottomTabNavigator();
 
 // Custom tab bar button that checks online status before navigating
@@ -124,166 +124,167 @@ const BottomTabs = () => {
   };
 
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: Colors.brand.primary,
-        tabBarInactiveTintColor: Colors.gray[800],
-        tabBarStyle: {
-          backgroundColor: Colors.background.primary,
-          borderTopWidth: 1,
-          borderTopColor: Colors.ui.border,
-          height: 80 + insets.bottom,
-          paddingBottom: 20,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-        },
-        tabBarItemStyle: {
-          justifyContent: 'center',
-          alignItems: 'center',
-          paddingVertical: 0,
-        },
-        headerStyle: {
-          backgroundColor: Colors.brand.primary,
-        },
-        headerTintColor: Colors.text.inverse,
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 18,
-          color: Colors.text.inverse,
-        },
-        tabBarButton: (props) => (
-          <CustomTabBarButton {...props} isOnline={IsOnline} />
-        ),
-      })}
-    >
-      <Tab.Screen
-        name="Home"
-        component={Home}
-        options={{
-          tabBarIcon: ({ color, size, focused }) => (
-            <HomeIcon
-              color={focused ? Colors.brand.primary : Colors.gray[600]}
-              size={size}
-            />
+    <OrderProvider>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarActiveTintColor: Colors.brand.primary,
+          tabBarInactiveTintColor: Colors.gray[800],
+          tabBarStyle: {
+            backgroundColor: Colors.background.primary,
+            borderTopWidth: 1,
+            borderTopColor: Colors.ui.border,
+            height: 80 + insets.bottom,
+            paddingBottom: 20,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '500',
+          },
+          tabBarItemStyle: {
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingVertical: 0,
+          },
+          headerStyle: {
+            backgroundColor: Colors.brand.primary,
+          },
+          headerTintColor: Colors.text.inverse,
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            fontSize: 18,
+            color: Colors.text.inverse,
+          },
+          tabBarButton: (props) => (
+            <CustomTabBarButton {...props} isOnline={IsOnline} />
           ),
-          tabBarLabel: ({ focused }) => (
-            <Text style={{
-              color: focused ? Colors.brand.primary : Colors.gray[600],
-              fontSize: 12,
-              fontWeight: focused ? '600' : '500'
-            }}>
-              Home
-            </Text>
-          ),
-          headerTitle: 'Home',
-        }}
-      />
-
-
-      <Tab.Screen
-        name="Orders"
-        component={Orders}
-        options={{
-          tabBarIcon: ({ color, size, focused }) => (
-            <View>
-              <OrderIcon
-                stroke={focused ? Colors.brand.primary : Colors.gray[600]}
+        })}
+      >
+        <Tab.Screen
+          name="Home"
+          component={Home}
+          options={{
+            tabBarIcon: ({ color, size, focused }) => (
+              <HomeIcon
+                color={focused ? Colors.brand.primary : Colors.gray[600]}
                 size={size}
               />
-              <Badge count={orderCount} />
-            </View>
-          ),
-          tabBarLabel: ({ focused }) => (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            ),
+            tabBarLabel: ({ focused }) => (
               <Text style={{
                 color: focused ? Colors.brand.primary : Colors.gray[600],
                 fontSize: 12,
                 fontWeight: focused ? '600' : '500'
               }}>
-                Orders
+                Home
               </Text>
-              
-            </View>
-          ),
-          headerTitle: 'Orders',
-        }}
-        initialParams={{ refreshBadgeCount: refreshOrderCount }}
-      />
+            ),
+            headerTitle: 'Home',
+          }}
+        />
 
-      <Tab.Screen
-        name="Scan"
-        component={Scan}
-        options={{
-          tabBarIcon: ({ color, size, focused }) => (
-            <ScanIcon
-              stroke={focused ? Colors.brand.primary : Colors.gray[600]}
-              size={size}
-              width={size}
-              height={size}
-            />
-          ),
-          tabBarLabel: ({ focused }) => (
-            <Text style={{
-              color: focused ? Colors.brand.primary : Colors.gray[600],
-              fontSize: 12,
-              fontWeight: focused ? '600' : '500'
-            }}>
-              Scan
-            </Text>
-          ),
-          headerTitle: 'Scan',
-        }}
-      />
 
-      <Tab.Screen
-        name="Parts"
-        component={Parts}
-        options={{
-          tabBarIcon: ({ color, size, focused }) => (
-            <PartIcon
-              fill={focused ? Colors.brand.primary : Colors.gray[600]}
-              size={size}
-            />
-          ),
-          tabBarLabel: ({ focused }) => (
-            <Text style={{
-              color: focused ? Colors.brand.primary : Colors.gray[600],
-              fontSize: 12,
-              fontWeight: focused ? '600' : '500'
-            }}>
-              Parts
-            </Text>
-          ),
-          headerTitle: 'Parts',
-        }}
-      />
+        <Tab.Screen
+          name="Orders"
+          component={Orders}
+          options={{
+            tabBarIcon: ({ color, size, focused }) => (
+              <View>
+                <OrderIcon
+                  stroke={focused ? Colors.brand.primary : Colors.gray[600]}
+                  size={size}
+                />
+                <Badge count={orderCount} />
+              </View>
+            ),
+            tabBarLabel: ({ focused }) => (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{
+                  color: focused ? Colors.brand.primary : Colors.gray[600],
+                  fontSize: 12,
+                  fontWeight: focused ? '600' : '500'
+                }}>
+                  Orders
+                </Text>
 
-      <Tab.Screen
-        name="Profile"
-        component={Profile}
-        options={{
-          tabBarIcon: ({ color, size, focused }) => (
-            <ProfileIcon
-              stroke={focused ? Colors.brand.primary : Colors.gray[600]}
-              size={size}
-            />
-          ),
-          tabBarLabel: ({ focused }) => (
-            <Text style={{
-              color: focused ? Colors.brand.primary : Colors.gray[600],
-              fontSize: 12,
-              fontWeight: focused ? '600' : '500'
-            }}>
-              Profile
-            </Text>
-          ),
-          headerTitle: 'Profile',
-        }}
-      />
-    </Tab.Navigator>
+              </View>
+            ),
+            headerTitle: 'Orders',
+          }}
+        />
+
+        <Tab.Screen
+          name="Scan"
+          component={Scan}
+          options={{
+            tabBarIcon: ({ color, size, focused }) => (
+              <ScanIcon
+                stroke={focused ? Colors.brand.primary : Colors.gray[600]}
+                size={size}
+                width={size}
+                height={size}
+              />
+            ),
+            tabBarLabel: ({ focused }) => (
+              <Text style={{
+                color: focused ? Colors.brand.primary : Colors.gray[600],
+                fontSize: 12,
+                fontWeight: focused ? '600' : '500'
+              }}>
+                Scan
+              </Text>
+            ),
+            headerTitle: 'Scan',
+          }}
+        />
+
+        <Tab.Screen
+          name="Parts"
+          component={Parts}
+          options={{
+            tabBarIcon: ({ color, size, focused }) => (
+              <PartIcon
+                fill={focused ? Colors.brand.primary : Colors.gray[600]}
+                size={size}
+              />
+            ),
+            tabBarLabel: ({ focused }) => (
+              <Text style={{
+                color: focused ? Colors.brand.primary : Colors.gray[600],
+                fontSize: 12,
+                fontWeight: focused ? '600' : '500'
+              }}>
+                Parts
+              </Text>
+            ),
+            headerTitle: 'Parts',
+          }}
+        />
+
+        <Tab.Screen
+          name="Profile"
+          component={Profile}
+          options={{
+            tabBarIcon: ({ color, size, focused }) => (
+              <ProfileIcon
+                stroke={focused ? Colors.brand.primary : Colors.gray[600]}
+                size={size}
+              />
+            ),
+            tabBarLabel: ({ focused }) => (
+              <Text style={{
+                color: focused ? Colors.brand.primary : Colors.gray[600],
+                fontSize: 12,
+                fontWeight: focused ? '600' : '500'
+              }}>
+                Profile
+              </Text>
+            ),
+            headerTitle: 'Profile',
+          }}
+        />
+      </Tab.Navigator>
+    </OrderProvider>
   );
 };
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -6,21 +6,25 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     StatusBar,
+    Platform,
 } from 'react-native';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import DialogBox from '../../components/DilaogBox';
-import { loginApi } from '../../lib/api'; // adjust path as needed
+import { loginApi } from '../../lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../components/StatusMessage';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { getFCMToken } from '../../notification/useNotification'; // Import the function, not the hook
+
 const Login = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [fcmToken, setFcmToken] = useState(null);
 
     const [dialogVisible, setDialogVisible] = useState(false);
     const [dialogConfig, setDialogConfig] = useState({
@@ -31,6 +35,16 @@ const Login = ({ navigation }) => {
     });
 
     const { setAuthData, setIsOnline } = useAuth();
+
+    // Get FCM token when component mounts
+    useEffect(() => {
+        const getToken = async () => {
+            const token = await getFCMToken();
+            setFcmToken(token);
+            console.log("FCM token on Login screen:", token);
+        };
+        getToken();
+    }, []);
 
     const showDialog = (type, title, message, onConfirm = null) => {
         setDialogConfig({ type, title, message, onConfirm });
@@ -45,31 +59,31 @@ const Login = ({ navigation }) => {
 
         setIsLoading(true);
         try {
-            const result = await loginApi(email, password);
+            // Get fresh FCM token before login
+            const fcmToken = await getFCMToken();
+            console.log('Sending FCM Token with login:', fcmToken);
+
+            // Call login API with fcm token
+            const result = await loginApi(email, password, fcmToken);
             console.log('Login API response:', result);
 
-            // Check if API call was successful (based on your response structure)
             if (!result || result.success === false) {
-                const errorMsg = result?.data?.msg || 'Login failed. Please try again.';
+                const errorMsg = result?.data?.msg || result?.error || 'Login failed. Please try again.';
                 throw new Error(errorMsg);
             }
 
-            // Extract tokens and user data
             let accessToken = result?.accessToken || result?.data?.accessToken || result?.data?.data?.accessToken;
             let refreshToken = result?.refreshToken || result?.data?.refreshToken || result?.data?.data?.refreshToken;
             let userData = result?.data?.user || result?.data?.data || result?.data;
 
-            // Validate token presence
             if (!accessToken) {
                 throw new Error('No access token received from server');
             }
 
-            // Validate user data
             if (!userData || typeof userData !== 'object') {
                 throw new Error('Invalid user data received');
             }
 
-            // Normalize user object
             const user = {
                 id: userData.id || userData.technician_id,
                 city_id: userData.city_id,
@@ -79,10 +93,7 @@ const Login = ({ navigation }) => {
 
             console.log('user:', user);
 
-            // Save to AuthContext
             await setAuthData(user, accessToken, refreshToken);
-
-            // Set online status based on response or default to true
             const isOnline = userData?.login_status === 'Online';
             await setIsOnline(isOnline);
 
@@ -99,14 +110,11 @@ const Login = ({ navigation }) => {
     };
 
     const fillDemoAccount = () => {
-        // Use the demo credentials from your backend
-        setEmail('46757');      // technician_id
-        setPassword('123');     // password
+        setEmail('46757');
+        setPassword('123');
         toast.custom(<StatusMessage type='info' title='Demo Account Filled' message='Demo credentials have been filled. Click Sign In to continue.' />, { duration: 300 });
-        // showDialog('info', 'Demo Account Filled', 'Demo credentials have been filled. Click Sign In to continue.');
     };
 
-    // ---------- Dialog Footers ----------
     const successFooter = (
         <TouchableOpacity
             className="bg-teal-500 py-3 rounded-lg"
@@ -176,7 +184,6 @@ const Login = ({ navigation }) => {
 
     return (
         <SafeAreaView className="flex-1 bg-teal-100 justify-center items-center px-5">
-
             <View className="absolute inset-0 z-50 w-90% pointer-events-none">
                 <Toaster />
             </View>
@@ -196,7 +203,6 @@ const Login = ({ navigation }) => {
                 extraHeight={Platform.OS === 'android' ? 100 : 0}
                 extraScrollHeight={Platform.OS === 'android' ? 50 : 0}
             >
-
                 <View className="bg-white w-[100%] py-8 px-5 h-auto rounded-3xl shadow-lg border border-gray-100">
                     <Text className="font-bold text-3xl text-black mb-2">Welcome Back</Text>
                     <Text className="text-gray-500 text-base mb-8">Sign in to your account</Text>
@@ -225,7 +231,6 @@ const Login = ({ navigation }) => {
                             <Lock width={16} height={16} stroke="gray" />
                             <TextInput
                                 keyboardType='number-pad'
-
                                 className="flex-1 py-4 text-base text-black"
                                 placeholder="Enter your password"
                                 placeholderTextColor="#999"

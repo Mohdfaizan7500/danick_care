@@ -1,25 +1,34 @@
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import DialogBox from '../../../components/DilaogBox';
 import { useRoute } from '@react-navigation/native';
+import { ComplaintBilling } from '../../../lib/api';
+import { useAuth } from '../../../context/AuthContext';
 
 const AMCBilling = () => {
-  const [subtotal, setSubtotal] = useState(12500); // Example subtotal
   const [discount, setDiscount] = useState('');
-  const [discountType, setDiscountType] = useState('percentage'); // 'percentage' or 'fixed'
-  const [gst, setGst] = useState(18); // 18% GST
+  const [discountType, setDiscountType] = useState('percentage');
   const [loading, setLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [billingResponse, setBillingResponse] = useState(null);
 
   const route = useRoute();
-  const complaintdata = route.params;
-  console.log("",complaintdata)
+  const { linkedParts, amc, complaintData, billingId } = route.params;
+  const { user } = useAuth();
+
+  console.log("AMC Data:", amc);
+  console.log("Linked Parts:", linkedParts);
+  console.log("Complaint Data:", complaintData);
+  console.log("Billing ID:", billingId);
+
+  // Parse AMC price to number
+  const subtotal = parseFloat(amc?.price) || 0;
 
   // Calculate discount amount
   const calculateDiscountAmount = () => {
@@ -36,8 +45,13 @@ const AMCBilling = () => {
 
   const discountAmount = calculateDiscountAmount();
   const taxableAmount = subtotal - discountAmount;
-  const gstAmount = (taxableAmount * gst) / 100;
+  const gstRate = 18; // 18% GST
+  const gstAmount = (taxableAmount * gstRate) / 100;
   const totalAmount = taxableAmount + gstAmount;
+
+  const formatCurrency = (amount) => {
+    return '₹' + amount.toFixed(2);
+  };
 
   const handleBookNow = () => {
     if (loading) return;
@@ -48,27 +62,46 @@ const AMCBilling = () => {
     setShowConfirmation(false);
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      
-      // Simulate success (you can add your actual API logic here)
-      const isSuccess = true; // Change to false to test error case
-      
-      if (isSuccess) {
+    try {
+      // Prepare payload for ComplaintBilling API
+      const payload = {
+        complaint_id: complaintData?.id || complaintData?.complaint_id,
+        technician_id: user?.technician_id || user?.id,
+        amc_id: amc?.id,
+        billing_id: billingId,
+        subtotal: subtotal,
+        discount: discountAmount,
+        discount_type: discountType,
+        gst: gstAmount,
+        gst_rate: gstRate,
+        total: totalAmount,
+        parts: linkedParts?.map(part => ({
+          part_id: part.id,
+          part_name: part.name,
+          quantity: part.quantity || 1,
+          price: part.price
+        })) || []
+      };
+
+      console.log('Billing Payload:', payload);
+
+      const response = await ComplaintBilling(payload);
+      console.log('Billing Response:', response);
+
+      if (response?.data?.success || response?.success) {
+        setBillingResponse(response.data);
         setShowSuccessDialog(true);
-        console.log({
-          subtotal,
-          discount: discountAmount,
-          discountType,
-          gst: gstAmount,
-          total: totalAmount
-        });
       } else {
-        setErrorMessage('Failed to process booking. Please try again.');
-        setShowErrorDialog(true);
+        throw new Error(response?.data?.message || 'Failed to process billing');
       }
-    }, 1500);
+      
+    } catch (error) {
+      console.error('Billing error:', error);
+      setErrorMessage(error.message || 'Failed to process booking. Please try again.');
+      setShowErrorDialog(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResetForm = () => {
@@ -77,9 +110,15 @@ const AMCBilling = () => {
     setShowSuccessDialog(false);
   };
 
-  const formatCurrency = (amount) => {
-    return '₹' + amount.toFixed(2);
+  // Parse AMC content HTML to array of benefits
+  const parseAMCBenefits = (content) => {
+    if (!content) return [];
+    // Extract text between <i> tags or just split by <br>
+    const textContent = content.replace(/<[^>]*>/g, ' ');
+    return textContent.split('•').filter(b => b.trim()).map(b => b.trim());
   };
+
+  const amcBenefits = parseAMCBenefits(amc?.content);
 
   // Confirmation Dialog Footer
   const confirmationFooter = (
@@ -135,13 +174,28 @@ const AMCBilling = () => {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="p-4">
+          {/* AMC Details Card */}
+          <View className="bg-white rounded-xl p-5 mb-4 shadow-sm">
+            <Text className="text-xl font-bold text-gray-800 mb-3">{amc?.title || amc?.name}</Text>
+            
+            
+            
+           
+
+            <View className="flex-row justify-between items-center pt-2 border-t border-gray-200">
+              <Text className="text-gray-600">Validity:</Text>
+              <Text className="text-teal-600 font-semibold">{amc?.valid || "4 Service Valid For 1 Year"}</Text>
+            </View>
+          </View>
+
+          
           {/* Bill Summary Card */}
           <View className="bg-white rounded-xl p-5 mb-4 shadow-sm">
             <Text className="text-xl font-bold text-gray-800 mb-4">Bill Summary</Text>
             
-            {/* Subtotal */}
+            {/* AMC Price */}
             <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-gray-200">
-              <Text className="text-base text-gray-600">Subtotal</Text>
+              <Text className="text-base text-gray-600">AMC Plan Price</Text>
               <Text className="text-base font-semibold text-gray-800">
                 {formatCurrency(subtotal)}
               </Text>
@@ -209,7 +263,7 @@ const AMCBilling = () => {
 
             {/* GST */}
             <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-gray-200">
-              <Text className="text-base text-gray-600">GST ({gst}%)</Text>
+              <Text className="text-base text-gray-600">GST ({gstRate}%)</Text>
               <Text className="text-base font-semibold text-gray-800">
                 {formatCurrency(gstAmount)}
               </Text>
@@ -224,21 +278,20 @@ const AMCBilling = () => {
             </View>
           </View>
 
-          {/* Additional Charges Section (Optional) */}
-          <View className="bg-white rounded-xl p-5 mb-4 shadow-sm">
-            <Text className="text-lg font-bold text-gray-800 mb-3">Additional Charges</Text>
-            
-            <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-base text-gray-600">Service Tax</Text>
-              <Text className="text-base text-gray-800">Included in GST</Text>
+          {/* Complaint Info Card */}
+          {complaintData && (
+            <View className="bg-white rounded-xl p-5 mb-4 shadow-sm">
+              <Text className="text-lg font-bold text-gray-800 mb-3">Complaint Information</Text>
+              <View className="flex-row justify-between items-center mb-2">
+                <Text className="text-gray-600">Complaint ID:</Text>
+                <Text className="text-gray-800 font-medium">{complaintData.id || complaintData.complaint_id}</Text>
+              </View>
+              <View className="flex-row justify-between items-center">
+                <Text className="text-gray-600">Billing ID:</Text>
+                <Text className="text-gray-800 font-medium">{billingId}</Text>
+              </View>
             </View>
-            
-            <View className="flex-row justify-between items-center">
-              <Text className="text-base text-gray-600">Convenience Fee</Text>
-              <Text className="text-base text-gray-800">Free</Text>
-            </View>
-          </View>
-
+          )}
         </View>
       </ScrollView>
 
@@ -255,7 +308,7 @@ const AMCBilling = () => {
               <Text className="text-white text-lg font-bold ml-2">Processing...</Text>
             </View>
           ) : (
-            <Text className="text-white text-lg font-bold">Book Now • {formatCurrency(totalAmount)}</Text>
+            <Text className="text-white text-lg font-bold">Proceed to Payment • {formatCurrency(totalAmount)}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -264,18 +317,19 @@ const AMCBilling = () => {
       <DialogBox
         visible={showConfirmation}
         onClose={() => setShowConfirmation(false)}
-        title="Confirm Booking"
+        title="Confirm AMC Purchase"
         size="md"
         footer={confirmationFooter}
         closeOnBackdropPress={true}
       >
         <View className="py-4">
-          {/* Customer Info */}
+          {/* AMC Info */}
           <View className="mb-4">
-            <Text className="text-gray-800 font-semibold text-base mb-2">Booking Details</Text>
+            <Text className="text-gray-800 font-semibold text-base mb-2">AMC Details</Text>
             <View className="bg-gray-50 rounded-lg p-3">
+              <Text className="text-gray-800 font-medium mb-1">{amc?.title || amc?.name}</Text>
               <View className="flex-row justify-between mb-2">
-                <Text className="text-gray-600">Subtotal:</Text>
+                <Text className="text-gray-600">Plan Price:</Text>
                 <Text className="text-gray-800 font-medium">{formatCurrency(subtotal)}</Text>
               </View>
               {discountAmount > 0 && (
@@ -289,7 +343,7 @@ const AMCBilling = () => {
                 <Text className="text-gray-800 font-medium">{formatCurrency(taxableAmount)}</Text>
               </View>
               <View className="flex-row justify-between mb-2">
-                <Text className="text-gray-600">GST ({gst}%):</Text>
+                <Text className="text-gray-600">GST ({gstRate}%):</Text>
                 <Text className="text-gray-800 font-medium">{formatCurrency(gstAmount)}</Text>
               </View>
               <View className="flex-row justify-between pt-2 border-t border-gray-200 mt-1">
@@ -299,9 +353,12 @@ const AMCBilling = () => {
             </View>
           </View>
 
-          {/* Payment Method Info */}
+          {/* Validity Info */}
           <View className="mb-3">
-            <Text className="text-gray-600 text-sm">Payment Method: <Text className="text-gray-800 font-medium">To be paid at service center</Text></Text>
+            <View className="flex-row items-center">
+              <Icon name="calendar-outline" size={16} color="#6B7280" />
+              <Text className="text-gray-600 text-sm ml-1">Validity: <Text className="text-gray-800 font-medium">{amc?.valid || "4 Service Valid For 1 Year"}</Text></Text>
+            </View>
           </View>
 
           {/* Confirmation Message */}
@@ -311,7 +368,7 @@ const AMCBilling = () => {
               <Text className="text-yellow-700 font-semibold ml-1">Please Confirm</Text>
             </View>
             <Text className="text-yellow-600 text-sm">
-              Are you sure you want to proceed with this booking? This action cannot be undone.
+              Are you sure you want to purchase this AMC plan? This action cannot be undone.
             </Text>
           </View>
         </View>
@@ -321,7 +378,7 @@ const AMCBilling = () => {
       <DialogBox
         visible={showSuccessDialog}
         onClose={() => setShowSuccessDialog(false)}
-        title="Booking Successful!"
+        title="AMC Purchased Successfully!"
         size="sm"
         footer={successFooter}
         closeOnBackdropPress={false}
@@ -331,13 +388,13 @@ const AMCBilling = () => {
             <Icon name="checkmark-circle" size={50} color="#10B981" />
           </View>
           <Text className="text-gray-800 text-center text-base mb-2">
-            Your booking has been confirmed successfully!
+            Your AMC plan has been purchased successfully!
           </Text>
           <Text className="text-teal-600 font-bold text-xl mb-2">
             {formatCurrency(totalAmount)}
           </Text>
           <Text className="text-gray-500 text-center text-sm">
-            Booking ID: {Math.random().toString(36).substring(2, 10).toUpperCase()}
+            Transaction ID: {billingResponse?.transaction_id || billingId}
           </Text>
           <View className="bg-blue-50 rounded-lg p-2 mt-3 w-full">
             <Text className="text-blue-600 text-xs text-center">
@@ -351,7 +408,7 @@ const AMCBilling = () => {
       <DialogBox
         visible={showErrorDialog}
         onClose={() => setShowErrorDialog(false)}
-        title="Booking Failed"
+        title="Purchase Failed"
         size="sm"
         footer={errorFooter}
         closeOnBackdropPress={true}

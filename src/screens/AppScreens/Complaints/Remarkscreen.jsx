@@ -138,9 +138,7 @@ const Remarkscreen = () => {
                 status: '2'
             };
 
-            console.log('Fetching before working images with payload:', beforePayload);
             const beforeResponse = await getComplaintImage(beforePayload);
-            console.log('Before images response:', beforeResponse);
 
             // Fetch after working images (status 3)
             const afterPayload = {
@@ -148,16 +146,13 @@ const Remarkscreen = () => {
                 status: '3'
             };
 
-            console.log('Fetching after working images with payload:', afterPayload);
             const afterResponse = await getComplaintImage(afterPayload);
-            console.log('After images response:', afterResponse);
 
             // Process before working images
             if (beforeResponse?.data?.success && beforeResponse.data.result?.length > 0) {
                 const beforeImage = beforeResponse.data.result[0];
                 setImage1Uri(beforeImage.image);
                 setImage1Id(beforeImage.id);
-                console.log('Loaded before working image:', beforeImage);
             }
 
             // Process after working images
@@ -165,7 +160,6 @@ const Remarkscreen = () => {
                 const afterImage = afterResponse.data.result[0];
                 setImage2Uri(afterImage.image);
                 setImage2Id(afterImage.id);
-                console.log('Loaded after working image:', afterImage);
             }
 
         } catch (error) {
@@ -241,7 +235,6 @@ const Remarkscreen = () => {
     // UseFocusEffect to check AMC status when screen comes into focus
     useFocusEffect(
         useCallback(() => {
-            console.log('Screen focused - checking AMC status and refreshing data');
             checkAMCStatus();
             fetchExistingImages();
 
@@ -255,7 +248,6 @@ const Remarkscreen = () => {
 
             return () => {
                 // Cleanup if needed
-                console.log('Screen unfocused');
             };
         }, [complaintData?.id]) // Re-run when complaint ID changes
     );
@@ -300,9 +292,7 @@ const Remarkscreen = () => {
                 id: imageId.toString()
             };
 
-            console.log('Deleting image with payload:', payload);
             const response = await deletComplaintImage(payload);
-            console.log('Delete response for image', imageNumber, ':', response);
 
             if (response && response.data && response.data.success) {
                 toast.custom(
@@ -597,7 +587,6 @@ const Remarkscreen = () => {
     };
 
     const handleTryTotoggle = () => {
-        console.log('try to toggel')
         toast.custom(
             <StatusMessage
                 type="error"
@@ -658,9 +647,7 @@ const Remarkscreen = () => {
                 review: selectedCustomerType
             };
 
-            console.log('Updating remark with payload:', payload);
             const response = await UpdateRemark(payload);
-            console.log('UpdateRemark response:', response);
 
             if (response?.data?.success) {
                 toast.custom(

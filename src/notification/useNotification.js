@@ -2,16 +2,17 @@
 import { PermissionsAndroid, Platform } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance, EventType, AndroidColor } from '@notifee/react-native';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Configuration for notifications
 const NOTIFICATION_CONFIG = {
-    // Change these values as needed
-    androidIcon: "ic_launcher", // Replace with your icon name (without extension)
-    androidColor: "#4CAF50", // Orange color - change to any hex color you want
+    androidIcon: "ic_launcher",
     channelId: "default",
     channelName: "Default Channel",
 };
+
+// Store FCM token globally
+let globalFCMToken = null;
 
 // Create notification channel (Android 8+ required)
 const createNotificationChannel = async () => {
@@ -21,7 +22,6 @@ const createNotificationChannel = async () => {
         importance: AndroidImportance.HIGH,
         vibration: true,
         sound: "default",
-        // Optional: Set channel level color
         lightColor: NOTIFICATION_CONFIG.androidColor,
     });
 };
@@ -35,13 +35,10 @@ const displayNotification = async (title, body, data = {}) => {
         android: {
             channelId: NOTIFICATION_CONFIG.channelId,
             pressAction: { id: "default" },
-            smallIcon: NOTIFICATION_CONFIG.androidIcon, // Custom icon
-            color: NOTIFICATION_CONFIG.androidColor, // Background color for icon
+            smallIcon: NOTIFICATION_CONFIG.androidIcon,
+            color: NOTIFICATION_CONFIG.androidColor,
             importance: AndroidImportance.HIGH,
             autoCancel: true,
-            // Optional: Add large icon
-            // largeIcon: NOTIFICATION_CONFIG.androidIcon,
-            // Optional: Set priority
             priority: AndroidImportance.HIGH,
         },
         ios: {
@@ -58,11 +55,10 @@ const displayNotification = async (title, body, data = {}) => {
 // Request permission (Android 13+ and iOS)
 const requestUserPermission = async () => {
     if (Platform.OS === 'android') {
-        if (Platform.Version >= 33) { // Android 13+
+        if (Platform.Version >= 33) {
             const granted = await PermissionsAndroid.request(
                 PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
             );
-
             if (granted === PermissionsAndroid.RESULTS.GRANTED) {
                 console.log('Notification permission granted');
                 return true;
@@ -71,13 +67,11 @@ const requestUserPermission = async () => {
                 return false;
             }
         }
-        return true; // For Android versions below 13, permission is granted by default
+        return true;
     } else {
-        // iOS permission
         const authStatus = await messaging().requestPermission();
         const enabled = authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
             authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
         if (enabled) {
             console.log('iOS notification permission granted');
             return true;
@@ -89,9 +83,9 @@ const requestUserPermission = async () => {
 // Get FCM token using modular API
 const getToken = async () => {
     try {
-        // Use the modular API approach
         const fcmToken = await messaging().getToken();
         console.log("FCM token:", fcmToken);
+        globalFCMToken = fcmToken;
         return fcmToken;
     } catch (error) {
         console.log("Failed to get FCM token:", error);
@@ -102,7 +96,12 @@ const getToken = async () => {
     }
 };
 
-// Navigation handler (you'll set this from App.js)
+// Export function to get FCM token
+export const getFCMToken = () => {
+    return globalFCMToken;
+};
+
+// Navigation handler
 let navigationHandler = null;
 
 export const setNotificationNavigationHandler = (handler) => {
@@ -110,30 +109,26 @@ export const setNotificationNavigationHandler = (handler) => {
 };
 
 export const useNotification = () => {
+    const [fcmToken, setFCMToken] = useState(null);
     const foregroundUnsubscribe = useRef(null);
     const backgroundUnsubscribe = useRef(null);
     const notifeeUnsubscribe = useRef(null);
 
     useEffect(() => {
         const setupNotifications = async () => {
-            // Create channel for Android
             await createNotificationChannel();
-
-            // Request permission
             const hasPermission = await requestUserPermission();
 
             if (hasPermission) {
-                // Get FCM token
                 const token = await getToken();
-                // You can send this token to your backend here
+                setFCMToken(token);
+                globalFCMToken = token;
                 console.log("FCM Token ready:", token);
             }
 
-            // Handle foreground notifications - using modular API
+            // Handle foreground notifications
             foregroundUnsubscribe.current = messaging().onMessage(async (remoteMessage) => {
                 console.log('FCM Message received in foreground:', JSON.stringify(remoteMessage));
-
-                // Display notification using notifee
                 await displayNotification(
                     remoteMessage.notification?.title,
                     remoteMessage.notification?.body,
@@ -141,8 +136,7 @@ export const useNotification = () => {
                 );
             });
 
-            // Handle notification when app is opened from quit state (completely closed)
-            // Using modular API
+            // Handle notification when app is opened from quit state
             messaging()
                 .getInitialNotification()
                 .then(async (remoteMessage) => {
@@ -157,7 +151,7 @@ export const useNotification = () => {
                     console.log('Error getting initial notification:', error);
                 });
 
-            // Handle notification when app is in background (but not closed)
+            // Handle notification when app is in background
             backgroundUnsubscribe.current = messaging().onNotificationOpenedApp(async (remoteMessage) => {
                 console.log('App opened from background:', remoteMessage);
                 if (navigationHandler) {
@@ -165,10 +159,7 @@ export const useNotification = () => {
                 }
             });
 
-            // Note: Background message handler is already set in index.js
-            // Do NOT set it again here to avoid duplicates
-
-            // Handle notifee events (like when user taps on notification while app is foreground)
+            // Handle notifee events
             notifeeUnsubscribe.current = notifee.onForegroundEvent(({ type, detail }) => {
                 if (type === EventType.PRESS) {
                     console.log('User pressed notification:', detail.notification);
@@ -181,7 +172,6 @@ export const useNotification = () => {
 
         setupNotifications();
 
-        // Cleanup subscriptions
         return () => {
             if (foregroundUnsubscribe.current) {
                 foregroundUnsubscribe.current();
@@ -194,4 +184,7 @@ export const useNotification = () => {
             }
         };
     }, []);
+
+    // Return the token from the hook if needed
+    return fcmToken;
 };
