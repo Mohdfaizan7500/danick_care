@@ -29,6 +29,8 @@ import ComplaintAMCDetails from '../../screens/AppScreens/Complaints/AMCDetails'
 import AMCBilling from '../../screens/AppScreens/Complaints/AMCBilling';
 import Parts from '../../screens/AppScreens/Tabs/Parts';
 import Services from '../../screens/AppScreens/Services';
+import MyAmc from '../../screens/AppScreens/MyAmc';
+import CompleteAMCDetails from '../../screens/AppScreens/CompleteAMCDetails';
 // import BottomTabs from 
 const Stack = createNativeStackNavigator();
 
@@ -123,6 +125,10 @@ const AppStack = () => {
       <Stack.Screen name="AMCBilling" component={AMCBilling} />
       <Stack.Screen name="Parts" component={Parts} />
       <Stack.Screen name="Services" component={Services} />
+      <Stack.Screen name="MyAmc" component={MyAmc} />
+      <Stack.Screen name="CompleteAMCDetails" component={CompleteAMCDetails} />
+
+
 
 
 

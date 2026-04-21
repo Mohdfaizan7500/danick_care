@@ -123,7 +123,7 @@ const AMCDetails = () => {
   const fetchAMCComplaintDetails = async () => {
     const complaintId = amcComplaintId || complaintData?.id;
 
-    
+
 
     if (!complaintId) {
       console.log('No complaint ID available for AMCComplaintDetails');
@@ -193,10 +193,10 @@ const AMCDetails = () => {
 
   // Handle delete AMC record with parts
   const handleDeleteAMCRecord = async () => {
-    const amcId = amcComplaintId?.toString() || fetchedComplaint?.id?.toString() ;
+    const amcId = amcComplaintId?.toString() || fetchedComplaint?.id?.toString();
     const complaintId = fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString();
 
-    
+
 
     if (!amcId || !complaintId || !billingId) {
       toast.custom(
@@ -417,7 +417,7 @@ const AMCDetails = () => {
     try {
       const payload = {
         technician_id: technicianId,
-        amc_id: amcComplaintId ||fetchedComplaint?.id?.toString() || '',
+        amc_id: amcComplaintId || fetchedComplaint?.id?.toString() || '',
         comp_id: fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString() || '',
         billing_id: billingId,
         part_name: partName,
@@ -553,7 +553,7 @@ const AMCDetails = () => {
     try {
       const payload = {
         technician_id: technicianId,
-        amc_id:amcComplaintId ||  fetchedComplaint?.id?.toString() || amc?.id?.toString() || '',
+        amc_id: amcComplaintId || fetchedComplaint?.id?.toString() || amc?.id?.toString() || '',
         comp_id: fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString() || '',
         billing_id: billingId,
         qr_code: selectedReplacementPart.qr_code,
@@ -648,7 +648,7 @@ const AMCDetails = () => {
         // Call RemoveAMCPart API for technician QR type
         const payload = {
           technician_id: technicianId,
-          amc_id:amcComplaintId || fetchedComplaint?.id?.toString() || amc?.id?.toString() || '',
+          amc_id: amcComplaintId || fetchedComplaint?.id?.toString() || amc?.id?.toString() || '',
           comp_id: fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString() || '',
           billing_id: billingId,
           qr_code: qrCode,
@@ -728,7 +728,7 @@ const AMCDetails = () => {
     try {
       const payload = {
         technician_id: technicianId,
-        amc_id:amcComplaintId || fetchedComplaint?.id?.toString() || amc?.id?.toString() || '',
+        amc_id: amcComplaintId || fetchedComplaint?.id?.toString() || amc?.id?.toString() || '',
         comp_id: fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString() || '',
         billing_id: billingId,
         qr_code: replacedInfo.replacement_qr_code,
@@ -788,23 +788,19 @@ const AMCDetails = () => {
   };
 
   const handleNext = () => {
-    toast.custom(
-      <StatusMessage type='info' title='Proceeding to next step...' />,
-      { duration: 2000 }
-    );
-    setTimeout(() => {
-      navigation.navigate('AMCBilling', {
-        linkedParts: linkedItems.map(id => ({
-          id,
-          part_name: spareParts.find(part => part.id === id)?.part_name,
-          qr_code: qrCodeNumbers[id],
-          replaced_with: replacedParts[id] || null
-        })),
-        amc: fetchedAmcDetails || amc,
-        complaintData: fetchedComplaint || complaintData,
-        billingId
-      });
-    }, 2000);
+   
+
+    navigation.replace('AMCBilling', {
+      linkedParts: linkedItems.map(id => ({
+        id,
+        part_name: spareParts.find(part => part.id === id)?.part_name,
+        qr_code: qrCodeNumbers[id],
+        replaced_with: replacedParts[id] || null
+      })),
+      amc: fetchedAmcDetails || amc,
+      complaintData: fetchedComplaint || complaintData,
+      billingId
+    });
   };
 
   const handleHeaderBack = () => {
@@ -996,7 +992,7 @@ const AMCDetails = () => {
 
                     </View>
 
-                    
+
 
                     {isLinked && !replacedInfo && (
                       <TouchableOpacity
@@ -1118,7 +1114,7 @@ const AMCDetails = () => {
                             <Icon name="camera-outline" size={18} color="white" />
                           </TouchableOpacity>
                           <TouchableOpacity
-                           className="py-2.5 px-3 rounded-lg items-center bg-orange-500 ml-2"
+                            className="py-2.5 px-3 rounded-lg items-center bg-orange-500 ml-2"
                             onPress={() => handleLinkQR(partId, partName, index)}
                             disabled={loadingStates[partId]}
                           >

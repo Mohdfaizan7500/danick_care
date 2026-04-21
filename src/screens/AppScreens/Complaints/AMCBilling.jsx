@@ -1,22 +1,32 @@
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform } from 'react-native';
-import React, { useState } from 'react';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import DialogBox from '../../../components/DilaogBox';
-import { useRoute } from '@react-navigation/native';
-import { ComplaintBilling } from '../../../lib/api';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { AMCBilling as AMCBillingAPI } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
+import { check, request, RESULTS, PERMISSIONS, openSettings } from 'react-native-permissions';
+import Geolocation from '@react-native-community/geolocation';
+import { toast, Toaster } from 'sonner-native';
+import StatusMessage from '../../../components/StatusMessage';
 
 const AMCBilling = () => {
   const [discount, setDiscount] = useState('');
-  const [discountType, setDiscountType] = useState('percentage');
   const [loading, setLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [billingResponse, setBillingResponse] = useState(null);
+  const navigation = useNavigation();
+  
+  // Location states
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
 
   const route = useRoute();
   const { linkedParts, amc, complaintData, billingId } = route.params;
@@ -27,76 +37,301 @@ const AMCBilling = () => {
   console.log("Complaint Data:", complaintData);
   console.log("Billing ID:", billingId);
 
-  // Parse AMC price to number
-  const subtotal = parseFloat(amc?.price) || 0;
+  // Format currency function
+  const formatCurrency = (amount) => {
+    if (amount === undefined || amount === null || isNaN(amount)) {
+      return '₹0.00';
+    }
+    return '₹' + Number(amount).toFixed(2);
+  };
 
-  // Calculate discount amount
+  // Parse AMC price to number
+  const subtotal = amc?.price ? parseFloat(amc.price) : 0;
+
+  // Platform fee from complaint data
+  const platformFee = complaintData?.platform_fee ? parseFloat(complaintData.platform_fee) : 0;
+
+  // Calculate discount amount (fixed only)
   const calculateDiscountAmount = () => {
     if (!discount) return 0;
     const discountValue = parseFloat(discount);
     if (isNaN(discountValue)) return 0;
-    
-    if (discountType === 'percentage') {
-      return (subtotal * discountValue) / 100;
-    } else {
-      return Math.min(discountValue, subtotal);
-    }
+    return Math.min(discountValue, subtotal);
   };
 
   const discountAmount = calculateDiscountAmount();
-  const taxableAmount = subtotal - discountAmount;
-  const gstRate = 18; // 18% GST
-  const gstAmount = (taxableAmount * gstRate) / 100;
-  const totalAmount = taxableAmount + gstAmount;
+  const finalAmount = subtotal - discountAmount + platformFee;
 
-  const formatCurrency = (amount) => {
-    return '₹' + amount.toFixed(2);
+  // Location permission and getting current location
+  const checkLocationPermission = async () => {
+    try {
+      if (Platform.OS === 'ios') {
+        const status = await check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+        console.log('iOS location permission status:', status);
+        return status;
+      } else {
+        const status = await check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+        console.log('Android location permission status:', status);
+        return status;
+      }
+    } catch (error) {
+      console.log('Permission check error:', error);
+      return RESULTS.UNAVAILABLE;
+    }
   };
+
+  const requestLocationPermission = async () => {
+    try {
+      if (Platform.OS === 'ios') {
+        return await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+      } else {
+        return await request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+      }
+    } catch (error) {
+      console.log('Permission request error:', error);
+      return RESULTS.UNAVAILABLE;
+    }
+  };
+
+  const getCurrentLocation = () => {
+    return new Promise((resolve, reject) => {
+      let timeoutId;
+
+      const successCallback = (position) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        const { latitude, longitude } = position.coords;
+        console.log('=== LOCATION OBTAINED IN AMC BILLING ===');
+        console.log('Latitude:', latitude);
+        console.log('Longitude:', longitude);
+        console.log('Accuracy:', position.coords.accuracy);
+        console.log('=========================================');
+        resolve({
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+          accuracy: position.coords.accuracy
+        });
+      };
+
+      const errorCallback = (error) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        console.log('Location error code:', error.code);
+        console.log('Location error message:', error.message);
+
+        let errorMessage = 'Failed to get location';
+        if (error.code === 1) {
+          errorMessage = 'Location permission denied';
+        } else if (error.code === 2) {
+          errorMessage = 'Location unavailable. Please enable GPS.';
+        } else if (error.code === 3) {
+          errorMessage = 'Location request timed out. Please try again.';
+        }
+
+        reject(new Error(errorMessage));
+      };
+
+      timeoutId = setTimeout(() => {
+        errorCallback({ code: 3, message: 'Location request timed out after 15 seconds' });
+      }, 15000);
+
+      Geolocation.getCurrentPosition(successCallback, errorCallback, {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000,
+      });
+    });
+  };
+
+  const initializeLocation = async (retryCount = 0) => {
+    const maxRetries = 2;
+
+    try {
+      console.log('Initializing location, attempt:', retryCount + 1);
+
+      let permissionStatus = await checkLocationPermission();
+      console.log('Current permission status:', permissionStatus);
+
+      if (permissionStatus === RESULTS.GRANTED) {
+        setHasLocationPermission(true);
+        setIsGettingLocation(true);
+
+        try {
+          const location = await getCurrentLocation();
+          setCurrentLocation(location);
+          console.log('✅ LOCATION SUCCESSFULLY OBTAINED');
+          console.log('Latitude saved:', location.latitude);
+          console.log('Longitude saved:', location.longitude);
+          toast.custom(
+            <StatusMessage type="success" title="Location obtained successfully" />,
+            { duration: 2000 }
+          );
+          return location;
+        } catch (error) {
+          console.log('Error getting location:', error.message);
+
+          if (retryCount < maxRetries) {
+            console.log(`Retrying location fetch (${retryCount + 1}/${maxRetries})...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return initializeLocation(retryCount + 1);
+          }
+
+          toast.custom(
+            <StatusMessage type="error" title={error.message} />,
+            { duration: 3000 }
+          );
+          return null;
+        } finally {
+          setIsGettingLocation(false);
+        }
+      }
+
+      if (permissionStatus === RESULTS.DENIED) {
+        console.log('Permission denied, requesting...');
+        const requestStatus = await requestLocationPermission();
+        console.log('Request result:', requestStatus);
+
+        if (requestStatus === RESULTS.GRANTED) {
+          setHasLocationPermission(true);
+          setIsGettingLocation(true);
+          try {
+            const location = await getCurrentLocation();
+            setCurrentLocation(location);
+            console.log('✅ LOCATION SUCCESSFULLY OBTAINED AFTER PERMISSION');
+            console.log('Latitude saved:', location.latitude);
+            console.log('Longitude saved:', location.longitude);
+            toast.custom(
+              <StatusMessage type="success" title="Location obtained successfully" />,
+              { duration: 2000 }
+            );
+            return location;
+          } catch (error) {
+            console.log('Error getting location:', error.message);
+            toast.custom(
+              <StatusMessage type="error" title={error.message} />,
+              { duration: 3000 }
+            );
+            return null;
+          } finally {
+            setIsGettingLocation(false);
+          }
+        } else {
+          setHasLocationPermission(false);
+          toast.custom(
+            <StatusMessage type="error" title="Location permission is required for AMC purchase" />,
+            { duration: 3000 }
+          );
+          return null;
+        }
+      }
+
+      if (permissionStatus === RESULTS.BLOCKED) {
+        setHasLocationPermission(false);
+        Alert.alert(
+          'Location Permission Required',
+          'This app requires location permission for AMC purchase. Please enable location access in settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => openSettings() },
+          ]
+        );
+        return null;
+      }
+
+      return null;
+    } catch (error) {
+      console.log('Location initialization error:', error);
+      setIsGettingLocation(false);
+      return null;
+    }
+  };
+
+  // Initialize location when component mounts
+  useEffect(() => {
+    const getLocationOnMount = async () => {
+      const location = await initializeLocation();
+      if (location) {
+        console.log('Location saved in variable on mount:', location);
+      }
+    };
+    getLocationOnMount();
+  }, []);
 
   const handleBookNow = () => {
     if (loading) return;
+    
+    // Check if location is available
+    if (!currentLocation) {
+      toast.custom(
+        <StatusMessage type="error" title="Getting location. Please wait or try again." />,
+        { duration: 3000 }
+      );
+      initializeLocation();
+      return;
+    }
+    
     setShowConfirmation(true);
   };
 
   const handleConfirmBooking = async () => {
     setShowConfirmation(false);
     setLoading(true);
-    
+
     try {
-      // Prepare payload for ComplaintBilling API
+      // Use the saved location from state
+      let location = currentLocation;
+      
+      // If location is not available, try to get it again
+      if (!location) {
+        console.log('Location not available, fetching again...');
+        location = await initializeLocation();
+        if (!location) {
+          throw new Error('Unable to get location. Please enable GPS and try again.');
+        }
+      }
+
+      console.log('Using location for AMC Billing:');
+      console.log('Latitude:', location.latitude);
+      console.log('Longitude:', location.longitude);
+
+      // Prepare payload for AMCBilling API
       const payload = {
-        complaint_id: complaintData?.id || complaintData?.complaint_id,
-        technician_id: user?.technician_id || user?.id,
-        amc_id: amc?.id,
-        billing_id: billingId,
-        subtotal: subtotal,
-        discount: discountAmount,
-        discount_type: discountType,
-        gst: gstAmount,
-        gst_rate: gstRate,
-        total: totalAmount,
-        parts: linkedParts?.map(part => ({
-          part_id: part.id,
-          part_name: part.name,
-          quantity: part.quantity || 1,
-          price: part.price
-        })) || []
+        amc_complaint_id: complaintData?.id || complaintData?.complaint_id,
+        technician_id: user?.id?.toString() || user?.technician_id?.toString(),
+        final_amount: subtotal.toString(),
+        discount: discountAmount.toString(),
+        latitude: location.latitude,
+        longitude: location.longitude
       };
 
-      console.log('Billing Payload:', payload);
+      console.log('AMC Billing Payload:', payload);
 
-      const response = await ComplaintBilling(payload);
-      console.log('Billing Response:', response);
+      const response = await AMCBillingAPI(payload);
+      console.log('AMC Billing Response:', response);
 
-      if (response?.data?.success || response?.success) {
+      // Check if response is successful
+      if (response?.data?.success === true) {
+        // Success case - get message from response
+        const successMsg = response?.data?.msg || response?.data?.message || "AMC purchased successfully!";
+        setSuccessMessage(successMsg);
         setBillingResponse(response.data);
         setShowSuccessDialog(true);
+        
+        toast.custom(
+          <StatusMessage type="success" title={successMsg} />,
+          { duration: 3000 }
+        );
+        navigation.goBack();
+        
       } else {
-        throw new Error(response?.data?.message || 'Failed to process billing');
+        // Error case - get error message from response
+        const errorMsg = response?.data?.msg || 
+                        response?.data?.message || 
+                        response?.data?.error || 
+                        'Failed to process AMC billing';
+        throw new Error(errorMsg);
       }
-      
+
     } catch (error) {
-      console.error('Billing error:', error);
+      console.error('AMC Billing error:', error);
       setErrorMessage(error.message || 'Failed to process booking. Please try again.');
       setShowErrorDialog(true);
     } finally {
@@ -106,14 +341,12 @@ const AMCBilling = () => {
 
   const handleResetForm = () => {
     setDiscount('');
-    setDiscountType('percentage');
     setShowSuccessDialog(false);
   };
 
   // Parse AMC content HTML to array of benefits
   const parseAMCBenefits = (content) => {
     if (!content) return [];
-    // Extract text between <i> tags or just split by <br>
     const textContent = content.replace(/<[^>]*>/g, ' ');
     return textContent.split('•').filter(b => b.trim()).map(b => b.trim());
   };
@@ -163,7 +396,11 @@ const AMCBilling = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <SafeAreaView className="flex-1 bg-white">
+      <View className="absolute inset-0 z-50 pointer-events-none">
+        <Toaster />
+      </View>
+      
       <Header
         title="AMC Billing"
         titlePosition="left"
@@ -172,15 +409,44 @@ const AMCBilling = () => {
         containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 bg-gray-100" showsVerticalScrollIndicator={false}>
         <View className="p-4">
+          {/* Location Status Indicator */}
+          <View className="mb-4">
+            <View className={`flex-row items-center ${hasLocationPermission && currentLocation ? 'bg-green-50' : 'bg-yellow-50'} p-2 rounded-lg`}>
+              <Icon
+                name="location-outline"
+                size={20}
+                color={hasLocationPermission && currentLocation ? "#10b981" : "#eab308"}
+              />
+              <Text className={`ml-2 text-sm ${hasLocationPermission && currentLocation ? 'text-green-700' : 'text-yellow-700'}`}>
+                {isGettingLocation ? 'Getting location...' :
+                  hasLocationPermission && currentLocation ? 'Location ready for AMC purchase' :
+                    'Location permission required for AMC purchase'}
+              </Text>
+            </View>
+            {currentLocation && (
+              <Text className="text-xs text-gray-500 mt-1 ml-7">
+                Lat: {currentLocation.latitude}, Lng: {currentLocation.longitude}
+              </Text>
+            )}
+          </View>
+
           {/* AMC Details Card */}
           <View className="bg-white rounded-xl p-5 mb-4 shadow-sm">
             <Text className="text-xl font-bold text-gray-800 mb-3">{amc?.title || amc?.name}</Text>
             
-            
-            
-           
+            {/* AMC Benefits */}
+            {amcBenefits.length > 0 && (
+              <View className="mb-3">
+                {amcBenefits.map((benefit, index) => (
+                  <View key={index} className="flex-row items-center mb-1">
+                    <Icon name="checkmark-circle" size={16} color="#10B981" />
+                    <Text className="text-gray-600 text-sm ml-2">{benefit}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
 
             <View className="flex-row justify-between items-center pt-2 border-t border-gray-200">
               <Text className="text-gray-600">Validity:</Text>
@@ -188,11 +454,10 @@ const AMCBilling = () => {
             </View>
           </View>
 
-          
           {/* Bill Summary Card */}
           <View className="bg-white rounded-xl p-5 mb-4 shadow-sm">
             <Text className="text-xl font-bold text-gray-800 mb-4">Bill Summary</Text>
-            
+
             {/* AMC Price */}
             <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-gray-200">
               <Text className="text-base text-gray-600">AMC Plan Price</Text>
@@ -201,31 +466,18 @@ const AMCBilling = () => {
               </Text>
             </View>
 
-            {/* Discount Section */}
+            {/* Discount Section - Fixed Only */}
             <View className="mb-3 pb-2 border-b border-gray-200">
               <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-base text-gray-600">Discount</Text>
-                <TouchableOpacity 
-                  onPress={() => setDiscountType(discountType === 'percentage' ? 'fixed' : 'percentage')}
-                  className="bg-gray-100 px-3 py-1 rounded-full"
-                >
-                  <Text className="text-xs text-teal-600 font-medium">
-                    Switch to {discountType === 'percentage' ? 'Fixed Amount' : 'Percentage'}
-                  </Text>
-                </TouchableOpacity>
+                <Text className="text-base text-gray-600">Discount (Fixed Amount)</Text>
               </View>
-              
+
               <View className="flex-row items-center">
                 <View className="flex-1 flex-row items-center bg-gray-50 rounded-lg border border-gray-300 px-3 mr-2">
-                  {discountType === 'percentage' && (
-                    <Text className="text-gray-600 font-medium mr-1">%</Text>
-                  )}
-                  {discountType === 'fixed' && (
-                    <Text className="text-gray-600 font-medium mr-1">₹</Text>
-                  )}
+                  <Text className="text-gray-600 font-medium mr-1">₹</Text>
                   <TextInput
                     className="flex-1 py-3 text-gray-800"
-                    placeholder={discountType === 'percentage' ? "Enter discount %" : "Enter discount amount"}
+                    placeholder="Enter discount amount"
                     placeholderTextColor="#999"
                     value={discount}
                     onChangeText={setDiscount}
@@ -245,27 +497,19 @@ const AMCBilling = () => {
                   </View>
                 )}
               </View>
-              
-              {discount && discountAmount === 0 && discountType === 'fixed' && (
+
+              {discount && discountAmount === 0 && (
                 <Text className="text-red-500 text-xs mt-1">
                   Discount cannot exceed subtotal
                 </Text>
               )}
             </View>
 
-            {/* Taxable Amount */}
+            {/* Platform Fee */}
             <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-gray-200">
-              <Text className="text-base text-gray-600">Taxable Amount</Text>
+              <Text className="text-base text-gray-600">Platform Fee</Text>
               <Text className="text-base font-semibold text-gray-800">
-                {formatCurrency(taxableAmount)}
-              </Text>
-            </View>
-
-            {/* GST */}
-            <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-gray-200">
-              <Text className="text-base text-gray-600">GST ({gstRate}%)</Text>
-              <Text className="text-base font-semibold text-gray-800">
-                {formatCurrency(gstAmount)}
+                {formatCurrency(platformFee)}
               </Text>
             </View>
 
@@ -273,7 +517,7 @@ const AMCBilling = () => {
             <View className="flex-row justify-between items-center mt-3 pt-2">
               <Text className="text-xl font-bold text-gray-900">Total Amount</Text>
               <Text className="text-2xl font-bold text-teal-600">
-                {formatCurrency(totalAmount)}
+                {formatCurrency(finalAmount)}
               </Text>
             </View>
           </View>
@@ -299,16 +543,18 @@ const AMCBilling = () => {
       <View className="bg-white border-t border-gray-200 p-4 shadow-lg">
         <TouchableOpacity
           onPress={handleBookNow}
-          disabled={loading}
-          className={`py-4 rounded-xl items-center ${loading ? 'bg-gray-400' : 'bg-teal-600'}`}
+          disabled={loading || isGettingLocation}
+          className={`py-4 rounded-xl items-center ${loading || isGettingLocation ? 'bg-gray-400' : 'bg-teal-600'}`}
         >
-          {loading ? (
+          {loading || isGettingLocation ? (
             <View className="flex-row items-center">
               <ActivityIndicator size="small" color="white" />
-              <Text className="text-white text-lg font-bold ml-2">Processing...</Text>
+              <Text className="text-white text-lg font-bold ml-2">
+                {isGettingLocation ? 'Getting location...' : 'Processing...'}
+              </Text>
             </View>
           ) : (
-            <Text className="text-white text-lg font-bold">Proceed to Payment • {formatCurrency(totalAmount)}</Text>
+            <Text className="text-white text-lg font-bold">Proceed to Payment • {formatCurrency(finalAmount)}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -339,19 +585,27 @@ const AMCBilling = () => {
                 </View>
               )}
               <View className="flex-row justify-between mb-2">
-                <Text className="text-gray-600">Taxable Amount:</Text>
-                <Text className="text-gray-800 font-medium">{formatCurrency(taxableAmount)}</Text>
-              </View>
-              <View className="flex-row justify-between mb-2">
-                <Text className="text-gray-600">GST ({gstRate}%):</Text>
-                <Text className="text-gray-800 font-medium">{formatCurrency(gstAmount)}</Text>
+                <Text className="text-gray-600">Platform Fee:</Text>
+                <Text className="text-gray-800 font-medium">{formatCurrency(platformFee)}</Text>
               </View>
               <View className="flex-row justify-between pt-2 border-t border-gray-200 mt-1">
                 <Text className="text-gray-800 font-bold">Total Amount:</Text>
-                <Text className="text-teal-600 font-bold text-lg">{formatCurrency(totalAmount)}</Text>
+                <Text className="text-teal-600 font-bold text-lg">{formatCurrency(finalAmount)}</Text>
               </View>
             </View>
           </View>
+
+          {/* Location Info */}
+          {currentLocation && (
+            <View className="mb-3">
+              <View className="flex-row items-center">
+                <Icon name="location-outline" size={16} color="#6B7280" />
+                <Text className="text-gray-600 text-sm ml-1">
+                  Location: {currentLocation.latitude}, {currentLocation.longitude}
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* Validity Info */}
           <View className="mb-3">
@@ -374,7 +628,7 @@ const AMCBilling = () => {
         </View>
       </DialogBox>
 
-      {/* Success Dialog */}
+      {/* Success Dialog - Updated to display response message */}
       <DialogBox
         visible={showSuccessDialog}
         onClose={() => setShowSuccessDialog(false)}
@@ -388,10 +642,10 @@ const AMCBilling = () => {
             <Icon name="checkmark-circle" size={50} color="#10B981" />
           </View>
           <Text className="text-gray-800 text-center text-base mb-2">
-            Your AMC plan has been purchased successfully!
+            {successMessage || "Your AMC plan has been purchased successfully!"}
           </Text>
           <Text className="text-teal-600 font-bold text-xl mb-2">
-            {formatCurrency(totalAmount)}
+            {formatCurrency(finalAmount)}
           </Text>
           <Text className="text-gray-500 text-center text-sm">
             Transaction ID: {billingResponse?.transaction_id || billingId}

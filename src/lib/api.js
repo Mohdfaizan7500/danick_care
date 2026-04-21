@@ -3,7 +3,7 @@ import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // const BASE_URL = 'https://dummyjson.com/';
-const BASE_URL = 'http://192.168.1.37:5001/';
+const BASE_URL = 'http://192.168.1.43:5001/';
 // const BASE_URL = 'http://api.dainikcare.com/';
 
 
@@ -48,14 +48,16 @@ const getErrorMessage = (error) => {
 };
 
 // Login function for React Native
-export const loginApi = async (username, password) => {
+export const loginApi = async (username, password,fcmToken) => {
     // console.log('technician id:',username,typeof(username));
     // console.log('Password:',password,typeof(password));
+    console.log('payload:')
 
     try {
         const response = await apiClient.post("TechnicianAPI/Login", {
             technician_id: username,
             password: password,
+            fcmToken:fcmToken,
             expiresInMins: 30, // optional
         });
         console.log('responce:', response)
@@ -789,6 +791,54 @@ export const DeletAMCRecordWithParts = async (payload) => {
         return response;
     } catch (error) {
         console.error('API error in DeletAMCRecordWithParts:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const AMCBilling = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/AMCBilling', payload);
+        console.log('AMCBilling api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in AMCBilling:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+// Update your api.js file
+// api.js - This is already correct
+export const TechnicianAMC = async (payload, params = {}) => {
+    console.log('payload', payload)
+    console.log('params', params)
+    try {
+        // If params are provided, append them to the URL
+        let url = 'TechnicianAPI/TechnicianAMC';
+        if (params && Object.keys(params).length > 0) {
+            const queryParams = new URLSearchParams(params).toString();
+            url = `${url}?${queryParams}`;
+        }
+
+        const response = await apiClient.post(url, payload);
+        console.log('TechnicianAMC api response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in TechnicianAMC:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+export const GetAMCDetails = async (payload) => {
+    console.log('payload', payload)
+    try {
+        const response = await apiClient.post('TechnicianAPI/GetAMCDetails', payload);
+        console.log('GetAMCDetails api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in GetAMCDetails:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }

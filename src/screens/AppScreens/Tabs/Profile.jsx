@@ -53,7 +53,7 @@ const Profile = () => {
       icon: <FileIcon width={22} height={22} stroke={'black'} />,
       title: 'My AMC',
       subtitle: 'View your Annual Maintenance Contracts',
-      route: 'AMC'
+      route: 'MyAmc'
     },
     {
       id: 'replace',
