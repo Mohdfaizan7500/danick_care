@@ -563,15 +563,7 @@ const Home = () => {
         </View>
 
         <View className="flex-row items-center">
-          <TouchableOpacity
-            onPress={handleWalletPress}
-            className="mr-3 flex-row items-center bg-white/20 px-3 py-1.5 rounded-full"
-          >
-            <Wallet size={18} color="#333" />
-            <Text className="ml-1 text-gray-800 font-semibold">
-              {userProfile.walletBalance}
-            </Text>
-          </TouchableOpacity>
+         
 
           <TouchableOpacity onPress={handleNotificationPress} className="relative">
             <View className="w-10 h-10 bg-white/20 rounded-full items-center justify-center">

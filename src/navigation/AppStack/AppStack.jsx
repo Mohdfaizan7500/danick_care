@@ -7,7 +7,6 @@ import Bucket from '../../screens/AppScreens/Bucket/Bucket';
 import AMC from '../../screens/AppScreens/AMC';
 import PreBooking from '../../screens/AppScreens/PreBooking';
 import PayOut from '../../screens/AppScreens/Payout/PayOut';
-import Wallet from '../../screens/AppScreens/Wallet';
 import Notification from '../../screens/AppScreens/Notification';
 import ProfileEdit from '../../screens/AppScreens/ProfileEdit';
 import ReplaceParts from '../../screens/AppScreens/ReplaceParts';
@@ -84,10 +83,7 @@ const AppStack = () => {
         name="Notification"
         component={Notification}
       />
-      <Stack.Screen
-        name="Wallet"
-        component={Wallet}
-      />
+    
       <Stack.Screen
         name="ProfileEdit"
         component={ProfileEdit}

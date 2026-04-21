@@ -44,7 +44,7 @@ const displayNotification = async (title, body, data = {}) => {
         await notifee.displayNotification({
             title: title || "New Notification",
             body: body || "You have a new message",
-            data: data,
+            data: data, // This data will be available when user taps
             android: {
                 channelId: NOTIFICATION_CONFIG.channelId,
                 pressAction: { id: "default" },
@@ -62,13 +62,13 @@ const displayNotification = async (title, body, data = {}) => {
                 },
             },
         });
-        console.log('Notification displayed successfully');
+        console.log('Notification displayed successfully with data:', data);
     } catch (error) {
         console.log('Error displaying notification:', error);
     }
 };
 
-// Request permission (Android 13+ and iOS) - Updated to modular API
+// Request permission (Android 13+ and iOS)
 const requestUserPermission = async () => {
     try {
         const messaging = getMessaging();
@@ -121,6 +121,26 @@ const getFCMTokenModular = async () => {
     }
 };
 
+// Extract notification data helper
+const extractNotificationData = (remoteMessage) => {
+    // Priority 1: Check data payload
+    if (remoteMessage.data && Object.keys(remoteMessage.data).length > 0) {
+        return remoteMessage.data;
+    }
+    
+    // Priority 2: Check notification payload
+    if (remoteMessage.notification) {
+        return {
+            title: remoteMessage.notification.title,
+            body: remoteMessage.notification.body,
+            ...remoteMessage.data
+        };
+    }
+    
+    // Priority 3: Use the entire message
+    return remoteMessage;
+};
+
 // Export function to get FCM token
 export const getFCMToken = () => {
     return globalFCMToken;
@@ -147,33 +167,45 @@ export const useNotification = () => {
                     console.log("FCM Token ready:", token);
                 }
 
-                // Handle foreground notifications using modular API
+                // Handle foreground notifications
                 foregroundUnsubscribe.current = onMessage(messaging, async (remoteMessage) => {
                     console.log('📱 FCM Message received in FOREGROUND:', JSON.stringify(remoteMessage));
                     
-                    const title = remoteMessage.notification?.title || remoteMessage.data?.title || "New Notification";
-                    const body = remoteMessage.notification?.body || remoteMessage.data?.body || "You have a new message";
-                    const data = remoteMessage.data || {};
+                    // Extract data from notification
+                    const notificationData = extractNotificationData(remoteMessage);
                     
-                    await displayNotification(title, body, data);
+                    const title = notificationData.title || remoteMessage.notification?.title || "New Notification";
+                    const body = notificationData.body || remoteMessage.notification?.body || "You have a new message";
+                    
+                    // Pass all data including custom fields like complaintId
+                    const dataToPass = {
+                        screen: notificationData.screen || notificationData.title,
+                        complaintId: notificationData.complaintId,
+                        complaintData: notificationData,
+                        ...notificationData
+                    };
+                    
+                    await displayNotification(title, body, dataToPass);
                 });
 
-                // Handle notification when app is opened from quit state using modular API
+                // Handle notification when app is opened from quit state
                 const initialNotification = await getInitialNotification(messaging);
                 if (initialNotification) {
                     console.log('App opened from quit state:', initialNotification);
+                    const notificationData = extractNotificationData(initialNotification);
                     if (navigationHandler) {
                         setTimeout(() => {
-                            navigationHandler(initialNotification.data);
+                            navigationHandler(notificationData);
                         }, 1000);
                     }
                 }
 
-                // Handle notification when app is in background using modular API
+                // Handle notification when app is in background
                 backgroundUnsubscribe.current = onNotificationOpenedApp(messaging, async (remoteMessage) => {
                     console.log('App opened from background:', remoteMessage);
+                    const notificationData = extractNotificationData(remoteMessage);
                     if (navigationHandler) {
-                        navigationHandler(remoteMessage.data);
+                        navigationHandler(notificationData);
                     }
                 });
 
@@ -181,9 +213,11 @@ export const useNotification = () => {
                 notifeeUnsubscribe.current = notifee.onForegroundEvent(({ type, detail }) => {
                     if (type === EventType.PRESS) {
                         console.log('User pressed notification:', detail.notification);
-                        // Fix: Use detail.notification.data instead of detail.notification
                         if (detail.notification?.data && navigationHandler) {
-                            navigationHandler(detail.notification.data);
+                            // The data passed in displayNotification will be available here
+                            const notificationData = detail.notification.data;
+                            console.log('Notification data from press:', notificationData);
+                            navigationHandler(notificationData);
                         }
                     }
                 });

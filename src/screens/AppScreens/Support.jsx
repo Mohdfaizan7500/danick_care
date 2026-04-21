@@ -1,65 +1,74 @@
 import { Text, View, TouchableOpacity, ScrollView, Linking } from 'react-native'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Header from '../../components/Header'
-
+import { TermsSupport } from '../../lib/api' // Import the API function directly
 
 const Support = () => {
-  const supportOptions = [
-    
-    {
-      id: '2',
-      title: 'Contact Us',
-      description: 'Get in touch with our support team',
-      icon: 'headset-mic',
-      iconColor: '#58A890', // primary.sage600
-      route: 'Contact'
-    },
-    
-  ]
+  const [supportData, setSupportData] = useState({
+    mobile: '',
+    mobile2: '',
+    email: '',
+    hours: ''
+  })
+  const [loading, setLoading] = useState(true)
 
-  const contactInfo = [
-    {
-      id: '1',
-      type: 'email',
-      value: 'dainikcare@gmail.com',
-      icon: 'email',
-      color: '#88D8C0'
-    },
-    {
-      id: '2',
-      type: 'phone',
-      value: '+91 7055880880',
-      icon: 'phone',
-      color: '#58A890'
-    },
-    {
-      id: '3',
-      type: 'website',
-      value: 'https://dainikcare.com/',
-      icon: 'language',
-      color: '#70C0A8'
-    },
-    {
-      id: '4',
-      type: 'hours',
-      value: '24/7 Support Available',
-      icon: 'access-time',
-      color: '#777777'
+  
+
+  // Fetch support data on component mount
+  useEffect(() => {
+    fetchSupportData()
+  }, [])
+
+  const fetchSupportData = async () => {
+    setLoading(true)
+    try {
+      const response = await TermsSupport() // Call the imported API function directly
+      console.log('TermsSupport api response:', response)
+
+      if (response.data?.success && response.data?.data?.length > 0) {
+        const supportInfo = response.data.data[0]
+
+        setSupportData({
+          mobile: supportInfo.mobile || '',
+          mobile2: supportInfo.mobile2 || '',
+          email: supportInfo.email || '',
+          hours: supportInfo.hours || '24/7 Support Available'
+        })
+      } else {
+        // Set default values if API response structure is unexpected
+        setSupportData({
+          mobile: '+917055880880',
+          mobile2: '+917252043100',
+          email: 'dainikcare@gmail.com',
+          hours: '24/7 Support Available'
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching support data:', error)
+      // Set default values if API fails
+      setSupportData({
+        mobile: '+917055880880',
+        mobile2: '+917252043100',
+        email: 'dainikcare@gmail.com',
+        hours: '24/7 Support Available'
+      })
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
 
   const handleContactPress = (type, value) => {
     switch (type) {
       case 'email':
-        Linking.openURL(`mailto:${value}`)
+        if (value) Linking.openURL(`mailto:${value}`)
         break
       case 'phone':
-        Linking.openURL(`tel:${value}`)
+        if (value) Linking.openURL(`tel:${value}`)
         break
       case 'website':
-        Linking.openURL(`https://${value}`)
+        if (value) Linking.openURL(`https://${value}`)
         break
       default:
         break
@@ -117,18 +126,57 @@ const Support = () => {
     </TouchableOpacity>
   )
 
+  // Prepare contact info array from API data
+  const contactInfo = [
+    {
+      id: '1',
+      type: 'email',
+      value: supportData.email,
+      icon: 'email',
+      color: '#88D8C0'
+    },
+    {
+      id: '2',
+      type: 'phone',
+      value: supportData.mobile,
+      icon: 'phone',
+      color: '#58A890'
+    },
+    {
+      id: '3',
+      type: 'phone',
+      value: supportData.mobile2,
+      icon: 'phone',
+      color: '#70C0A8'
+    },
+    {
+      id: '4',
+      type: 'hours',
+      value: supportData.hours,
+      icon: 'access-time',
+      color: '#777777'
+    }
+  ]
+
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <Header title={'Support'}
+    <SafeAreaView className="flex-1 bg-white">
+      <Header
+        title={'Support'}
         titlePosition='left'
         titleStyle='font-bold text-xl'
       />
 
       <ScrollView
-        className="flex-1 px-4"
+        className="flex-1 px-4 bg-gray-50"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
       >
+        {/* Loading Indicator */}
+        {loading && (
+          <View className="py-10 items-center">
+            <Text className="text-gray-500">Loading support information...</Text>
+          </View>
+        )}
 
        
 
@@ -141,7 +189,7 @@ const Support = () => {
             <Text className="text-gray-800 text-lg font-semibold">Contact Information</Text>
           </View>
 
-          {contactInfo.map(item => (
+          {!loading && contactInfo.map(item => (
             <ContactInfoItem key={item.id} item={item} />
           ))}
         </View>
@@ -158,9 +206,7 @@ const Support = () => {
             or start a live chat with our support team.
           </Text>
 
-          <TouchableOpacity className="bg-primary-sage500 py-3 rounded-xl items-center">
-            <Text className="text-white font-semibold text-base">Browse FAQ</Text>
-          </TouchableOpacity>
+        
         </View>
 
         {/* Response Time Badge */}
@@ -170,7 +216,6 @@ const Support = () => {
             <Text className="text-gray-600 text-xs ml-2">Average response time: 2-4 hours</Text>
           </View>
         </View>
-
       </ScrollView>
     </SafeAreaView>
   )

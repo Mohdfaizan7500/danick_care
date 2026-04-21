@@ -581,8 +581,6 @@ export const CheckCircleIcon = (props) => (
   </Svg>
 );
 
-
-
 export const CrossCircleIcon = (props) => (
   <Svg
     width={20}

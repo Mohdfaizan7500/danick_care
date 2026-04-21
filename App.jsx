@@ -23,56 +23,84 @@ export default function App() {
       if (notificationData && navigationRef.current) {
         console.log("Navigation ref is ready:", navigationRef.current);
 
+        // Extract screen from notification data
+        let targetScreen = notificationData.screen || notificationData.type || notificationData.title;
+        
+        // Check for complaint-related data
+        const hasComplaintData = notificationData.complaintId || 
+                                  notificationData.complaint_id || 
+                                  notificationData.id ||
+                                  (targetScreen && targetScreen.toLowerCase().includes('complaint'));
+
+        console.log("Target screen:", targetScreen);
+        console.log("Has complaint data:", hasComplaintData);
+
         // Navigate based on notification data
-        const targetScreen = notificationData.screen || notificationData.title;
-
-        switch (targetScreen) {
-          case 'chat':
-            navigationRef.current?.navigate('Chat', {
-              chatId: notificationData.chatId
+        if (hasComplaintData || (targetScreen && targetScreen.toLowerCase() === 'complaints')) {
+          console.log("Attempting to navigate to Complaints screen");
+          
+          // Get complaint ID from various possible fields
+          const complaintId = notificationData.complaintId || 
+                             notificationData.complaint_id || 
+                             notificationData.id;
+          
+          navigationRef.current?.navigate('Complaints', {
+            complaintId: complaintId,
+            complaintData: notificationData,
+            screen: 'complaints'
+          });
+        } 
+        else if (targetScreen === 'chat' || targetScreen === 'Chat') {
+          navigationRef.current?.navigate('Chat', {
+            chatId: notificationData.chatId || notificationData.id
+          });
+        }
+        else if (targetScreen === 'order' || targetScreen === 'Order' || targetScreen === 'Orders') {
+          console.log("Attempting to navigate to Orders tab");
+          navigationRef.current?.navigate('BottomTabs', {
+            screen: 'Orders',
+            params: {
+              orderId: notificationData.orderId
+            }
+          });
+        }
+        else if (targetScreen === 'profile' || targetScreen === 'Profile') {
+          navigationRef.current?.navigate('BottomTabs', {
+            screen: 'Profile'
+          });
+        }
+        else if (targetScreen === 'home' || targetScreen === 'Home') {
+          navigationRef.current?.navigate('BottomTabs', {
+            screen: 'Home'
+          });
+        }
+        else if (targetScreen === 'parts' || targetScreen === 'Parts') {
+          navigationRef.current?.navigate('BottomTabs', {
+            screen: 'Parts'
+          });
+        }
+        else if (targetScreen === 'scan' || targetScreen === 'Scan') {
+          navigationRef.current?.navigate('BottomTabs', {
+            screen: 'Scan'
+          });
+        }
+        else {
+          console.log('Unknown navigation target, defaulting to Complaints:', targetScreen);
+          // Default to Complaints screen if we have any data
+          if (notificationData && Object.keys(notificationData).length > 0) {
+            navigationRef.current?.navigate('Complaints', {
+              notificationData: notificationData
             });
-            break;
-
-          case 'order':
-            console.log("Attempting to navigate to Orders tab");
-            // Navigate to BottomTabs and then to Orders tab
-            navigationRef.current?.navigate('BottomTabs', {
-              screen: 'Orders',  // This will open the Orders tab
-              params: {
-                orderId: notificationData.orderId
-              }
-            });
-            break;
-
-          case 'profile':
-            navigationRef.current?.navigate('BottomTabs', {
-              screen: 'Profile'
-            });
-            break;
-
-          case 'home':
-            navigationRef.current?.navigate('BottomTabs', {
-              screen: 'Home'
-            });
-            break;
-
-          case 'parts':
-            navigationRef.current?.navigate('BottomTabs', {
-              screen: 'Parts'
-            });
-            break;
-
-          case 'scan':
-            navigationRef.current?.navigate('BottomTabs', {
-              screen: 'Scan'
-            });
-            break;
-
-          default:
-            console.log('Unknown navigation target:', targetScreen);
+          }
         }
       } else {
-        console.log("Navigation ref not ready yet");
+        console.log("Navigation ref not ready or no notification data");
+        if (!notificationData) {
+          console.log("Notification data is empty");
+        }
+        if (!navigationRef.current) {
+          console.log("Navigation ref is null");
+        }
       }
     });
   }, []);
