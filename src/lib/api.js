@@ -3,10 +3,10 @@ import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // const BASE_URL = 'https://dummyjson.com/';
-// const BASE_URL = 'http://192.168.1.43:5001/';
-const BASE_URL = 'http://10.33.83.35:5001/';
+// const BASE_URL = 'http://192.168.1.48:5001/';
+// const BASE_URL = 'http://10.33.83.35:5001/';
 
-// const BASE_URL = 'http://api.dainikcare.com/';
+const BASE_URL = 'http://api.dainikcare.com/';
 
 
 
@@ -864,11 +864,11 @@ export const FetchNotification = async (payload) => {
 export const ReadNotification = async (payload) => {
     console.log('payload', payload)
     try {
-        const response = await apiClient.post('TechnicianAPI/FetchNotification', payload);
-        console.log('FetchNotification api  response:', response);
+        const response = await apiClient.post('TechnicianAPI/ReadNotification', payload);
+        console.log('ReadNotification api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in FetchNotification:', error);
+        console.error('API error in ReadNotification:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }

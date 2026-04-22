@@ -4,16 +4,16 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import { useAuth } from '../../context/AuthContext';
-import { FetchNotification, ReadNotification } from '../../lib/api'; // Update path as needed
+import { FetchNotification, ReadNotification } from '../../lib/api';
+import { CheckCircleIcon, CrossCircleIcon } from '../../assets/svgIcons/SVGIcons'; // Update path as needed
 
 const Notification = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const { userData } = useAuth(); // Assuming you have userData with technician_id
+  const { userData } = useAuth();
 
-  // Fetch notifications on component mount
   useEffect(() => {
     fetchNotifications();
   }, []);
@@ -21,13 +21,12 @@ const Notification = () => {
   const fetchNotifications = async () => {
     try {
       const payload = {
-        technician_id: userData?.id || "1" // Use dynamic technician_id
+        technician_id: userData?.id || "1"
       };
       const response = await FetchNotification(payload);
-      console.log("Fetch Notification response:",response)
-      
+      console.log("Fetch Notification response:", response)
+
       if (response?.data?.success && response?.data?.data) {
-        // Transform API data to match component format
         const transformedData = response.data.data.map(item => ({
           id: item.id.toString(),
           type: mapStatusToType(item.status),
@@ -37,6 +36,7 @@ const Notification = () => {
           status: mapNotificationStatus(item.status),
           isRead: item.read_status === "Read",
           complaint_id: item.complaint_id,
+          csn: item.csn, // Add CSN field
           rawData: item
         }));
         setNotifications(transformedData);
@@ -54,9 +54,8 @@ const Notification = () => {
     fetchNotifications();
   }, []);
 
-  // Helper function to map status to type
   const mapStatusToType = (status) => {
-    switch(status?.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'assign':
         return 'service_assign';
       case 'complete':
@@ -68,7 +67,6 @@ const Notification = () => {
     }
   };
 
-  // Helper function to get title from message
   const getTitleFromMessage = (message) => {
     if (message?.includes('AC')) return 'AC Service Assignment';
     if (message?.includes('RO')) return 'RO Service Assignment';
@@ -77,25 +75,22 @@ const Notification = () => {
     return 'Service Notification';
   };
 
-  // Helper function to format date/time
   const formatDateTime = (dateTimeString) => {
     if (!dateTimeString) return 'Just now';
-    
-    // Handle format like "21/04/2026 || 11:51:14 AM"
+
     const parts = dateTimeString.split(' || ');
     if (parts.length === 2) {
       const [date, time] = parts;
       return `${date} at ${time}`;
     }
-    
-    // Calculate relative time for recent notifications
+
     try {
       const [day, month, year] = dateTimeString.split('/');
       const notificationDate = new Date(`${year}-${month}-${day}`);
       const now = new Date();
       const diffTime = Math.abs(now - notificationDate);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays === 0) return 'Today';
       if (diffDays === 1) return 'Yesterday';
       if (diffDays < 7) return `${diffDays} days ago`;
@@ -105,9 +100,8 @@ const Notification = () => {
     }
   };
 
-  // Map notification status to component status
   const mapNotificationStatus = (status) => {
-    switch(status?.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'assign':
         return 'assigned';
       case 'complete':
@@ -119,47 +113,35 @@ const Notification = () => {
     }
   };
 
-  // Mark notification as read
   const markAsRead = async (notificationId) => {
     try {
       const payload = { id: notificationId };
       const response = await ReadNotification(payload);
-      
+
       if (response?.data?.success) {
-        // Update local state
-        setNotifications(prev =>
-          prev.map(item =>
-            item.id === notificationId
-              ? { ...item, isRead: true }
-              : item
-          )
-        );
+        await fetchNotifications();
+        return true;
       }
+      return false;
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      return false;
     }
   };
 
-  // Handle notification press
-  const handleNotificationPress = (item) => {
-
-    // Mark as read if not already read
+  const handleNotificationPress = async (item) => {
     if (!item.isRead) {
-      markAsRead(item.id);
+      await markAsRead(item.id);
     }
-    
-    // Navigate to complaint details if complaint_id exists
+
     if (item.complaint_id) {
-      // Navigate to complaint details screen
-      // navigation.navigate('ComplaintDetails', { complaintId: item.complaint_id });
       console.log('Navigate to complaint:', item.complaint_id);
     }
   };
 
-  // Helper function to get icon based on message/type
   const getIconForNotification = (title, type, message) => {
     const messageLower = message?.toLowerCase() || '';
-    
+
     if (messageLower.includes('ac')) return 'ac-unit';
     if (messageLower.includes('ro')) return 'water';
     if (messageLower.includes('repair')) return 'build';
@@ -167,33 +149,31 @@ const Notification = () => {
     if (type === 'complete') return 'check-circle';
     if (type === 'cancel') return 'cancel';
     if (type === 'service_assign') return 'person-add';
-    
+
     return 'notifications';
   };
 
-  // Helper function to get icon color based on status
   const getIconColor = (status) => {
     switch (status) {
       case 'completed':
-        return '#10B981'; // green
+        return '#10B981';
       case 'assigned':
-        return '#3B82F6'; // blue
+        return '#3B82F6';
       case 'cancelled':
-        return '#EF4444'; // red
+        return '#EF4444';
       case 'pending':
-        return '#F59E0B'; // amber
+        return '#F59E0B';
       default:
-        return '#6B7280'; // gray
+        return '#6B7280';
     }
   };
 
-  // Filter notifications based on active tab
   const getFilteredNotifications = () => {
     switch (activeTab) {
       case 'unread':
         return notifications.filter(n => !n.isRead);
-      case 'service':
-        return notifications; // All notifications are service-related from API
+      case 'read':
+        return notifications.filter(n => n.isRead);
       default:
         return notifications;
     }
@@ -214,16 +194,10 @@ const Notification = () => {
     }
   };
 
-  const markAllAsRead = async () => {
-    // Mark all unread notifications one by one
-    const unreadNotifications = notifications.filter(n => !n.isRead);
-    for (const notification of unreadNotifications) {
-      await markAsRead(notification.id);
-    }
-  };
+  
 
   const renderNotificationItem = ({ item }) => {
-    const unreadClass = !item.isRead
+    const containerClass = !item.isRead
       ? 'bg-teal-50 border border-teal-500'
       : 'bg-white border border-gray-200';
 
@@ -232,7 +206,7 @@ const Notification = () => {
 
     return (
       <TouchableOpacity
-        className={`flex-row p-4 mx-4 mb-3 rounded-xl ${unreadClass}`}
+        className={`flex-row p-4 mx-4 mb-3 rounded-xl ${containerClass}`}
         onPress={() => handleNotificationPress(item)}
       >
         {!item.isRead && (
@@ -263,9 +237,41 @@ const Notification = () => {
             {item.message}
           </Text>
 
-          <View className="flex-row items-center">
-            <Icon name="access-time" size={14} color={!item.isRead ? '#6B7280' : '#9CA3AF'} />
-            <Text className={`text-xs ml-1 ${!item.isRead ? 'text-gray-600' : 'text-gray-400'}`}>{item.time}</Text>
+          {/* Complaint ID and CSN Section - Each on separate line */}
+          {(item.complaint_id || item.csn) && (
+            <View className="mb-2">
+              {item.complaint_id && (
+                <View className="flex-row items-center mb-1">
+                  <Icon name="assignment" size={14} color="#6B7280" />
+                  <Text className="text-xs text-gray-600 ml-1">
+                    Complaint ID: <Text className="font-medium">{item.complaint_id}</Text>
+                  </Text>
+                </View>
+              )}
+              {item.csn && (
+                <View className="flex-row items-center">
+                  <Icon name="receipt" size={14} color="#6B7280" />
+                  <Text className="text-xs text-gray-600 ml-1">
+                    CSN: <Text className="font-medium">{item.csn}</Text>
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              <Icon name="access-time" size={14} color={!item.isRead ? '#6B7280' : '#9CA3AF'} />
+              <Text className={`text-xs ml-1 ${!item.isRead ? 'text-gray-600' : 'text-gray-400'}`}>{item.time}</Text>
+            </View>
+
+            {/* Status Icons for Completed/Cancelled */}
+            {item.status === 'completed' && (
+              <CheckCircleIcon width={16} height={16} />
+            )}
+            {item.status === 'cancelled' && (
+              <CrossCircleIcon width={16} height={16} />
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -284,7 +290,7 @@ const Notification = () => {
         <Text className={`text-sm font-medium ${activeTab === tabName ? 'text-white' : 'text-gray-600'}`}>
           {title}
         </Text>
-        {count > 0 && tabName !== 'all' && (
+        {count > 0 && (
           <View className={`ml-2 px-1.5 py-0.5 rounded-full ${activeTab === tabName ? 'bg-white' : 'bg-gray-300'}`}>
             <Text className={`text-xs ${activeTab === tabName ? 'text-teal-500' : 'text-gray-700'}`}>
               {count}
@@ -297,31 +303,18 @@ const Notification = () => {
 
   const ListHeader = () => {
     const unreadCount = notifications.filter(n => !n.isRead).length;
-    const serviceCount = notifications.length;
+    const readCount = notifications.filter(n => n.isRead).length;
+    const totalCount = notifications.length;
 
     return (
       <View className="bg-white">
-        {/* Mark all as read button */}
-        {unreadCount > 0 && (
-          <TouchableOpacity
-            onPress={markAllAsRead}
-            className="flex-row justify-end items-center px-4 pt-2"
-          >
-            <Icon name="done-all" size={18} color="#14B8A6" />
-            <Text className="text-teal-500 text-sm font-medium ml-1">
-              Mark all as read
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Tabs */}
+       
         <View className="flex-row px-4 pb-4">
-          <TabButton title="All" tabName="all" count={serviceCount} />
+          <TabButton title="All" tabName="all" count={totalCount} />
           <TabButton title="Unread" tabName="unread" count={unreadCount} />
-          <TabButton title="Service" tabName="service" count={serviceCount} />
+          <TabButton title="Read" tabName="read" count={readCount} />
         </View>
 
-        {/* Results count */}
         <View className="px-4 pb-2">
           <Text className="text-xs text-gray-500">
             Showing {getFilteredNotifications().length} notifications
@@ -336,7 +329,7 @@ const Notification = () => {
       <Icon
         name={
           activeTab === 'unread' ? 'mark-email-read' :
-            activeTab === 'service' ? 'miscellaneous-services' :
+            activeTab === 'read' ? 'mark-email-unread' :
               'notifications-none'
         }
         size={64}
@@ -345,10 +338,10 @@ const Notification = () => {
       <Text className="text-lg text-gray-400 mt-4">
         {loading ? 'Loading notifications...' :
           activeTab === 'unread' ? 'No unread notifications' :
-            activeTab === 'service' ? 'No service notifications' :
+            activeTab === 'read' ? 'No read notifications' :
               'No notifications yet'}
       </Text>
-      {activeTab !== 'all' && !loading && (
+      {activeTab !== 'all' && !loading && notifications.length > 0 && (
         <TouchableOpacity
           onPress={() => setActiveTab('all')}
           className="mt-4 px-4 py-2 bg-teal-500 rounded-full"

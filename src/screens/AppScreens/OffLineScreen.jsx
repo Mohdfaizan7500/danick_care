@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Linking, ActivityIndicator } from 'react-
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { getProfile } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import DialogBox from '../../components/DilaogBox'; // Reuse your dialog component
+import DialogBox from '../../components/DilaogBox';
 
 const OffLineScreen = ({ navigation }) => {
     const serviceNumber = '1800-123-4567';
@@ -11,8 +11,8 @@ const OffLineScreen = ({ navigation }) => {
     const [dialogVisible, setDialogVisible] = useState(false);
     const [dialogMessage, setDialogMessage] = useState('');
     const [dialogType, setDialogType] = useState('info');
-    
-    const { user, setIsOnline, setAuthData } = useAuth();
+
+    const { user, setIsOnline, setAuthData, updateProfileData } = useAuth();
 
     const showDialog = (type, message) => {
         setDialogType(type);
@@ -28,8 +28,12 @@ const OffLineScreen = ({ navigation }) => {
     const handleRefresh = async () => {
         setIsRefreshing(true);
         try {
-            const technicianId = user?.technician_id || user?.id;
-            
+            // Use technician_id from the user object (from decoded token)
+            const technicianId = user?.id;
+
+            console.log('User object:', user);
+            console.log('Using technician ID:', technicianId);
+
             if (!technicianId) {
                 showDialog('error', 'User information not found. Please login again.');
                 return;
@@ -37,36 +41,52 @@ const OffLineScreen = ({ navigation }) => {
 
             const response = await getProfile(technicianId);
             console.log('Profile refresh response:', response);
-            
-            // Adjust based on your actual response structure
-            const responseData = response?.data?.data || response?.data;
-            const isOnline = responseData?.login_status === 'Online';
-            
-            if (response?.success === false) {
+
+            // Extract data from the response structure
+            const responseData = response?.data?.data?.[0] || response?.data?.data || response?.data;
+            console.log('Extracted response data:', responseData);
+
+            // Check if response indicates failure
+            if (response?.data?.success === false) {
                 showDialog('error', responseData?.msg || 'Failed to refresh status');
                 return;
             }
-            
-            if (isOnline) {
-                await setIsOnline(true);
-                
-                // Update user data if needed
-                if (responseData) {
+
+            // Check if we got valid technician data
+            if (responseData && responseData.login_status) {
+                const isOnline = responseData.login_status === 'Online';
+
+                if (isOnline) {
+                    await setIsOnline(true);
+
+                    // Update profile data with complete technician info
+                    await updateProfileData(responseData);
+
+                    // Update user data if needed (keep the existing user structure)
+                    const updatedUser = {
+                        ...user,
+                        technician_name: responseData.technician_name,
+                        technician_mobile: responseData.technician_mobile,
+                        technician_address: responseData.technician_address,
+                        technician_type: responseData.technician_type,
+                        profile_photo: responseData.profile_photo,
+                    };
+
                     await setAuthData(
-                        { ...user, ...responseData },
-                        user?.accessToken,
+                        updatedUser,
+                        responseData.accessToken || user?.accessToken,
                         user?.refreshToken
                     );
+
+                    showDialog('success', 'You are now online! Redirecting...');
+
+                } else {
+                    showDialog('info', 'You are still offline. Please contact service center.');
                 }
-                
-                showDialog('success', 'You are now online! Redirecting...');
-                setTimeout(() => {
-                    navigation.replace('Home');
-                }, 1500);
             } else {
-                showDialog('info', 'You are still offline. Please contact service center.');
+                showDialog('error', 'Invalid response from server');
             }
-            
+
         } catch (error) {
             console.error('Refresh error:', error);
             showDialog('error', error.message || 'Failed to refresh status. Please try again.');
@@ -111,7 +131,7 @@ const OffLineScreen = ({ navigation }) => {
                         <Icon name="phone" size={20} color="white" />
                         <Text className="text-white font-semibold text-base ml-2">Call Now</Text>
                     </TouchableOpacity>
-                    
+
                     <TouchableOpacity
                         onPress={handleRefresh}
                         className="bg-primary-sage500 py-3 px-8 rounded-xl flex-row items-center"
@@ -139,10 +159,10 @@ const OffLineScreen = ({ navigation }) => {
                 footer={dialogFooter}
             >
                 <View className="py-4 items-center">
-                    <Icon 
-                        name={dialogType === 'error' ? 'error' : dialogType === 'success' ? 'check-circle' : 'info'} 
-                        size={50} 
-                        color={dialogType === 'error' ? '#F44336' : dialogType === 'success' ? '#4CAF50' : '#2196F3'} 
+                    <Icon
+                        name={dialogType === 'error' ? 'error' : dialogType === 'success' ? 'check-circle' : 'info'}
+                        size={50}
+                        color={dialogType === 'error' ? '#F44336' : dialogType === 'success' ? '#4CAF50' : '#2196F3'}
                     />
                     <Text className="text-gray-600 text-center mt-4 text-base">{dialogMessage}</Text>
                 </View>

@@ -6,16 +6,47 @@ import { AppRegistry } from 'react-native';
 import App from './App';
 import { name as appName } from './app.json';
 // Import modular API functions
-import { setBackgroundMessageHandler, getMessaging } from '@react-native-firebase/messaging';
+import { 
+    setBackgroundMessageHandler, 
+    getMessaging, 
+    onMessage  // ← ADD THIS IMPORT
+} from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Get messaging instance using modular API
 const messaging = getMessaging();
 
+// ✅ ADD FOREGROUND HANDLER HERE (This is what you're missing!)
+onMessage(messaging, async (remoteMessage) => {
+    console.log('📱 FOREGROUND message received in index.js:', remoteMessage);
+    
+    // Display notification in foreground
+    await notifee.displayNotification({
+        title: remoteMessage.notification?.title || 'New Notification',
+        body: remoteMessage.notification?.body || 'You have a new message',
+        data: remoteMessage.data,
+        android: {
+            channelId: 'default',
+            pressAction: { id: 'default' },
+            smallIcon: 'ic_launcher',
+            importance: AndroidImportance.HIGH,
+            autoCancel: true,
+        },
+        ios: {
+            foregroundPresentationOptions: {
+                badge: true,
+                sound: true,
+                banner: true,
+                list: true,
+            },
+        },
+    });
+});
+
 // Set background message handler for FCM using modular API
 setBackgroundMessageHandler(messaging, async (remoteMessage) => {
-    console.log('Message handled in the background!', remoteMessage);
+    console.log('📱 BACKGROUND message received:', remoteMessage);
     
     // Display notification from background using notifee
     await notifee.displayNotification({

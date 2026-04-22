@@ -1,8 +1,9 @@
 // src/notification/useNotification.js
 import { PermissionsAndroid, Platform } from 'react-native';
-import { getMessaging, getToken, onMessage, getInitialNotification, onNotificationOpenedApp } from '@react-native-firebase/messaging';
+import { getMessaging, getToken, getInitialNotification, onNotificationOpenedApp } from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configuration for notifications
 const NOTIFICATION_CONFIG = {
@@ -20,51 +21,42 @@ let navigationHandler = null;
 
 export const setNotificationNavigationHandler = (handler) => {
     navigationHandler = handler;
+    
+    // Check for pending notification when handler is set
+    checkPendingNotification();
+};
+
+// Check for pending notification from AsyncStorage
+const checkPendingNotification = async () => {
+    try {
+        const pendingData = await AsyncStorage.getItem('pendingNotification');
+        if (pendingData) {
+            console.log('Found pending notification:', pendingData);
+            const notificationData = JSON.parse(pendingData);
+            if (navigationHandler) {
+                navigationHandler(notificationData);
+                await AsyncStorage.removeItem('pendingNotification');
+            }
+        }
+    } catch (error) {
+        console.log('Error checking pending notification:', error);
+    }
 };
 
 // Create notification channel (Android 8+ required)
 const createNotificationChannel = async () => {
     try {
-        await notifee.createChannel({
+        const channel = await notifee.createChannel({
             id: NOTIFICATION_CONFIG.channelId,
             name: NOTIFICATION_CONFIG.channelName,
             importance: AndroidImportance.HIGH,
             vibration: true,
             sound: "default",
         });
-        console.log('Notification channel created');
+        console.log('✅ Notification channel created:', channel);
+        return channel;
     } catch (error) {
         console.log('Error creating notification channel:', error);
-    }
-};
-
-// Display a notification using notifee (works in all app states)
-const displayNotification = async (title, body, data = {}) => {
-    try {
-        await notifee.displayNotification({
-            title: title || "New Notification",
-            body: body || "You have a new message",
-            data: data, // This data will be available when user taps
-            android: {
-                channelId: NOTIFICATION_CONFIG.channelId,
-                pressAction: { id: "default" },
-                smallIcon: NOTIFICATION_CONFIG.androidIcon,
-                importance: AndroidImportance.HIGH,
-                autoCancel: true,
-                color: NOTIFICATION_CONFIG.androidColor,
-            },
-            ios: {
-                foregroundPresentationOptions: {
-                    badge: true,
-                    sound: true,
-                    banner: true,
-                    list: true,
-                },
-            },
-        });
-        console.log('Notification displayed successfully with data:', data);
-    } catch (error) {
-        console.log('Error displaying notification:', error);
     }
 };
 
@@ -79,10 +71,10 @@ const requestUserPermission = async () => {
                     PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
                 );
                 if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-                    console.log('Notification permission granted');
+                    console.log('✅ Notification permission granted');
                     return true;
                 } else {
-                    console.log('Notification permission denied');
+                    console.log('❌ Notification permission denied');
                     return false;
                 }
             }
@@ -92,10 +84,10 @@ const requestUserPermission = async () => {
             const enabled = authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
                 authStatus === messaging.AuthorizationStatus.PROVISIONAL;
             if (enabled) {
-                console.log('iOS notification permission granted');
+                console.log('✅ iOS notification permission granted');
                 return true;
             }
-            console.log('iOS notification permission denied');
+            console.log('❌ iOS notification permission denied');
             return false;
         }
     } catch (error) {
@@ -109,36 +101,16 @@ const getFCMTokenModular = async () => {
     try {
         const messaging = getMessaging();
         const fcmToken = await getToken(messaging);
-        console.log("FCM token:", fcmToken);
+        console.log("✅ FCM token:", fcmToken);
         globalFCMToken = fcmToken;
         return fcmToken;
     } catch (error) {
-        console.log("Failed to get FCM token:", error);
+        console.log("❌ Failed to get FCM token:", error);
         if (error.code === 'messaging/unknown' && error.message.includes('SERVICE_NOT_AVAILABLE')) {
             console.log("Google Play Services not available. Check emulator/device setup.");
         }
         return null;
     }
-};
-
-// Extract notification data helper
-const extractNotificationData = (remoteMessage) => {
-    // Priority 1: Check data payload
-    if (remoteMessage.data && Object.keys(remoteMessage.data).length > 0) {
-        return remoteMessage.data;
-    }
-    
-    // Priority 2: Check notification payload
-    if (remoteMessage.notification) {
-        return {
-            title: remoteMessage.notification.title,
-            body: remoteMessage.notification.body,
-            ...remoteMessage.data
-        };
-    }
-    
-    // Priority 3: Use the entire message
-    return remoteMessage;
 };
 
 // Export function to get FCM token
@@ -148,99 +120,68 @@ export const getFCMToken = () => {
 
 export const useNotification = () => {
     const [fcmToken, setFCMToken] = useState(null);
-    const foregroundUnsubscribe = useRef(null);
-    const backgroundUnsubscribe = useRef(null);
-    const notifeeUnsubscribe = useRef(null);
 
     useEffect(() => {
         const setupNotifications = async () => {
             try {
                 const messaging = getMessaging();
                 
+                // Create notification channel first
                 await createNotificationChannel();
+                
+                // Request permissions
                 const hasPermission = await requestUserPermission();
 
                 if (hasPermission) {
                     const token = await getFCMTokenModular();
                     setFCMToken(token);
                     globalFCMToken = token;
-                    console.log("FCM Token ready:", token);
+                    console.log("✅ FCM Token ready:", token);
+                } else {
+                    console.log("⚠️ No notification permission");
                 }
-
-                // Handle foreground notifications
-                foregroundUnsubscribe.current = onMessage(messaging, async (remoteMessage) => {
-                    console.log('📱 FCM Message received in FOREGROUND:', JSON.stringify(remoteMessage));
-                    
-                    // Extract data from notification
-                    const notificationData = extractNotificationData(remoteMessage);
-                    
-                    const title = notificationData.title || remoteMessage.notification?.title || "New Notification";
-                    const body = notificationData.body || remoteMessage.notification?.body || "You have a new message";
-                    
-                    // Pass all data including custom fields like complaintId
-                    const dataToPass = {
-                        screen: notificationData.screen || notificationData.title,
-                        complaintId: notificationData.complaintId,
-                        complaintData: notificationData,
-                        ...notificationData
-                    };
-                    
-                    await displayNotification(title, body, dataToPass);
-                });
 
                 // Handle notification when app is opened from quit state
                 const initialNotification = await getInitialNotification(messaging);
                 if (initialNotification) {
-                    console.log('App opened from quit state:', initialNotification);
-                    const notificationData = extractNotificationData(initialNotification);
+                    console.log('📱 App opened from quit state:', initialNotification);
                     if (navigationHandler) {
                         setTimeout(() => {
-                            navigationHandler(notificationData);
-                        }, 1000);
+                            navigationHandler(initialNotification.data);
+                        }, 1500);
                     }
                 }
 
-                // Handle notification when app is in background
-                backgroundUnsubscribe.current = onNotificationOpenedApp(messaging, async (remoteMessage) => {
-                    console.log('App opened from background:', remoteMessage);
-                    const notificationData = extractNotificationData(remoteMessage);
-                    if (navigationHandler) {
-                        navigationHandler(notificationData);
+                // Handle notification when app is opened from background
+                const unsubscribeBackground = onNotificationOpenedApp(messaging, (remoteMessage) => {
+                    console.log('📱 App opened from background:', remoteMessage);
+                    if (navigationHandler && remoteMessage.data) {
+                        navigationHandler(remoteMessage.data);
                     }
                 });
 
-                // Handle notifee events (when user taps on notification)
-                notifeeUnsubscribe.current = notifee.onForegroundEvent(({ type, detail }) => {
+                // Handle notification taps when app is in foreground
+                const unsubscribeForegroundTap = notifee.onForegroundEvent(({ type, detail }) => {
                     if (type === EventType.PRESS) {
-                        console.log('User pressed notification:', detail.notification);
+                        console.log('📱 Notification tapped in foreground:', detail.notification?.data);
                         if (detail.notification?.data && navigationHandler) {
-                            // The data passed in displayNotification will be available here
-                            const notificationData = detail.notification.data;
-                            console.log('Notification data from press:', notificationData);
-                            navigationHandler(notificationData);
+                            navigationHandler(detail.notification.data);
                         }
                     }
                 });
+
+                // Cleanup
+                return () => {
+                    unsubscribeBackground();
+                    unsubscribeForegroundTap();
+                };
                 
-                console.log('✅ Notifications setup complete');
             } catch (error) {
-                console.log('Error setting up notifications:', error);
+                console.log('❌ Error setting up notifications:', error);
             }
         };
 
         setupNotifications();
-
-        return () => {
-            if (foregroundUnsubscribe.current) {
-                foregroundUnsubscribe.current();
-            }
-            if (backgroundUnsubscribe.current) {
-                backgroundUnsubscribe.current();
-            }
-            if (notifeeUnsubscribe.current) {
-                notifeeUnsubscribe.current();
-            }
-        };
     }, []);
 
     return fcmToken;
