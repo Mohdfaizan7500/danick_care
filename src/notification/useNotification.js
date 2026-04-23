@@ -21,7 +21,7 @@ let navigationHandler = null;
 
 export const setNotificationNavigationHandler = (handler) => {
     navigationHandler = handler;
-    
+
     // Check for pending notification when handler is set
     checkPendingNotification();
 };
@@ -64,7 +64,7 @@ const createNotificationChannel = async () => {
 const requestUserPermission = async () => {
     try {
         const messaging = getMessaging();
-        
+
         if (Platform.OS === 'android') {
             if (Platform.Version >= 33) {
                 const granted = await PermissionsAndroid.request(
@@ -117,10 +117,10 @@ const getFCMTokenModular = async () => {
 export const generateAndGetFCMToken = async () => {
     try {
         console.log('🔄 Generating FCM token...');
-        
+
         // Create notification channel first
         await createNotificationChannel();
-        
+
         // Request permissions
         const hasPermission = await requestUserPermission();
 
@@ -150,10 +150,10 @@ export const useNotification = () => {
         const setupNotifications = async () => {
             try {
                 const messaging = getMessaging();
-                
+
                 // Create notification channel first
                 await createNotificationChannel();
-                
+
                 // Request permissions
                 const hasPermission = await requestUserPermission();
 
@@ -186,21 +186,37 @@ export const useNotification = () => {
                 });
 
                 // Handle notification taps when app is in foreground
+                // In useNotification.js, update the unsubscribeForegroundTap section:
                 const unsubscribeForegroundTap = notifee.onForegroundEvent(({ type, detail }) => {
                     if (type === EventType.PRESS) {
-                        console.log('📱 Notification tapped in foreground:', detail.notification?.data);
-                        if (detail.notification?.data && navigationHandler) {
-                            navigationHandler(detail.notification.data);
+                        console.log('📱 Notification tapped in foreground:', detail.notification);
+
+                        // CRITICAL FIX: Extract data properly
+                        let notificationData = detail.notification?.data || {};
+
+                        // If data is empty but notification has title/body, create data object
+                        if (Object.keys(notificationData).length === 0 && detail.notification) {
+                            notificationData = {
+                                title: detail.notification.title,
+                                body: detail.notification.body,
+                                screen: detail.notification.body || detail.notification.title || 'complaints'
+                            };
+                            console.log('Created data from notification:', notificationData);
+                        }
+
+                        console.log('Notification data to handle:', notificationData);
+
+                        if (notificationData && navigationHandler) {
+                            navigationHandler(notificationData);
                         }
                     }
                 });
-
                 // Cleanup
                 return () => {
                     unsubscribeBackground();
                     unsubscribeForegroundTap();
                 };
-                
+
             } catch (error) {
                 console.log('❌ Error setting up notifications:', error);
             }

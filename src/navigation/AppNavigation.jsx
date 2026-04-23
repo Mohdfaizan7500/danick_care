@@ -24,7 +24,7 @@ const AppNavigation = forwardRef((props, ref) => {
 
     return (
         <NavigationContainer ref={ref}>
-            {accessToken ? <AppStack /> : <AuthStack />}
+            {!accessToken ? <AppStack /> : <AuthStack />}
         </NavigationContainer>
     );
 });

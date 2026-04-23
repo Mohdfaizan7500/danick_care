@@ -16,6 +16,7 @@ export default function App() {
   useNotification();
 
   // Setup navigation handler for notifications
+  // In App.js, update the navigation handler:
   useEffect(() => {
     setNotificationNavigationHandler((notificationData) => {
       console.log('Handling notification navigation:', notificationData);
@@ -23,14 +24,17 @@ export default function App() {
       if (notificationData && navigationRef.current) {
         console.log("Navigation ref is ready:", navigationRef.current);
 
-        // Extract screen from notification data
-        let targetScreen = notificationData.screen || notificationData.type || notificationData.title;
-        
+        // Extract screen from notification data - prioritize body and title
+        let targetScreen = notificationData.screen ||
+          notificationData.body ||
+          notificationData.title ||
+          notificationData.type;
+
         // Check for complaint-related data
-        const hasComplaintData = notificationData.complaintId || 
-                                  notificationData.complaint_id || 
-                                  notificationData.id ||
-                                  (targetScreen && targetScreen.toLowerCase().includes('complaint'));
+        const hasComplaintData = notificationData.complaintId ||
+          notificationData.complaint_id ||
+          notificationData.id ||
+          (targetScreen && targetScreen.toLowerCase().includes('complaint'));
 
         console.log("Target screen:", targetScreen);
         console.log("Has complaint data:", hasComplaintData);
@@ -38,24 +42,24 @@ export default function App() {
         // Navigate based on notification data
         if (hasComplaintData || (targetScreen && targetScreen.toLowerCase() === 'complaints')) {
           console.log("Attempting to navigate to Complaints screen");
-          
+
           // Get complaint ID from various possible fields
-          const complaintId = notificationData.complaintId || 
-                             notificationData.complaint_id || 
-                             notificationData.id;
-          
+          const complaintId = notificationData.complaintId ||
+            notificationData.complaint_id ||
+            notificationData.id;
+
           navigationRef.current?.navigate('Complaints', {
             complaintId: complaintId,
             complaintData: notificationData,
             screen: 'complaints'
           });
-        } 
-        else if (targetScreen === 'chat' || targetScreen === 'Chat') {
+        }
+        else if (targetScreen && (targetScreen.toLowerCase().includes('chat') || targetScreen.toLowerCase() === 'chat')) {
           navigationRef.current?.navigate('Chat', {
             chatId: notificationData.chatId || notificationData.id
           });
         }
-        else if (targetScreen === 'order' || targetScreen === 'Order' || targetScreen === 'Orders') {
+        else if (targetScreen && (targetScreen.toLowerCase().includes('order') || targetScreen.toLowerCase() === 'orders')) {
           console.log("Attempting to navigate to Orders tab");
           navigationRef.current?.navigate('BottomTabs', {
             screen: 'Orders',
@@ -64,22 +68,22 @@ export default function App() {
             }
           });
         }
-        else if (targetScreen === 'profile' || targetScreen === 'Profile') {
+        else if (targetScreen && (targetScreen.toLowerCase().includes('profile') || targetScreen.toLowerCase() === 'profile')) {
           navigationRef.current?.navigate('BottomTabs', {
             screen: 'Profile'
           });
         }
-        else if (targetScreen === 'home' || targetScreen === 'Home') {
+        else if (targetScreen && (targetScreen.toLowerCase().includes('home') || targetScreen.toLowerCase() === 'home')) {
           navigationRef.current?.navigate('BottomTabs', {
             screen: 'Home'
           });
         }
-        else if (targetScreen === 'parts' || targetScreen === 'Parts') {
+        else if (targetScreen && (targetScreen.toLowerCase().includes('parts') || targetScreen.toLowerCase() === 'parts')) {
           navigationRef.current?.navigate('BottomTabs', {
             screen: 'Parts'
           });
         }
-        else if (targetScreen === 'scan' || targetScreen === 'Scan') {
+        else if (targetScreen && (targetScreen.toLowerCase().includes('scan') || targetScreen.toLowerCase() === 'scan')) {
           navigationRef.current?.navigate('BottomTabs', {
             screen: 'Scan'
           });
@@ -90,6 +94,11 @@ export default function App() {
           if (notificationData && Object.keys(notificationData).length > 0) {
             navigationRef.current?.navigate('Complaints', {
               notificationData: notificationData
+            });
+          } else {
+            // If no data, go to Home
+            navigationRef.current?.navigate('BottomTabs', {
+              screen: 'Home'
             });
           }
         }
