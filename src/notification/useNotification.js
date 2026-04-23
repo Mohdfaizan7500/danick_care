@@ -113,7 +113,32 @@ const getFCMTokenModular = async () => {
     }
 };
 
-// Export function to get FCM token
+// ADD THIS NEW FUNCTION - Generate and get FCM token
+export const generateAndGetFCMToken = async () => {
+    try {
+        console.log('🔄 Generating FCM token...');
+        
+        // Create notification channel first
+        await createNotificationChannel();
+        
+        // Request permissions
+        const hasPermission = await requestUserPermission();
+
+        if (hasPermission) {
+            const token = await getFCMTokenModular();
+            console.log("✅ FCM Token generated successfully:", token);
+            return token;
+        } else {
+            console.log("⚠️ No notification permission, cannot generate token");
+            return null;
+        }
+    } catch (error) {
+        console.log('❌ Error generating FCM token:', error);
+        return null;
+    }
+};
+
+// Export function to get cached FCM token
 export const getFCMToken = () => {
     return globalFCMToken;
 };

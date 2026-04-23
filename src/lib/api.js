@@ -43,7 +43,7 @@ apiClient.interceptors.response.use(
 
 // Helper to extract error message
 const getErrorMessage = (error) => {
-    return error.response?.data?.message ||
+    return error.response?.data?.msg ||
         error.response?.data?.error ||
         error.message ||
         'An unexpected error occurred';
@@ -51,15 +51,15 @@ const getErrorMessage = (error) => {
 
 // Login function for React Native
 export const loginApi = async (username, password, fcmToken) => {
-    // console.log('technician id:',username,typeof(username));
-    // console.log('Password:',password,typeof(password));
-    console.log('payload:')
+    console.log('technician id:',username,typeof(username));
+    console.log('Password:',password,typeof(password));
+    console.log('fcm token :',fcmToken)
 
     try {
         const response = await apiClient.post("TechnicianAPI/Login", {
             technician_id: username,
             password: password,
-            fcmToken: fcmToken,
+            // fcmToken: fcmToken,
             expiresInMins: 30, // optional
         });
         console.log('responce:', response)

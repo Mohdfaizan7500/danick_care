@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../components/StatusMessage';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { getFCMToken } from '../../notification/useNotification'; // Import the function, not the hook
+import { generateAndGetFCMToken } from '../../notification/useNotification'; // Use the correct function
 
 const Login = ({ navigation }) => {
     const [email, setEmail] = useState('');
@@ -39,9 +39,15 @@ const Login = ({ navigation }) => {
     // Get FCM token when component mounts
     useEffect(() => {
         const getToken = async () => {
-            const token = await getFCMToken();
-            setFcmToken(token);
-            console.log("FCM token on Login screen:", token);
+            try {
+                console.log('🔄 Getting FCM token on Login screen...');
+                const token = await generateAndGetFCMToken();
+                setFcmToken(token);
+                console.log("✅ FCM token on Login screen:", token);
+            } catch (error) {
+                console.error('❌ Failed to get FCM token:', error);
+                setFcmToken(null);
+            }
         };
         getToken();
     }, []);
@@ -60,12 +66,12 @@ const Login = ({ navigation }) => {
         setIsLoading(true);
         try {
             // Get fresh FCM token before login
-            const fcmToken = await getFCMToken();
-            console.log('Sending FCM Token with login:', fcmToken);
+            const fcmToken = await generateAndGetFCMToken();
+            console.log('📤 Sending FCM Token with login:', fcmToken);
 
             // Call login API with fcm token
             const result = await loginApi(email, password, fcmToken);
-            console.log('Login API response:', result);
+            console.log('📥 Login API response:', result);
 
             if (!result || result.success === false) {
                 const errorMsg = result?.data?.msg || result?.error || 'Login failed. Please try again.';
@@ -91,7 +97,7 @@ const Login = ({ navigation }) => {
                 ...userData,
             };
 
-            console.log('user:', user);
+            console.log('👤 User:', user);
 
             await setAuthData(user, accessToken, refreshToken);
             const isOnline = userData?.login_status === 'Online';
@@ -102,7 +108,7 @@ const Login = ({ navigation }) => {
             });
 
         } catch (error) {
-            console.error('Login error:', error);
+            console.error('❌ Login error:', error);
             showDialog('error', 'Login Failed', error.message || 'Login failed. Please try again.');
         } finally {
             setIsLoading(false);
@@ -112,7 +118,14 @@ const Login = ({ navigation }) => {
     const fillDemoAccount = () => {
         setEmail('46757');
         setPassword('123');
-        toast.custom(<StatusMessage type='info' title='Demo Account Filled' message='Demo credentials have been filled. Click Sign In to continue.' />, { duration: 300 });
+        toast.custom(
+            <StatusMessage 
+                type='info' 
+                title='Demo Account Filled' 
+                message='Demo credentials have been filled. Click Sign In to continue.' 
+            />, 
+            { duration: 300 }
+        );
     };
 
     const successFooter = (
