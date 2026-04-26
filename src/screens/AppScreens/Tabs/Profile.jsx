@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { Mail, Phone } from 'lucide-react-native';
+import { BadgeCheck, LockIcon, LogOut, Mail, Phone } from 'lucide-react-native';
 import { ComplaintsIcon, FileIcon, ReplaceIcon, TermsIcon, UserIcon } from '../../../assets/svgIcons/SVGIcons';
 import { useNavigation } from '@react-navigation/native';
 import DialogBox from '../../../components/DilaogBox';
@@ -39,7 +39,14 @@ const Profile = () => {
       icon: <UserIcon width={22} height={22} stroke={'black'} />,
       title: 'My Profile',
       subtitle: 'View and edit your profile',
-      route: 'ProfileEdit'
+      route: 'ProfileDetails'
+    },
+    {
+      id: 'password',
+      icon: <LockIcon width={22} height={22} stroke={'black'} />,
+      title: 'Password',
+      subtitle: 'Change Your Passoword',
+      route: 'Password'
     },
     {
       id: 'complaints',
@@ -204,14 +211,19 @@ const Profile = () => {
       >
         {/* Profile Header Section */}
         <View className="bg-white p-5 items-center border-b border-gray-200">
-          <Image
-            source={
-              profileData?.profile_photo
-                ? { uri: `${imagUrl}${profileData.profile_photo}` }
-                : require('../../../assets/images/profileImage.jpg')
-            }
-            className="w-24 h-24 rounded-full mb-4 border-3 border-white shadow-md"
-          />
+          <View>
+            <Image
+              source={
+                profileData?.profile_photo
+                  ? { uri: `${imagUrl}${profileData.profile_photo}` }
+                  : require('../../../assets/images/profileImage.jpg')
+              }
+              className="w-24 h-24 rounded-full mb-4 border-3 border-white shadow-md"
+            />
+            
+            <View className={`absolute bottom-5 right-1 h-5 border-2 border-white w-5 rounded-full ${profileData.login_status === 'Online'? 'bg-green-500 ':'bg-red-500 '}`}  />
+
+          </View>
 
           <Text className="text-2xl font-bold text-gray-800">
             {profileData?.firstName && profileData?.lastName
@@ -224,6 +236,11 @@ const Profile = () => {
             <Text className="text-xs text-gray-500 font-medium">
               +91 {profileData?.technician_mobile || '98765 43210'}
             </Text>
+            <View className="flex-row items-center ">
+              <BadgeCheck size={16} color="#3b82f6" />
+              <Text className="text-gray-500 text-sm ml-1">ID: {profileData.technician_id || 'N/A'}</Text>
+            </View>
+
           </View>
 
           <View className="flex-row items-center gap-2">
@@ -252,7 +269,7 @@ const Profile = () => {
         </View>
 
         {/* Logout Button */}
-        <View className="mt-8 mx-5">
+        {/* <View className="mt-8 mx-5">
           <TouchableOpacity
             className="bg-red-500 p-4 rounded-xl flex-row items-center justify-center shadow-md"
             onPress={handleLogoutPress}
@@ -261,7 +278,15 @@ const Profile = () => {
             <Icon name="logout" size={20} color="#fff" style={{ marginRight: 10 }} />
             <Text className="text-base font-semibold text-white">Logout</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
+        {/* Logout Button */}
+        <TouchableOpacity
+          onPress={handleLogoutPress}
+          disabled={isDialogLoggingOut}
+          className="mx-4 mt-6 mb-4 bg-red-50 py-4 rounded-xl flex-row items-center justify-center border border-red-200">
+          <LogOut size={20} color="#ef4444" />
+          <Text className="text-red-600 font-semibold ml-2">Logout</Text>
+        </TouchableOpacity>
 
         {/* Version Text */}
         <Text className="text-center mt-2.5 mb-5 text-gray-400 text-xs">

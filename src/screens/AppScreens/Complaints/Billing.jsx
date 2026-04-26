@@ -31,7 +31,7 @@ import {
   ReplacedPartManagement,
   ComplaintBilling
 } from '../../../lib/api';
-import { QrCode } from 'lucide-react-native';
+import { PlusIcon, QrCode } from 'lucide-react-native';
 
 const Billing = () => {
   const navigation = useNavigation();
@@ -1316,6 +1316,12 @@ const Billing = () => {
                     className="mt-4 bg-primary-sage600 px-6 py-2 rounded-lg"
                   >
                     <Text className="text-white font-semibold">Refresh</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('AddPartBilling', { complaintData })}
+                    className="mt-4 border w-16 border-gray-400 h-16 items-center justify-center rounded-full"
+                  >
+                    <PlusIcon color={'gray'} />
                   </TouchableOpacity>
                 </View>
               )}

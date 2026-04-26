@@ -17,9 +17,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../components/StatusMessage';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { generateAndGetFCMToken } from '../../notification/useNotification'; // Use the correct function
-
+import messaging from '@react-native-firebase/messaging'
+import { getFCMToken } from '../../service/getToken';
+import { requestUserPermissions } from '../../permissions/ReqNotification';
 const Login = ({ navigation }) => {
+
+
+
+    useEffect(() => {
+        requestUserPermissions();
+    }, [])
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -36,12 +44,27 @@ const Login = ({ navigation }) => {
 
     const { setAuthData, setIsOnline } = useAuth();
 
+    // const getFCMToken = async () => {
+    //     try {
+    //         const token = await messaging().getToken();
+    //         console.log("FCM Token is :", token);
+    //         return token;
+
+    //     }
+    //     catch (err) {
+    //         console.log("Erroe generate FCM token:", err);
+    //         console.error("Erroe generate FCM token:", err);
+
+    //     }
+
+    // }
+
     // Get FCM token when component mounts
     useEffect(() => {
         const getToken = async () => {
             try {
                 console.log('🔄 Getting FCM token on Login screen...');
-                const token = await generateAndGetFCMToken();
+                const token = await getFCMToken();;
                 setFcmToken(token);
                 console.log("✅ FCM token on Login screen:", token);
             } catch (error) {
@@ -66,7 +89,7 @@ const Login = ({ navigation }) => {
         setIsLoading(true);
         try {
             // Get fresh FCM token before login
-            const fcmToken = await generateAndGetFCMToken();
+            const fcmToken = await getFCMToken();
             console.log('📤 Sending FCM Token with login:', fcmToken);
 
             // Call login API with fcm token
@@ -119,11 +142,11 @@ const Login = ({ navigation }) => {
         setEmail('46757');
         setPassword('123');
         toast.custom(
-            <StatusMessage 
-                type='info' 
-                title='Demo Account Filled' 
-                message='Demo credentials have been filled. Click Sign In to continue.' 
-            />, 
+            <StatusMessage
+                type='info'
+                title='Demo Account Filled'
+                message='Demo credentials have been filled. Click Sign In to continue.'
+            />,
             { duration: 300 }
         );
     };

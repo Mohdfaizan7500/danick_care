@@ -97,5 +97,10 @@
 
 <key>NSLocationWhenInUseUsageDescription</key>
 <string>This app needs access to your location</string>
+
+<key>UIBackgroundModes</key>
+<array>
+    <string>remote-notification</string>
+</array>
 </dict>
 </plist>

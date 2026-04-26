@@ -11,6 +11,9 @@ import {
     PermissionsAndroid,
     ActivityIndicator,
     Alert,
+    KeyboardAvoidingView,
+    Keyboard,
+    TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -22,6 +25,19 @@ import { launchCamera } from 'react-native-image-picker';
 import { sendOTP, verifyOTP, UploadComplaintImage } from '../../../lib/api';
 import { check, request, RESULTS, PERMISSIONS, openSettings } from 'react-native-permissions';
 import Geolocation from '@react-native-community/geolocation';
+
+// Check if Android version is 15 (API 35) or higher
+const isAndroid15OrHigher = () => {
+    if (Platform.OS === 'android') {
+        const androidVersion = Platform.Version;
+        // Platform.Version can be number (API level) or string
+        const apiLevel = typeof androidVersion === 'string' 
+            ? parseInt(androidVersion, 10) 
+            : androidVersion;
+        return apiLevel >= 35; // Android 15 API level is 35
+    }
+    return false;
+};
 
 const ComplaintDetail = () => {
     const navigation = useNavigation();
@@ -40,6 +56,10 @@ const ComplaintDetail = () => {
     const [otpResponseData, setOtpResponseData] = useState(null);
     const [complaintData, setComplaintData] = useState(complaint);
     const inputRefs = useRef([]);
+    
+    // Keyboard state
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+    const scrollViewRef = useRef(null);
 
     // Location states
     const [currentLocation, setCurrentLocation] = useState(null);
@@ -61,6 +81,33 @@ const ComplaintDetail = () => {
 
     // Check if OTP is already verified (verify_otp is "1")
     const isOtpAlreadyVerified = complaint.verify_otp === "1";
+
+    // Keyboard listeners for Android 15+
+    useEffect(() => {
+        if (isAndroid15OrHigher()) {
+            const keyboardDidShowListener = Keyboard.addListener(
+                'keyboardDidShow',
+                (event) => {
+                    setKeyboardVisible(true);
+                    // Auto-scroll to the focused input after keyboard shows
+                    setTimeout(() => {
+                        scrollViewRef.current?.scrollToEnd({ animated: true });
+                    }, 100);
+                }
+            );
+            const keyboardDidHideListener = Keyboard.addListener(
+                'keyboardDidHide',
+                () => {
+                    setKeyboardVisible(false);
+                }
+            );
+
+            return () => {
+                keyboardDidShowListener.remove();
+                keyboardDidHideListener.remove();
+            };
+        }
+    }, []);
 
     // Location permission and getting current location
     const checkLocationPermission = async () => {
@@ -132,17 +179,15 @@ const ComplaintDetail = () => {
             // Set timeout to reject if location takes too long
             timeoutId = setTimeout(() => {
                 errorCallback({ code: 3, message: 'Location request timed out after 15 seconds' });
-            }, 15000); // Increased from 10000 to 15000 to match Home screen
+            }, 15000);
 
-            // FIXED: Use same settings as Home screen (which is working)
             Geolocation.getCurrentPosition(successCallback, errorCallback, {
-                enableHighAccuracy: true,  // CHANGED: false → true (matches Home screen)
-                timeout: 15000,            // CHANGED: 8000 → 15000 (matches Home screen)
-                maximumAge: 10000,         // Added: matches Home screen
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 10000,
             });
         });
     };
-
 
     const initializeLocation = async (retryCount = 0) => {
         const maxRetries = 2;
@@ -171,7 +216,6 @@ const ComplaintDetail = () => {
                 } catch (error) {
                     console.log('Error getting location:', error.message);
 
-                    // Retry logic
                     if (retryCount < maxRetries) {
                         console.log(`Retrying location fetch (${retryCount + 1}/${maxRetries})...`);
                         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -357,6 +401,13 @@ const ComplaintDetail = () => {
 
         if (!showReasonInput) {
             setShowReasonInput(true);
+            // Auto-focus on reason input when shown
+            setTimeout(() => {
+                const reasonInput = inputRefs.current['reason'];
+                if (reasonInput) {
+                    reasonInput.focus();
+                }
+            }, 100);
         } else {
             if (!reasonText.trim()) {
                 toast.custom(
@@ -424,7 +475,6 @@ const ComplaintDetail = () => {
                 location = await getCurrentLocation();
                 setCurrentLocation(location);
 
-                // LOG THE LATITUDE AND LONGITUDE HERE
                 console.log('=== LOCATION DETAILS (Start Job) ===');
                 console.log('Latitude:', location.latitude);
                 console.log('Longitude:', location.longitude);
@@ -446,7 +496,6 @@ const ComplaintDetail = () => {
             }
             setIsGettingLocation(false);
         } else {
-            // Log existing location if already available
             console.log('=== EXISTING LOCATION DETAILS (Start Job) ===');
             console.log('Latitude:', location.latitude);
             console.log('Longitude:', location.longitude);
@@ -581,7 +630,6 @@ const ComplaintDetail = () => {
                 location = await getCurrentLocation();
                 setCurrentLocation(location);
 
-                // LOG THE LATITUDE AND LONGITUDE FOR VERIFICATION
                 console.log('=== LOCATION DETAILS (OTP Verification) ===');
                 console.log('Latitude:', location.latitude);
                 console.log('Longitude:', location.longitude);
@@ -603,7 +651,6 @@ const ComplaintDetail = () => {
             }
             setIsGettingLocation(false);
         } else {
-            // Log existing location
             console.log('=== EXISTING LOCATION DETAILS (OTP Verification) ===');
             console.log('Latitude:', location.latitude);
             console.log('Longitude:', location.longitude);
@@ -614,7 +661,6 @@ const ComplaintDetail = () => {
         setVerifying(true);
 
         try {
-            // Prepare payload for OTP verification with location
             const payload = {
                 mobile: complaintData.customer_mobile,
                 complaint_id: complaintData.id.toString(),
@@ -625,24 +671,20 @@ const ComplaintDetail = () => {
 
             console.log('Verifying OTP with payload:', payload);
 
-            // Call verifyOTP API
             const response = await verifyOTP(payload);
             console.log('OTP verification response:', response);
 
-            // Check if verification was successful
             if (response && response.data && response.data.success) {
-                // Store the response data
                 setOtpResponseData(response.data.result);
                 setVerified(true);
                 setShowOtp(false);
 
-                // Update complaint data with the new information from response
                 if (response.data.result && response.data.result.length > 0) {
                     const updatedComplaint = response.data.result[0];
                     setComplaintData(prev => ({
                         ...prev,
                         ...updatedComplaint,
-                        verify_otp: "1" // Mark as verified with string "1"
+                        verify_otp: "1"
                     }));
                 }
 
@@ -655,9 +697,8 @@ const ComplaintDetail = () => {
                     { duration: 3000 }
                 );
             } else {
-                // Handle unsuccessful verification
                 setVerifying(false);
-                setOtp(['', '', '', '', '']); // Clear OTP on failure
+                setOtp(['', '', '', '', '']);
 
                 toast.custom(
                     <StatusMessage
@@ -672,11 +713,8 @@ const ComplaintDetail = () => {
         } catch (error) {
             console.error('Error verifying OTP:', error);
             setVerifying(false);
-
-            // Clear OTP on error
             setOtp(['', '', '', '', '']);
 
-            // Show appropriate error message
             const errorMessage = error.response?.data?.msg ||
                 error.response?.data?.message ||
                 "Failed to verify OTP. Please try again.";
@@ -762,7 +800,6 @@ const ComplaintDetail = () => {
         setPhotoUri(null);
     };
 
-    // handleSendPhoto function
     const handleSendPhoto = async () => {
         if (!photoUri) {
             toast.custom(
@@ -917,24 +954,12 @@ const ComplaintDetail = () => {
         }
     };
 
-    // Determine if we should show verified content
     const showVerifiedContent = verified || isOtpAlreadyVerified;
 
-    return (
-        <SafeAreaView className="flex-1 bg-background-primary">
-            <View className="absolute inset-0 z-50 pointer-events-none">
-                <Toaster />
-            </View>
-            <Header
-                title={`Complaint #${complaintData.id || complaintData.complaintNumber || complaintData.csn}`}
-                titlePosition="left"
-                titleStyle="font-bold text-2xl ml-5 text-text-primary"
-                showBackButton={true}
-                backButtonColor="#333333"
-                containerStyle="bg-background-primary flex-row items-center justify-between px-4 py-4 border-gray-200"
-            />
-
-            <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 30 }}>
+    // Content to render inside ScrollView
+    const renderContent = () => (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View>
                 {/* Title and Priority */}
                 <View className="flex-row items-center justify-between">
                     <Text className="text-text-primary text-2xl font-bold mb-2">
@@ -1157,6 +1182,7 @@ const ComplaintDetail = () => {
                         {showReasonInput && (
                             <View className="mb-4">
                                 <TextInput
+                                    ref={(el) => (inputRefs.current['reason'] = el)}
                                     className="border border-ui-border rounded-xl p-3 bg-background-secondary text-text-primary"
                                     placeholder="Enter reason for reversal"
                                     placeholderTextColor="#999"
@@ -1217,7 +1243,53 @@ const ComplaintDetail = () => {
                         </View>
                     </>
                 )}
-            </ScrollView>
+            </View>
+        </TouchableWithoutFeedback>
+    );
+
+    return (
+        <SafeAreaView className="flex-1 bg-background-primary">
+            <View className="absolute inset-0 z-50 pointer-events-none">
+                <Toaster />
+            </View>
+            <Header
+                title={`Complaint #${complaintData.id || complaintData.complaintNumber || complaintData.csn}`}
+                titlePosition="left"
+                titleStyle="font-bold text-2xl ml-5 text-text-primary"
+                showBackButton={true}
+                backButtonColor="#333333"
+                containerStyle="bg-background-primary flex-row items-center justify-between px-4 py-4 border-gray-200"
+            />
+
+            {isAndroid15OrHigher() ? (
+                // For Android 15+, use KeyboardAvoidingView with proper behavior
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                >
+                    <ScrollView
+                        ref={scrollViewRef}
+                        className="flex-1 px-4 pt-4"
+                        contentContainerStyle={{ paddingBottom: keyboardVisible ? 250 : 30 }}
+                        showsVerticalScrollIndicator={true}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        {renderContent()}
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            ) : (
+                // For older Android versions, use regular ScrollView
+                <ScrollView
+                    ref={scrollViewRef}
+                    className="flex-1 px-4 pt-4"
+                    contentContainerStyle={{ paddingBottom: 30 }}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    {renderContent()}
+                </ScrollView>
+            )}
         </SafeAreaView>
     );
 };

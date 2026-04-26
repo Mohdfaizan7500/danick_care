@@ -26,9 +26,9 @@ const Orders = ({ route }) => {
     const [searchQuery, setSearchQuery] = useState('')
 
     useEffect(() => {
-        fetchPendingComplaints()
-        fetchPendingComplaintCount()
-    }, [])
+        fetchPendingComplaints();
+        fetchPendingComplaintCount(); // Keep this
+    }, []);
 
     const fetchPendingComplaintCount = async () => {
         try {
@@ -127,6 +127,10 @@ const Orders = ({ route }) => {
         setDialogVisible(true)
     }
 
+    // In Orders.jsx, update the useEffect:
+
+
+    // And in confirmAccept, use refreshOrderCount directly:
     const confirmAccept = async () => {
         try {
             setProcessingId(selectedComplaint.complaintId)
@@ -140,35 +144,33 @@ const Orders = ({ route }) => {
             const response = await AcceptComplaint(payload)
 
             if (response?.data?.success || response?.success) {
+                // Update local state
+                const updatedComplaints = complaints.filter(item => item.id !== selectedComplaint.complaintId)
+                setComplaints(updatedComplaints)
+                setFilteredComplaints(updatedComplaints)
+
+                // Update count locally
+                const newCount = Math.max(0, pendingCount - 1)
+                setPendingCount(newCount)
+
+                // Update global count - this will update the badge
+                if (refreshOrderCount) {
+                    refreshOrderCount(newCount) // Pass the new count directly
+                }
+
+                // Show success message
                 setSelectedComplaint({
                     type: 'success',
                     title: 'Success',
                     message: 'Complaint accepted successfully'
                 })
                 setDialogVisible(true)
-
-                // Update complaints list
-                const updatedComplaints = complaints.filter(item => item.id !== selectedComplaint.complaintId)
-                setComplaints(updatedComplaints)
-                setFilteredComplaints(updatedComplaints)
-
-                // Update pending count
-                const newCount = Math.max(0, pendingCount - 1)
-                setPendingCount(newCount)
-
-                // IMPORTANT: Refresh the badge count in BottomTabs
-                if (refreshBadgeCount) {
-                    refreshBadgeCount(newCount)
-                } else {
-                    // If callback not available, fetch fresh count
-                    fetchPendingComplaintCount()
-                }
             } else {
+                // Handle error
                 setSelectedComplaint({
                     type: 'error',
                     title: 'Error',
                     message: response?.data?.msg || response?.msg || 'Failed to accept complaint'
-
                 })
                 fetchPendingComplaints();
                 setDialogVisible(true)
@@ -193,9 +195,11 @@ const Orders = ({ route }) => {
         return (
             <View className="bg-white rounded-xl mb-4 shadow-sm overflow-hidden">
                 <View className="flex-row justify-between items-center px-4 pt-3 pb-2 border-b border-gray-100">
-                    <Text className="text-sm font-semibold text-orange-600">
-                        CSN: {item.csn || 'N/A'}
-                    </Text>
+                    {item.tot_amt !== "0" && item.tot_amt !== "0.00" && (
+                        <Text className="text-sm font-semibold text-orange-600 mt-1">
+                            Amount: ₹{item.tot_amt}
+                        </Text>
+                    )}
                     <View className="px-2 py-1 rounded-full bg-orange-500">
                         <Text className="text-xs font-semibold text-white capitalize">
                             {item.status || 'pending'}
@@ -204,10 +208,8 @@ const Orders = ({ route }) => {
                 </View>
 
                 <View className="p-4">
+
                     <Text className="text-base font-bold text-gray-800 mb-1">
-                        {item.customer_name}
-                    </Text>
-                    <Text className="text-sm text-gray-600 mb-0.5">
                         {item.service_name}
                     </Text>
                     <Text className="text-xs text-gray-500 mb-1.5">
@@ -226,11 +228,7 @@ const Orders = ({ route }) => {
                         </Text>
                     </View>
 
-                    {item.tot_amt !== "0" && item.tot_amt !== "0.00" && (
-                        <Text className="text-sm font-semibold text-green-600 mt-1">
-                            Amount: ₹{item.tot_amt}
-                        </Text>
-                    )}
+                   
                 </View>
 
                 <View className="px-4 pb-4">

@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.removeItem('userData');
       await AsyncStorage.removeItem('profileData');
 
-      console.log('Logout successful');
+      console.log('Logout successful remove all data from strage ');
       return true;
     } catch (error) {
       console.error('Error removing auth data:', error);

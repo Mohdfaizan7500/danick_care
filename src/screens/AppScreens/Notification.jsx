@@ -6,6 +6,7 @@ import Header from '../../components/Header';
 import { useAuth } from '../../context/AuthContext';
 import { FetchNotification, ReadNotification } from '../../lib/api';
 import { CheckCircleIcon, CrossCircleIcon } from '../../assets/svgIcons/SVGIcons'; // Update path as needed
+import { useNavigation } from '@react-navigation/native';
 
 const Notification = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -13,6 +14,7 @@ const Notification = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { userData } = useAuth();
+  const navigation = useNavigation();
 
   useEffect(() => {
     fetchNotifications();
@@ -130,12 +132,36 @@ const Notification = () => {
   };
 
   const handleNotificationPress = async (item) => {
+    console.log("item:", item)
+
     if (!item.isRead) {
       await markAsRead(item.id);
     }
 
     if (item.complaint_id) {
       console.log('Navigate to complaint:', item.complaint_id);
+      if (item.status === 'pending') {
+        navigation.reset({
+          index: 0,
+          routes: [{
+            name: 'BottomTabs',
+            params: {
+              screen: 'Orders',
+              params: {
+                complaint_id: item.complaint_id,
+                notificationData: item
+              }
+            }
+          }]
+        })
+
+
+      }
+      else {
+        // navigation.navigate('Complaints', { status: "Assign" });
+        navigation.navigate('ComplaintDetail', { complaint: item, status: "complaint" });
+
+      }
     }
   };
 
@@ -194,7 +220,7 @@ const Notification = () => {
     }
   };
 
-  
+
 
   const renderNotificationItem = ({ item }) => {
     const containerClass = !item.isRead
@@ -308,7 +334,7 @@ const Notification = () => {
 
     return (
       <View className="bg-white">
-       
+
         <View className="flex-row px-4 pb-4">
           <TabButton title="All" tabName="all" count={totalCount} />
           <TabButton title="Unread" tabName="unread" count={unreadCount} />

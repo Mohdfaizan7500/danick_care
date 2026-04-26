@@ -42,7 +42,7 @@ import { check, request, RESULTS, PERMISSIONS } from 'react-native-permissions';
 import Geolocation from '@react-native-community/geolocation';
 import { Platform } from 'react-native';
 import { openSettings } from 'react-native-permissions';
-
+import{getFCMToken} from '../../../service/getToken';
 const { width: screenWidth } = Dimensions.get('window');
 
 const Home = () => {
@@ -98,6 +98,7 @@ const Home = () => {
     profileImage: getProfileImageSource(),
     isActive: profileData?.login_status !== 'Online',
     notificationCount: 3,
+    technician_id :profileData?.technician_id,
     walletBalance: '₹2,500',
   };
 
@@ -274,7 +275,9 @@ const Home = () => {
     try {
       const payload = {
         technician_id: user?.id.toString(),
+        city_id:user?.city_id.toString()
       };
+      console.log("deshboards count payload :",payload)
       const response = await getDeshBoardCount(payload);
       const data = response?.data;
       if (data?.success) {
@@ -409,6 +412,10 @@ const Home = () => {
     }
   }, [user?.id, isInitialLoad]);
 
+  useEffect(()=>{
+    console.log(getFCMToken())
+  },[])
+
   // ---------- Network listener ----------
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
@@ -497,7 +504,7 @@ const Home = () => {
                 className={`text-xs font-medium ${IsOnline ? 'text-green-600' : 'text-gray-500'
                   }`}
               >
-                {IsOnline ? '● Active' : '● Inactive'}
+                {IsOnline ? '● Active ' : '● Inactive'} 
               </Text>
             </View>
           </View>
@@ -587,12 +594,15 @@ const Home = () => {
                   {loadingProfile ? 'Loading...' : userProfile.name}
                 </Text>
               </View>
+              <View className='flex-row gap-2 items-center'>
               <Text
                 className={`text-xs font-medium ${IsOnline ? 'text-green-600' : 'text-gray-500'
                   }`}
               >
-                {IsOnline ? '● Active' : '● Inactive'}
+                {IsOnline ? '● Active ' : '● Inactive'} 
               </Text>
+              <Text className='font-normal text-xs text-gray-700'>ID:{userProfile?.technician_id || 'N/A'}</Text>
+            </View>
             </View>
           </View>
 

@@ -22,7 +22,7 @@ import NoInternet from '../NoInternet';
 import { useAuth } from '../../context/AuthContext';
 import { getProfile, apiClient, changePassword } from '../../lib/api';
 
-const ProfileEdit = () => {
+const Password = () => {
   const navigation = useNavigation();
   const { user, imagUrl } = useAuth();
   const tech_id = user?.id;
@@ -278,7 +278,7 @@ const handleSave = async () => {
     <SafeAreaView className="flex-1 bg-gray-50">
       <Header
         showBackButton={true}
-        title="Edit Profile"
+        title="Change Password"
         titlePosition="center"
         containerStyle="bg-transparent px-4 py-4 flex-row items-center justify-between"
         titleStyle="font-bold text-xl text-black"
@@ -301,7 +301,7 @@ const handleSave = async () => {
           ) : (
             <>
               {/* Profile Image Section */}
-              <View className="items-center mt-6 mb-6">
+              {/* <View className="items-center mt-6 mb-6">
                 <View className="relative">
                   <Pressable
                     className="w-28 h-28 rounded-full bg-gray-200 items-center justify-center border-4 border-white shadow-sm"
@@ -331,7 +331,7 @@ const handleSave = async () => {
                     {userData.phone ? `+91 ${userData.phone}` : '+91 9876543210'}
                   </Text>
                 </View>
-              </View>
+              </View> */}
 
               {/* Password Change Section */}
               <View className="bg-white rounded-2xl p-5 border border-gray-100 mb-4">
@@ -491,4 +491,4 @@ const handleSave = async () => {
   );
 };
 
-export default ProfileEdit;
+export default Password;

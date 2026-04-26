@@ -17,13 +17,15 @@ import Header from '../../../components/Header';
 import DialogBox from '../../../components/DilaogBox';
 import StatusMessage from '../../../components/StatusMessage';
 import { getAllTechnician, partTransferToTechnician } from '../../../lib/api';
-
+import { useAuth } from '../../../context/AuthContext';
 const BucketpartDetails = () => {
   
   const navigation = useNavigation();
   const route = useRoute();
   const { item } = route.params;
   console.log('item:', item)
+  const {user} = useAuth();
+  console.log("user on bucket details :",user)
 
   // State for partner selection modal
   const [partnerModalVisible, setPartnerModalVisible] = useState(false);
@@ -84,7 +86,13 @@ const BucketpartDetails = () => {
   const fetchAllTechnicians = async () => {
     try {
       setLoadingTechnicians(true);
-      const response = await getAllTechnician();
+      const payload ={
+        technician_id :user?.id.toString(),
+        city_id:user?.city_id.toString(),
+
+      }
+      console.log("payload for fatch all partnesrs :",payload)
+      const response = await getAllTechnician(payload);
       console.log('Technicians response:', response);
 
       // Handle API response
@@ -334,7 +342,7 @@ const BucketpartDetails = () => {
       <DialogBox
         visible={partnerModalVisible}
         onClose={() => setPartnerModalVisible(false)}
-        title="Select Technician"
+        title={`Select Technician (${technicians.length})`}
         size="lg"
         showCloseButton={true}
         closeIconName="close"

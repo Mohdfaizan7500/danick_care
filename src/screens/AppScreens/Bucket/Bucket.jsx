@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   TextInput,
   RefreshControl,
+  PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../../components/Header';
@@ -66,6 +67,8 @@ const Bucket = () => {
   const [products, setProducts] = useState([]);
   const [isTabLoading, setIsTabLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [shouldAutoRefresh, setShouldAutoRefresh] = useState(false);
+  const [autoRefreshMessage, setAutoRefreshMessage] = useState('');
   const [partCounts, setPartCounts] = useState({
     all: 0,
     technician: 0,
@@ -75,12 +78,35 @@ const Bucket = () => {
     received: 0
   });
   const tabTimeoutRef = useRef(null);
+  const autoRefreshTimerRef = useRef(null);
   const { user, imagUrl } = useAuth();
   const technician_id = user?.id;
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Swipe gesture handling for tab navigation
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 20;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (Math.abs(gestureState.dx) < 50) return;
+        
+        const currentIndex = TABS.indexOf(selectedTab);
+        if (gestureState.dx > 0 && currentIndex > 0) {
+          // Swipe right - go to previous tab
+          handleTabPress(TABS[currentIndex - 1], currentIndex - 1);
+        } else if (gestureState.dx < 0 && currentIndex < TABS.length - 1) {
+          // Swipe left - go to next tab
+          handleTabPress(TABS[currentIndex + 1], currentIndex + 1);
+        }
+      },
+    })
+  ).current;
 
   // Monitor internet connection
   useEffect(() => {
@@ -89,6 +115,45 @@ const Bucket = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  // Auto-refresh after error
+  useEffect(() => {
+    if (shouldAutoRefresh && isConnected) {
+      // Clear any existing timer
+      if (autoRefreshTimerRef.current) {
+        clearTimeout(autoRefreshTimerRef.current);
+      }
+      
+      // Show auto-refresh message
+      
+      
+      // Set timer to refresh after 2 seconds
+      autoRefreshTimerRef.current = setTimeout(async () => {
+        setShouldAutoRefresh(false);
+        setAutoRefreshMessage('');
+        
+        // Perform refresh like pull-to-refresh
+        setRefreshing(true);
+        const transferBy = getTransferByParam(selectedTab);
+        await Promise.all([
+          fetchParts(transferBy, true),
+          fetchPartCount()
+        ]);
+        setRefreshing(false);
+        
+        toast.custom(
+          <StatusMessage type='success' title='Data Refreshed' />,
+          { duration: 1000 }
+        );
+      }, 2000);
+    }
+    
+    return () => {
+      if (autoRefreshTimerRef.current) {
+        clearTimeout(autoRefreshTimerRef.current);
+      }
+    };
+  }, [shouldAutoRefresh, isConnected, selectedTab, autoRefreshMessage]);
 
   // Map tab to transfer_by parameter
   const getTransferByParam = (tab) => {
@@ -249,6 +314,7 @@ const Bucket = () => {
   useEffect(() => {
     return () => {
       if (tabTimeoutRef.current) clearTimeout(tabTimeoutRef.current);
+      if (autoRefreshTimerRef.current) clearTimeout(autoRefreshTimerRef.current);
     };
   }, []);
 
@@ -374,6 +440,27 @@ const Bucket = () => {
     setProducts(prev => prev.filter(p => p.id !== itemId));
   };
 
+  // Helper function to extract error message from backend response
+  const getErrorMessage = (error) => {
+    // Try to get message from different possible locations in the error object
+    if (error?.response?.data?.msg) {
+      return error.response.data.msg;
+    }
+    if (error?.response?.data?.message) {
+      return error.response.data.message;
+    }
+    if (error?.msg) {
+      return error.msg;
+    }
+    if (error?.message) {
+      return error.message;
+    }
+    if (typeof error === 'string') {
+      return error;
+    }
+    return 'Action failed. Please try again.';
+  };
+
   // Handle confirmed action
   const handleConfirmed = async () => {
     setConfirmVisible(false);
@@ -410,7 +497,7 @@ const Bucket = () => {
             const transferBy = getTransferByParam(selectedTab);
             await fetchParts(transferBy);
           } else {
-            throw new Error(response?.data?.message || 'Failed to cancel');
+            throw new Error(response?.data?.msg || 'Failed to cancel');
           }
           break;
 
@@ -436,7 +523,7 @@ const Bucket = () => {
             const transferBy = getTransferByParam(selectedTab);
             await fetchParts(transferBy);
           } else {
-            throw new Error(response?.data?.message || 'Failed to accept transfer');
+            throw new Error(response?.data?.msg || 'Failed to accept transfer');
           }
           break;
 
@@ -455,9 +542,17 @@ const Bucket = () => {
 
     } catch (error) {
       console.log(`${confirmAction} error:`, error);
+      
+      // Extract the error message from the backend response
+      const errorMessage = getErrorMessage(error);
+      
       toast.custom(
-        <StatusMessage type='error' title={error.message || 'Action failed. Please try again.'} />
+        <StatusMessage type='error' title={errorMessage} />
       );
+      
+      // Trigger auto-refresh after error (like pull-to-refresh)
+      setAutoRefreshMessage(errorMessage);
+      setShouldAutoRefresh(true);
     } finally {
       setLoadingItemId(null);
       setConfirmItem(null);
@@ -811,8 +906,6 @@ const Bucket = () => {
           </ScrollView>
         </View>
 
-
-
         <NoInternet onRetry={handleRetryConnection} isChecking={checkingConnection} />
       </SafeAreaView>
     );
@@ -922,43 +1015,54 @@ const Bucket = () => {
         </ScrollView>
       </View>
 
-      {/* Conditional rendering: skeleton or list with pull to refresh */}
+      {/* Conditional rendering: skeleton or list with swipe gestures and pull to refresh */}
       {isTabLoading && !refreshing ? (
         renderSkeleton()
       ) : (
-        <FlatList
-          data={filteredProducts}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 16 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#58A890']}
-              tintColor="#58A890"
-              title="Pull to refresh"
-              titleColor="#58A890"
-            />
-          }
-          ListEmptyComponent={
-            <View className="items-center justify-center mt-10">
-              <Icon name="search-outline" size={60} color="#CCCCCC" />
-              <Text className="text-center text-text-tertiary mt-4">
-                {searchQuery ? 'No items match your search' : 'No items found'}
-              </Text>
-              {searchQuery && (
-                <TouchableOpacity
-                  onPress={() => setSearchQuery('')}
-                  className="mt-2 px-4 py-2 bg-primary-sage100 rounded-lg"
-                >
-                  <Text className="text-primary-sage700">Clear Search</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          }
-        />
+        <View {...panResponder.panHandlers} style={{ flex: 1 }}>
+          <FlatList
+            data={filteredProducts}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ padding: 16 }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#58A890']}
+                tintColor="#58A890"
+                title="Pull to refresh"
+                titleColor="#58A890"
+              />
+            }
+            ListEmptyComponent={
+              <View className="items-center justify-center mt-10">
+                <Icon name="search-outline" size={60} color="#CCCCCC" />
+                <Text className="text-center text-text-tertiary mt-4">
+                  {searchQuery ? 'No items match your search' : 'No items found'}
+                </Text>
+                {searchQuery && (
+                  <TouchableOpacity
+                    onPress={() => setSearchQuery('')}
+                    className="mt-2 px-4 py-2 bg-primary-sage100 rounded-lg"
+                  >
+                    <Text className="text-primary-sage700">Clear Search</Text>
+                  </TouchableOpacity>
+                )}
+                {/* Swipe hint */}
+                {!searchQuery && products.length === 0 && !isTabLoading && (
+                  <View className="mt-8 flex-row items-center">
+                    <Icon name="swap-horizontal-outline" size={20} color="#999" />
+                    <Text className="text-text-tertiary ml-2">
+                      Swipe left/right to change tabs
+                    </Text>
+                  </View>
+                )}
+              </View>
+            }
+          />
+        </View>
       )}
 
       {/* Image Modal */}

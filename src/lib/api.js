@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // const BASE_URL = 'http://192.168.1.48:5001/';
 // const BASE_URL = 'http://10.33.83.35:5001/';
 
-const BASE_URL = 'http://api.dainikcare.com/';
+const BASE_URL = 'https://api.dainikcare.com/';
 
 
 
@@ -59,7 +59,7 @@ export const loginApi = async (username, password, fcmToken) => {
         const response = await apiClient.post("TechnicianAPI/Login", {
             technician_id: username,
             password: password,
-            // fcmToken: fcmToken,
+            fcmToken: fcmToken,
             expiresInMins: 30, // optional
         });
         console.log('responce:', response)
@@ -281,10 +281,10 @@ export const technicianAssignPart = async (payload) => {
 
 
 
-export const getAllTechnician = async () => {
+export const getAllTechnician = async (payload) => {
     // console.log('payload',payload)
     try {
-        const response = await apiClient.post('TechnicianAPI/AllTechnician');
+        const response = await apiClient.post('TechnicianAPI/AllTechnician',payload);
         console.log('getAllTechnician response:', response);
         return response;
     } catch (error) {
@@ -699,7 +699,7 @@ export const PendingComplaints = async (payload) => {
     console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/PendingComplaints', payload);
-        console.log('RemoveAMCPart api  response:', response);
+        console.log('PendingComplaints api  response:', response);
         return response;
     } catch (error) {
         console.error('API error in PendingComplaints:', error);
@@ -722,7 +722,7 @@ export const AcceptComplaint = async (payload) => {
 };
 
 export const PendingComplaintCount = async (payload) => {
-    console.log('payload', payload)
+    console.log('payload for order cound in bottom tab ', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/PendingComplaintCount', payload);
         console.log('PendingComplaintCount api  response:', response);
