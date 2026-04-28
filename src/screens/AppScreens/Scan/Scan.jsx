@@ -29,7 +29,7 @@ import StatusMessage from '../../../components/StatusMessage';
 import NoInternet from '../../NoInternet';
 
 const Scan = () => {
-  const [searchText, setSearchText] = useState('A11069');
+  const [searchText, setSearchText] = useState('');
   const [searchedProduct, setSearchedProduct] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
@@ -130,9 +130,7 @@ const Scan = () => {
         console.log('Product Image:', `${imagUrl}${productData.part_image}`);
         setSearchedProduct({
           id: productData.id,
-          imageUrl: productData.part_image
-            ? `${imagUrl}${productData.part_image}`
-            : null,
+          imageUrl: productData.part_image,
           name: productData.part_name,
           partNumber: productData.id?.toString() || '',
           price: productData.part_price,

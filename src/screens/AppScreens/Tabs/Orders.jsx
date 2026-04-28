@@ -208,10 +208,15 @@ const Orders = ({ route }) => {
                 </View>
 
                 <View className="p-4">
-
+                    <View className='flex-row items-center justify-between'>
                     <Text className="text-base font-bold text-gray-800 mb-1">
                         {item.service_name}
                     </Text>
+                    <Text className="text-base font-normal text-gray-800 mb-1">
+                        #{item.id}
+                    </Text>
+                    </View>
+
                     <Text className="text-xs text-gray-500 mb-1.5">
                         Service: {item.service}
                     </Text>

@@ -329,6 +329,8 @@ const PartDetails = () => {
         setQrProductData({
           id: productData.id,
           imageUrl: productData.part_image,
+          // imageUrl: `${imagUrl}${productData.part_image}`,
+
           name: productData.part_name,
           partNumber: productData.id?.toString() || '',
           price: productData.part_price,

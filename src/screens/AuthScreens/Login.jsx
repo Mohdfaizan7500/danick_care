@@ -20,6 +20,8 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import messaging from '@react-native-firebase/messaging'
 import { getFCMToken } from '../../service/getToken';
 import { requestUserPermissions } from '../../permissions/ReqNotification';
+import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
+
 const Login = ({ navigation }) => {
 
 
@@ -27,6 +29,18 @@ const Login = ({ navigation }) => {
     useEffect(() => {
         requestUserPermissions();
     }, [])
+
+    const testNotification = async () => {
+    await notifee.displayNotification({
+        title: 'Test Notification',
+        body: 'Testing custom sound',
+        android: {
+            channelId: 'default',
+            sound: 'notification',
+            importance: AndroidImportance.HIGH,
+        },
+    });
+};
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -44,20 +58,7 @@ const Login = ({ navigation }) => {
 
     const { setAuthData, setIsOnline } = useAuth();
 
-    // const getFCMToken = async () => {
-    //     try {
-    //         const token = await messaging().getToken();
-    //         console.log("FCM Token is :", token);
-    //         return token;
-
-    //     }
-    //     catch (err) {
-    //         console.log("Erroe generate FCM token:", err);
-    //         console.error("Erroe generate FCM token:", err);
-
-    //     }
-
-    // }
+   
 
     // Get FCM token when component mounts
     useEffect(() => {

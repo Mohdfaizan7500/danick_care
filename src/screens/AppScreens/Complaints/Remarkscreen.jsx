@@ -73,7 +73,7 @@ const Remarkscreen = () => {
     // Compute if form is ready for submission
     const isReadyForNext = () => {
         if (refreshing || checkingAMC || submitting || loadingImages) return false;
-        
+
         if (convertToAMC) {
             // For AMC, we just need both images uploaded
             // No customer type or remark required for AMC
@@ -247,7 +247,7 @@ const Remarkscreen = () => {
                 setSelectedCustomerType(complaintData.review);
             }
 
-            return () => {};
+            return () => { };
         }, [complaintData?.id])
     );
 
@@ -598,7 +598,7 @@ const Remarkscreen = () => {
                 return;
             } else {
                 // AMC not proceeded yet - go to AMCList
-                navigation.navigate('AMCList', { 
+                navigation.navigate('AMCList', {
                     complaintData: complaintData,
                     image1Id: image1Id,
                     image2Id: image2Id,
@@ -706,7 +706,7 @@ const Remarkscreen = () => {
         if (loadingImages) return 'Loading Images...';
         if (uploadingImage1 || uploadingImage2) return 'Uploading Images...';
         if (deletingImage1 || deletingImage2) return 'Deleting Image...';
-        
+
         if (convertToAMC) {
             if (isAMCLocked) return 'View AMC Details';
             return 'Proceed to AMC';
@@ -791,7 +791,9 @@ const Remarkscreen = () => {
                     )}
 
                     <Text className='text-black font-semibold text-sm'>Complaint: {complaintData?.service_name}</Text>
-
+                    <View className='bg-yellow-100 self-start px-4 py-2 mt-1 border border-yellow-500 rounded-xl'>
+                        <Text className='text-yellow-800 font-semibold text-sm'>Complaint ID: {complaintData?.id}</Text>
+                    </View>
                     {/* Convert to AMC Toggle */}
                     <View className="flex-row justify-between items-center mb-4 mt-3 p-3 bg-gray-50 rounded-xl">
                         <View>
@@ -854,13 +856,13 @@ const Remarkscreen = () => {
                     <Text className="text-text-primary font-semibold text-base mb-2">
                         Capture Images <Text className="text-red-500">*</Text>
                     </Text>
-                    
+
                     {convertToAMC && !isAMCLocked && (
                         <Text className="text-blue-600 text-sm mb-2">
                             Please capture both images before proceeding to AMC
                         </Text>
                     )}
-                    
+
                     <View className='flex-row justify-between gap-4'>
                         {/* Image 1 - Before Working */}
                         <View className="flex-1 mb-4">

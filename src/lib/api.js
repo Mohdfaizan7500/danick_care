@@ -565,7 +565,7 @@ export const PurchaseMarketPart = async (formData) => {
 };
 
 export const GetComplaintsDetails = async (payload) => {
-    console.log('payload', payload)
+    console.log('payload for fatch compliant', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/GetComplaintsDetails', payload);
         console.log('GetComplaintsDetails api  response:', response);
@@ -881,6 +881,18 @@ export const TermsSupport = async () => {
         return response;
     } catch (error) {
         console.error('API error in TermsSupport:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const ReverseComplaint = async (payload) => {
+    try {
+        const response = await apiClient.post('TechnicianAPI/ReverseComplaint',payload);
+        console.log('ReverseComplaint api  response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in ReverseComplaint:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }

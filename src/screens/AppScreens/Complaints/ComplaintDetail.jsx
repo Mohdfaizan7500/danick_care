@@ -1,3 +1,4 @@
+// ComplaintDetail.js - Add the dashboard refresh calls
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
@@ -22,19 +23,19 @@ import Header from '../../../components/Header';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { launchCamera } from 'react-native-image-picker';
-import { sendOTP, verifyOTP, UploadComplaintImage } from '../../../lib/api';
+import { sendOTP, verifyOTP, UploadComplaintImage, ReverseComplaint } from '../../../lib/api';
 import { check, request, RESULTS, PERMISSIONS, openSettings } from 'react-native-permissions';
 import Geolocation from '@react-native-community/geolocation';
+import { useDashboard } from '../../../context/DashboardContext'; // Import the dashboard context
 
 // Check if Android version is 15 (API 35) or higher
 const isAndroid15OrHigher = () => {
     if (Platform.OS === 'android') {
         const androidVersion = Platform.Version;
-        // Platform.Version can be number (API level) or string
-        const apiLevel = typeof androidVersion === 'string' 
-            ? parseInt(androidVersion, 10) 
+        const apiLevel = typeof androidVersion === 'string'
+            ? parseInt(androidVersion, 10)
             : androidVersion;
-        return apiLevel >= 35; // Android 15 API level is 35
+        return apiLevel >= 35;
     }
     return false;
 };
@@ -43,6 +44,7 @@ const ComplaintDetail = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { complaint } = route.params;
+    const { triggerRefresh } = useDashboard(); // Get the refresh trigger function
     console.log('complaint:', complaint)
 
     // OTP flow states
@@ -56,7 +58,7 @@ const ComplaintDetail = () => {
     const [otpResponseData, setOtpResponseData] = useState(null);
     const [complaintData, setComplaintData] = useState(complaint);
     const inputRefs = useRef([]);
-    
+
     // Keyboard state
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const scrollViewRef = useRef(null);
@@ -89,7 +91,6 @@ const ComplaintDetail = () => {
                 'keyboardDidShow',
                 (event) => {
                     setKeyboardVisible(true);
-                    // Auto-scroll to the focused input after keyboard shows
                     setTimeout(() => {
                         scrollViewRef.current?.scrollToEnd({ animated: true });
                     }, 100);
@@ -176,7 +177,6 @@ const ComplaintDetail = () => {
                 reject(new Error(errorMessage));
             };
 
-            // Set timeout to reject if location takes too long
             timeoutId = setTimeout(() => {
                 errorCallback({ code: 3, message: 'Location request timed out after 15 seconds' });
             }, 15000);
@@ -292,12 +292,10 @@ const ComplaintDetail = () => {
 
     // Check if OTP is already verified from the complaint data
     useEffect(() => {
-        // If complaint is complete, skip OTP checks
         if (isComplete) {
             return;
         }
 
-        // Check if the complaint already has verify_otp flag set to "1"
         if (complaint.verify_otp === "1") {
             console.log('OTP already verified for this complaint');
             setVerified(true);
@@ -309,7 +307,6 @@ const ComplaintDetail = () => {
             });
         }
 
-        // Check if upload_image is "1", navigate directly to next screen
         if (complaint.upload_image === "1" && complaint.verify_otp === "1") {
             console.log('Upload image already completed, navigating to remarks screen');
             navigation.replace('Remarkscreen', {
@@ -320,14 +317,12 @@ const ComplaintDetail = () => {
         }
     }, [complaint, navigation, isComplete]);
 
-    // Initialize location when component mounts (only if not already verified)
     useEffect(() => {
         if (!isComplete && !isOtpAlreadyVerified && !verified) {
             initializeLocation();
         }
     }, [isComplete, isOtpAlreadyVerified, verified]);
 
-    // Disable swipe back gesture when verified
     useEffect(() => {
         if (!isComplete) {
             navigation.setOptions({
@@ -336,7 +331,6 @@ const ComplaintDetail = () => {
         }
     }, [verified, navigation, isComplete, isOtpAlreadyVerified]);
 
-    // Cleanup timeout on unmount
     useEffect(() => {
         return () => {
             if (submitTimeoutRef.current) {
@@ -396,12 +390,11 @@ const ComplaintDetail = () => {
         }
     };
 
-    const handleReverse = () => {
+    const handleReverse = async () => {
         if (submittingReverse) return;
 
         if (!showReasonInput) {
             setShowReasonInput(true);
-            // Auto-focus on reason input when shown
             setTimeout(() => {
                 const reasonInput = inputRefs.current['reason'];
                 if (reasonInput) {
@@ -423,22 +416,77 @@ const ComplaintDetail = () => {
 
             setSubmittingReverse(true);
 
-            submitTimeoutRef.current = setTimeout(() => {
+            try {
+                const payload = {
+                    id: complaintData.id.toString(),
+                    remark: reasonText.trim()
+                };
+
+                console.log('Reverse Complaint Payload:', payload);
+
+                const response = await ReverseComplaint(payload);
+                console.log('Reverse Complaint Response:', response);
+
+                if (response && response.data && response.data.success) {
+                    toast.custom(
+                        <StatusMessage
+                            type="success"
+                            title={response.data.msg || "Complaint reversed successfully"}
+                            className="mx-4 mb-6"
+                        />,
+                        { duration: 2000 }
+                    );
+
+                    // 🔄 Refresh dashboard counts after successful reverse
+                    await triggerRefresh();
+
+                    setTimeout(() => {
+                        navigation.goBack();
+                    }, 2000);
+                } else {
+                    toast.custom(
+                        <StatusMessage
+                            type="error"
+                            title={response?.data?.msg || response?.data?.message || "Failed to reverse complaint"}
+                            className="mx-4 mb-6"
+                        />,
+                        { duration: 3000 }
+                    );
+                    setSubmittingReverse(false);
+                    setShowReasonInput(false);
+                    setReasonText('');
+                }
+            } catch (error) {
+                console.error('Error reversing complaint:', error);
+
+                let errorMessage = "Failed to reverse complaint. Please try again.";
+
+                if (error.response) {
+                    errorMessage = error.response.data?.msg ||
+                        error.response.data?.message ||
+                        error.response.statusText ||
+                        errorMessage;
+                    console.log('Error response data:', error.response.data);
+                } else if (error.request) {
+                    errorMessage = "Network error. Please check your connection.";
+                } else {
+                    errorMessage = error.message || errorMessage;
+                }
+
                 toast.custom(
                     <StatusMessage
-                        type="success"
-                        title="Reverse submitted"
+                        type="error"
+                        title={errorMessage}
                         className="mx-4 mb-6"
                     />,
-                    { duration: 2000 }
+                    { duration: 3000 }
                 );
-                navigation.goBack();
-            }, 2000);
+                setSubmittingReverse(false);
+            }
         }
     };
 
     const handleStartJob = async (complaint) => {
-        // If already verified, don't start job again
         if (complaint.verify_otp === "1") {
             toast.custom(
                 <StatusMessage
@@ -451,7 +499,6 @@ const ComplaintDetail = () => {
             return;
         }
 
-        // Check location permission before sending OTP
         if (!hasLocationPermission) {
             toast.custom(
                 <StatusMessage
@@ -467,7 +514,6 @@ const ComplaintDetail = () => {
             }
         }
 
-        // Get current location if not available
         let location = currentLocation;
         if (!location) {
             setIsGettingLocation(true);
@@ -478,7 +524,6 @@ const ComplaintDetail = () => {
                 console.log('=== LOCATION DETAILS (Start Job) ===');
                 console.log('Latitude:', location.latitude);
                 console.log('Longitude:', location.longitude);
-                console.log('Full location object:', location);
                 console.log('=====================================');
 
             } catch (error) {
@@ -499,8 +544,6 @@ const ComplaintDetail = () => {
             console.log('=== EXISTING LOCATION DETAILS (Start Job) ===');
             console.log('Latitude:', location.latitude);
             console.log('Longitude:', location.longitude);
-            console.log('Full location object:', location);
-            console.log('============================================');
         }
 
         const payload = {
@@ -569,7 +612,6 @@ const ComplaintDetail = () => {
             return;
         }
 
-        // Only allow numbers
         if (/^\d+$/.test(text)) {
             newOtp[index] = text;
             setOtp(newOtp);
@@ -593,7 +635,6 @@ const ComplaintDetail = () => {
     const handleVerifyOtp = async () => {
         const enteredOtp = otp.join('');
 
-        // Validate OTP length
         if (enteredOtp.length !== 5) {
             toast.custom(
                 <StatusMessage
@@ -606,7 +647,6 @@ const ComplaintDetail = () => {
             return;
         }
 
-        // Check location permission and get current location
         if (!hasLocationPermission) {
             toast.custom(
                 <StatusMessage
@@ -622,7 +662,6 @@ const ComplaintDetail = () => {
             }
         }
 
-        // Get current location if not available
         let location = currentLocation;
         if (!location) {
             setIsGettingLocation(true);
@@ -633,8 +672,6 @@ const ComplaintDetail = () => {
                 console.log('=== LOCATION DETAILS (OTP Verification) ===');
                 console.log('Latitude:', location.latitude);
                 console.log('Longitude:', location.longitude);
-                console.log('Full location object:', location);
-                console.log('==========================================');
 
             } catch (error) {
                 console.log('Error getting location:', error);
@@ -654,8 +691,6 @@ const ComplaintDetail = () => {
             console.log('=== EXISTING LOCATION DETAILS (OTP Verification) ===');
             console.log('Latitude:', location.latitude);
             console.log('Longitude:', location.longitude);
-            console.log('Full location object:', location);
-            console.log('===================================================');
         }
 
         setVerifying(true);
@@ -687,6 +722,9 @@ const ComplaintDetail = () => {
                         verify_otp: "1"
                     }));
                 }
+
+                // 🔄 Refresh dashboard counts after successful OTP verification
+                await triggerRefresh();
 
                 toast.custom(
                     <StatusMessage
@@ -956,25 +994,21 @@ const ComplaintDetail = () => {
 
     const showVerifiedContent = verified || isOtpAlreadyVerified;
 
-    // Content to render inside ScrollView
     const renderContent = () => (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View>
-                {/* Title and Priority */}
                 <View className="flex-row items-center justify-between">
                     <Text className="text-text-primary text-2xl font-bold mb-2">
                         {complaintData.service_name}
                     </Text>
                 </View>
 
-                {/* Status Badge */}
                 <View className={`self-start px-4 py-2 rounded-full mb-2 ${getStatusColorClass()}`}>
                     <Text className={`text-sm font-medium ${getStatusTextColorClass()}`}>
                         {getStatusDisplay()}
                     </Text>
                 </View>
 
-                {/* Location Status Indicator - Only show if not complete and not verified */}
                 {!isComplete && !showVerifiedContent && (
                     <View className="mb-4">
                         <View className={`flex-row items-center ${hasLocationPermission && currentLocation ? 'bg-green-50' : 'bg-yellow-50'} p-2 rounded-lg`}>
@@ -992,10 +1026,8 @@ const ComplaintDetail = () => {
                     </View>
                 )}
 
-                {/* Only show OTP, verification, camera, reverse, and action buttons if NOT complete */}
                 {!isComplete && (
                     <>
-                        {/* OTP Input Section - Only show if not already verified and showOtp is true */}
                         {!showVerifiedContent && showOtp && (
                             <View className="mb-6">
                                 <Text className="text-text-primary text-base mb-3 text-center">
@@ -1033,7 +1065,6 @@ const ComplaintDetail = () => {
                             </View>
                         )}
 
-                        {/* Display Verified Customer Info when already verified */}
                         {showVerifiedContent && (
                             <View className="bg-ui-success/10 border border-ui-success rounded-xl p-3 mb-4">
                                 <View className="flex-row items-center">
@@ -1051,7 +1082,6 @@ const ComplaintDetail = () => {
                             </View>
                         )}
 
-                        {/* Camera Section – appears after verification */}
                         {showVerifiedContent && (
                             <View className="mb-6">
                                 <Text className="text-text-primary text-base mb-2 font-semibold">
@@ -1105,7 +1135,6 @@ const ComplaintDetail = () => {
                     </>
                 )}
 
-                {/* Customer Details Card */}
                 <View className="bg-ui-card border border-ui-border rounded-xl p-4 mb-4">
                     <View className="flex-row justify-between items-center mb-2">
                         <Text className="text-black font-semibold text-lg">
@@ -1144,7 +1173,6 @@ const ComplaintDetail = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Service Details Card */}
                 <View className="bg-ui-card border border-ui-border rounded-xl p-4 mb-4">
                     <Text className="text-text-primary font-semibold text-lg mb-2">
                         Service Details
@@ -1175,10 +1203,8 @@ const ComplaintDetail = () => {
                     )}
                 </View>
 
-                {/* Only show Reverse and Action Buttons if NOT complete */}
                 {!isComplete && (
                     <>
-                        {/* Reverse Reason Input */}
                         {showReasonInput && (
                             <View className="mb-4">
                                 <TextInput
@@ -1194,7 +1220,6 @@ const ComplaintDetail = () => {
                             </View>
                         )}
 
-                        {/* Action Buttons */}
                         <View className="flex-row justify-between mt-2 mb-6">
                             <TouchableOpacity
                                 onPress={handleReverse}
@@ -1220,7 +1245,6 @@ const ComplaintDetail = () => {
                                 )}
                             </TouchableOpacity>
 
-                            {/* Only show Start Job button if not already verified and job not started */}
                             {!showVerifiedContent && !jobStarted && (
                                 <TouchableOpacity
                                     onPress={() => handleStartJob(complaintData)}
@@ -1262,7 +1286,6 @@ const ComplaintDetail = () => {
             />
 
             {isAndroid15OrHigher() ? (
-                // For Android 15+, use KeyboardAvoidingView with proper behavior
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={{ flex: 1 }}
@@ -1279,7 +1302,6 @@ const ComplaintDetail = () => {
                     </ScrollView>
                 </KeyboardAvoidingView>
             ) : (
-                // For older Android versions, use regular ScrollView
                 <ScrollView
                     ref={scrollViewRef}
                     className="flex-1 px-4 pt-4"

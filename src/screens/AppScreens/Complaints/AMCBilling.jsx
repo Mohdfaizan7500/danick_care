@@ -4,13 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import DialogBox from '../../../components/DilaogBox';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { AMCBilling as AMCBillingAPI } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { check, request, RESULTS, PERMISSIONS, openSettings } from 'react-native-permissions';
 import Geolocation from '@react-native-community/geolocation';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
+import { useDashboard } from '../../../contexts/DashboardContext'; // Import dashboard context if using
 
 const AMCBilling = () => {
   const [discount, setDiscount] = useState('');
@@ -31,6 +32,9 @@ const AMCBilling = () => {
   const route = useRoute();
   const { linkedParts, amc, complaintData, billingId } = route.params;
   const { user } = useAuth();
+
+  // Optional: Get dashboard refresh function if using context
+  // const { triggerRefresh } = useDashboard();
 
   console.log("AMC Data:", amc);
   console.log("Linked Parts:", linkedParts);
@@ -294,7 +298,7 @@ const AMCBilling = () => {
 
       // Prepare payload for AMCBilling API
       const payload = {
-        amc_complaint_id: complaintData?.id || complaintData?.complaint_id,
+        amc_complaint_id: complaintData?.id.toString(),
         technician_id: user?.id?.toString() || user?.technician_id?.toString(),
         final_amount: subtotal.toString(),
         discount: discountAmount.toString(),
@@ -313,13 +317,19 @@ const AMCBilling = () => {
         const successMsg = response?.data?.msg || response?.data?.message || "AMC purchased successfully!";
         setSuccessMessage(successMsg);
         setBillingResponse(response.data);
+        
+        // Optional: Refresh dashboard counts if using context
+        // if (triggerRefresh) {
+        //   await triggerRefresh();
+        // }
+        
+        // Show success dialog
         setShowSuccessDialog(true);
         
         toast.custom(
           <StatusMessage type="success" title={successMsg} />,
           { duration: 3000 }
         );
-        navigation.goBack();
         
       } else {
         // Error case - get error message from response
@@ -337,6 +347,19 @@ const AMCBilling = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle reset - Navigate to home screen and reset all routes
+  const handleResetAndNavigateHome = () => {
+    setShowSuccessDialog(false);
+    
+    // Reset all routes and navigate to home
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'BottomTabs' }], // Replace 'Home' with your actual home screen name
+      })
+    );
   };
 
   const handleResetForm = () => {
@@ -371,11 +394,11 @@ const AMCBilling = () => {
     </View>
   );
 
-  // Success Dialog Footer
+  // Success Dialog Footer - Updated to navigate to home
   const successFooter = (
     <View className="flex-row justify-center">
       <TouchableOpacity
-        onPress={handleResetForm}
+        onPress={handleResetAndNavigateHome}
         className="px-6 py-2 rounded-lg bg-teal-600"
       >
         <Text className="text-white font-medium">OK</Text>
@@ -527,7 +550,7 @@ const AMCBilling = () => {
             <View className="bg-white rounded-xl p-5 mb-4 shadow-sm">
               <Text className="text-lg font-bold text-gray-800 mb-3">Complaint Information</Text>
               <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-gray-600">Complaint ID:</Text>
+                <Text className="text-gray-600">AMC Complaint ID:</Text>
                 <Text className="text-gray-800 font-medium">{complaintData.id || complaintData.complaint_id}</Text>
               </View>
               <View className="flex-row justify-between items-center">
@@ -628,12 +651,12 @@ const AMCBilling = () => {
         </View>
       </DialogBox>
 
-      {/* Success Dialog - Updated to display response message */}
+      {/* Success Dialog - Updated to navigate to home on OK */}
       <DialogBox
         visible={showSuccessDialog}
-        onClose={() => setShowSuccessDialog(false)}
+        onClose={handleResetAndNavigateHome}
         title="AMC Purchased Successfully!"
-        size="sm"
+        size="md"
         footer={successFooter}
         closeOnBackdropPress={false}
       >
@@ -641,18 +664,36 @@ const AMCBilling = () => {
           <View className="bg-green-100 rounded-full p-3 mb-3">
             <Icon name="checkmark-circle" size={50} color="#10B981" />
           </View>
-          <Text className="text-gray-800 text-center text-base mb-2">
+          <Text className="text-gray-800 text-center text-base mb-2 font-semibold">
             {successMessage || "Your AMC plan has been purchased successfully!"}
           </Text>
-          <Text className="text-teal-600 font-bold text-xl mb-2">
-            {formatCurrency(finalAmount)}
-          </Text>
-          <Text className="text-gray-500 text-center text-sm">
-            Transaction ID: {billingResponse?.transaction_id || billingId}
-          </Text>
-          <View className="bg-blue-50 rounded-lg p-2 mt-3 w-full">
+          
+          {/* Amount Display */}
+          <View className="bg-teal-50 rounded-lg p-3 mb-3 w-full">
+            <Text className="text-gray-600 text-center text-sm">Amount Paid</Text>
+            <Text className="text-teal-600 font-bold text-2xl text-center">
+              {formatCurrency(finalAmount)}
+            </Text>
+          </View>
+          
+          {/* Transaction Details */}
+          <View className="bg-gray-50 rounded-lg p-3 mb-3 w-full">
+            <Text className="text-gray-600 text-sm text-center">Transaction ID</Text>
+            <Text className="text-gray-800 font-medium text-sm text-center">
+              {billingResponse?.transaction_id || billingId || 'N/A'}
+            </Text>
+          </View>
+          
+          {/* Plan Details */}
+          <View className="bg-blue-50 rounded-lg p-3 w-full">
             <Text className="text-blue-600 text-xs text-center">
-              A confirmation message has been sent to your registered mobile number
+              ✅ AMC Plan Activated Successfully
+            </Text>
+            <Text className="text-blue-600 text-xs text-center mt-1">
+              📧 Confirmation sent to registered mobile number
+            </Text>
+            <Text className="text-blue-600 text-xs text-center mt-1">
+              ⏱️ Validity: {amc?.valid || "4 Service Valid For 1 Year"}
             </Text>
           </View>
         </View>

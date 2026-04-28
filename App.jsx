@@ -13,6 +13,7 @@ export default function App() {
 
   return (
     <AuthProvider>
+
         <GestureHandlerRootView style={{ flex: 1 }}>
           <SafeAreaProvider>
               <View className="absolute inset-0 z-50 w-90% pointer-events-none">

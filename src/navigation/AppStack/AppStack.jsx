@@ -33,7 +33,8 @@ import ProfileDetails from '../../screens/AppScreens/ProfileDetails';
 import CompleteAMCDetails from '../../screens/AppScreens/CompleteAMCDetails';
 import { useEffect, useRef } from 'react';
 import { OrderProvider } from '../../context/OrderContext';
-
+import ComplaintsTopNavigation from '../ComplaintsTopNavigation/ComplaintsTopNavigation';
+import {DashboardProvider } from '../../context/DashboardContext';
 import { setNotificationNavigationHandler } from '../../notification/useNotification';
 const Stack = createNativeStackNavigator();
 
@@ -49,6 +50,7 @@ const AppStack = () => {
 
 
   return (
+    <DashboardProvider>
     <OrderProvider>
       <Stack.Navigator 
         initialRouteName="BottomTabs"
@@ -71,6 +73,10 @@ const AppStack = () => {
         <Stack.Screen
           name="Complaints"
           component={Complaints}
+        />
+         <Stack.Screen
+          name="ComplaintsTopNavigation"
+          component={ComplaintsTopNavigation}
         />
         <Stack.Screen
           name="Bucket"
@@ -149,6 +155,8 @@ const AppStack = () => {
 
       </Stack.Navigator>
     </OrderProvider>
+    </DashboardProvider>
+   
   )
 }
 

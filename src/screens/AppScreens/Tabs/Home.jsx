@@ -439,11 +439,11 @@ const Home = () => {
 
   const handleCardPress = cardName => {
     if (!isConnected) return;
-    if (cardName === 'All') navigation.navigate('Complaints', { status: "All" });
-    else if (cardName === 'Cancel') navigation.navigate('Complaints', { status: "Cancel" });
-    else if (cardName === 'Assign') navigation.navigate('Complaints', { status: "Assign" });
-    else if (cardName === 'Onworking') navigation.navigate('Complaints', { status: "Onworking" });
-    else if (cardName === 'Complete') navigation.navigate('Complaints', { status: "Complete" });
+    if (cardName === 'All') navigation.navigate('ComplaintsTopNavigation', { status: "All" });
+    else if (cardName === 'Cancel') navigation.navigate('ComplaintsTopNavigation', { status: "Cancel" });
+    else if (cardName === 'Assign') navigation.navigate('ComplaintsTopNavigation', { status: "Assign" });
+    else if (cardName === 'Onworking') navigation.navigate('ComplaintsTopNavigation', { status: "Onworking" });
+    else if (cardName === 'Complete') navigation.navigate('ComplaintsTopNavigation', { status: "Complete" });
     else if (cardName === 'Bucket') navigation.navigate('Bucket');
     else if (cardName === 'AMC') navigation.navigate('AMC');
     else if (cardName === 'Pre-Booking') navigation.navigate('PreBooking');

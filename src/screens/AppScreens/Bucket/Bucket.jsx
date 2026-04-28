@@ -917,12 +917,7 @@ const Bucket = () => {
         title="Bucket"
         titlePosition="left"
         titleStyle="font-bold text-2xl ml-5"
-        showRightIcon={true}
-        containerStyle='flex-row pt-3 py-2 px-4'
-        customRightIconComponent={
-          <Icon name="bag-add-outline" size={24} color="#333" />
-        }
-        onRightIconPress={() => navigation.navigate('AddPart')}
+        
       />
       <View className="absolute inset-0 z-50 w-90% pointer-events-none">
         <Toaster />

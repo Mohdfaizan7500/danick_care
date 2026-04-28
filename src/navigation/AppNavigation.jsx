@@ -50,25 +50,33 @@ async function createNotificationChannels() {
         await notifee.createChannel({
             id: 'default',
             name: 'Default Channel',
+            vibration: true,
             importance: AndroidImportance.HIGH,
+            sound: 'notification', // Add this line
         });
 
         await notifee.createChannel({
             id: 'orders',
             name: 'Orders Channel',
+            vibration: true,
             importance: AndroidImportance.HIGH,
+            sound: 'notification', // Add this line
         });
 
         await notifee.createChannel({
             id: 'complaints',
             name: 'Complaints Channel',
+            vibration: true,
             importance: AndroidImportance.HIGH,
+            sound: 'notification', // Add this line
         });
 
         await notifee.createChannel({
             id: 'amc',
             name: 'AMC Channel',
+            vibration: true,
             importance: AndroidImportance.HIGH,
+            sound: 'notification', // Add this line
         });
 
         console.log('✅ Notification channels created');
@@ -117,21 +125,24 @@ const AppNavigation = forwardRef((props, ref) => {
                     else if (title === 'amc') channelId = 'amc';
 
                     // Display notification using Notifee
+                    // Inside your onMessage handler, replace the displayNotification section
                     await notifee.displayNotification({
                         title: notificationTitle || 'Partner App',
                         body: notificationBody || 'You have a new notification',
                         data: { ...notificationData, title: notificationTitle },
                         android: {
-                            channelId,
+                            channelId: channelId, // Use the dynamically determined channel ID, not hardcoded 'default'
                             importance: AndroidImportance.HIGH,
                             pressAction: { id: 'default' },
                             smallIcon: 'ic_launcher',
+                            sound: 'notification', // Keep this
                             autoCancel: true,
                         },
                         ios: {
+                            sound: 'notification',
                             foregroundPresentationOptions: {
                                 badge: true,
-                                sound: true,
+                                sound: true, // Ensure sound is enabled for iOS foreground
                                 banner: true,
                                 list: true,
                             },

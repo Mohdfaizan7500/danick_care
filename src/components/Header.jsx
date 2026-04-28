@@ -2,18 +2,18 @@ import { StyleSheet, Text, View, TouchableOpacity } from 'react-native'
 import React from 'react'
 import { useNavigation } from '@react-navigation/native'
 import BackIcon from 'react-native-vector-icons/Ionicons';
-const Header = ({ 
+const Header = ({
   // Title props
   title,
   titleStyle = 'text-base font-semibold text-gray-800',
   titlePosition = 'center', // 'left', 'center', 'right'
-  
+
   // Back button props
   showBackButton = true,
   onBackPress,
   backButtonColor = '#333',
   backButtonStyle = 'p-1',
-  
+
   // Left Icon props (original header icon)
   showLeftIcon = false,
   leftIcon = '🔧',
@@ -22,7 +22,7 @@ const Header = ({
   leftIconTextStyle = 'text-xl',
   leftIconBackgroundColor,
   onLeftIconPress,
-  
+
   // Right Icon props
   showRightIcon = false,
   rightIcon = '🔧',
@@ -31,13 +31,13 @@ const Header = ({
   rightIconTextStyle = 'text-xl',
   rightIconBackgroundColor,
   onRightIconPress,
-  
+
   // Container props
   containerStyle = 'bg-white flex-row items-center justify-between px-4 py-4 border-gray-100 shadow-sm',
   leftContainerStyle = 'w-10 items-start',
   centerContainerStyle = 'flex-1 items-center justify-center',
   rightContainerStyle = 'w-10 items-end',
-  
+
   // Additional props
   showIcon = false, // Kept for backward compatibility
 }) => {
@@ -47,7 +47,16 @@ const Header = ({
     if (onBackPress) {
       onBackPress();
     } else {
-      navigation.goBack();
+      // Check if we can go back, if not navigate to Home
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        // Reset all routes and navigate to BottomTabs
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'BottomTabs' }],
+        });
+      }
     }
   };
 
@@ -96,7 +105,7 @@ const Header = ({
       {/* Left Container with Back Button */}
       <View className={`${getLeftContainerWidth()} ${leftContainerStyle}`}>
         {showBackButton && (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={handleBackPress}
             className={backButtonStyle}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -110,7 +119,7 @@ const Header = ({
       {/* Center Container with Left Icon (optional) and Title */}
       <View className={getTitleContainerStyle()}>
         {(showLeftIcon || showIcon) && (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={onLeftIconPress}
             disabled={!onLeftIconPress}
             activeOpacity={onLeftIconPress ? 0.7 : 1}
@@ -135,7 +144,7 @@ const Header = ({
       {/* Right Container for Right Icon */}
       <View className={`${getRightContainerWidth()} ${rightContainerStyle}`}>
         {showRightIcon && (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={onRightIconPress}
             disabled={!onRightIconPress}
             activeOpacity={onRightIconPress ? 0.7 : 1}
