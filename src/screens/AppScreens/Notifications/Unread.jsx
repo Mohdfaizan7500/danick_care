@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import { useAuth } from '../../../context/AuthContext'
-import { FetchNotification } from '../../../lib/api'
+import { FetchNotification, ReadNotification } from '../../../lib/api'
 import { CommonActions } from '@react-navigation/native'
 
 const AllNotification = ({ route }) => {
@@ -14,6 +14,7 @@ const AllNotification = ({ route }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [readingNotificationId, setReadingNotificationId] = useState(null);
   const isMounted = useRef(true);
 
   // Format date/time from API response
@@ -96,6 +97,52 @@ const AllNotification = ({ route }) => {
     return 'bg-teal-50 border border-teal-400 shadow-sm';
   };
 
+  // Mark notification as read API call
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      const payload = {
+        id: notificationId.toString()
+      };
+      
+      console.log('Marking notification as read with payload:', payload);
+      const response = await ReadNotification(payload);
+      console.log('ReadNotification response:', response);
+      
+      if (response?.data?.success) {
+        // Update local state to mark as read
+        setNotifications(prevNotifications =>
+          prevNotifications.map(notification =>
+            notification.id === notificationId
+              ? { ...notification, readStatus: 'Read' }
+              : notification
+          )
+        );
+        
+        // Update counts if refreshCounts is available
+        if (refreshCounts) {
+          const updatedUnreadCount = notifications.filter(n => 
+            n.id !== notificationId && n.readStatus !== 'Read'
+          ).length;
+          const updatedReadCount = notifications.filter(n => 
+            (n.id === notificationId) || (n.id !== notificationId && n.readStatus === 'Read')
+          ).length;
+          
+          refreshCounts({
+            all: notifications.length,
+            unread: updatedUnreadCount,
+            read: updatedReadCount,
+          });
+        }
+        
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return false;
+    }
+  };
+
   // Navigate based on notification status
   const handleNavigation = (notificationStatus) => {
     console.log('Notification status:', notificationStatus);
@@ -103,15 +150,15 @@ const AllNotification = ({ route }) => {
     // Reset all routes and navigate to the target screen
     if (notificationStatus === 'pending') {
       // Navigate to Home screen and reset all routes
-       navigation.dispatch(
+      navigation.dispatch(
         CommonActions.reset({
           index: 0,
           routes: [
             { name: 'BottomTabs',
-                params:{
-                    screen:"Orders"
-                }
-             }
+              params: {
+                screen: "Orders"
+              }
+            }
           ],
         })
       );
@@ -122,15 +169,39 @@ const AllNotification = ({ route }) => {
           index: 0,
           routes: [
             { name: 'ComplaintsTopNavigation',
-                  params:{
-                    status:"Assign"
-                }
-               
-             }
+              params: {
+                status: "Assign"
+              }
+            }
           ],
         })
       );
     }
+  };
+
+  // Handle notification press
+  const handleNotificationPress = async (item) => {
+    console.log('Notification pressed:', item.id);
+    console.log('Notification status:', item.notificationStatus);
+    console.log('Read status:', item.readStatus);
+    
+    // Set loading state for this notification
+    setReadingNotificationId(item.id);
+    
+    // If notification is unread, mark it as read first
+    if (item.readStatus !== 'Read') {
+      const marked = await markNotificationAsRead(item.id);
+      if (!marked) {
+        // If failed to mark as read, still navigate but show error
+        console.log('Failed to mark notification as read');
+      }
+    }
+    
+    // Clear loading state
+    setReadingNotificationId(null);
+    
+    // Navigate based on notification status
+    handleNavigation(item.notificationStatus);
   };
 
   // Fetch notifications from API
@@ -208,14 +279,6 @@ const AllNotification = ({ route }) => {
     await fetchNotifications(true);
   };
 
-  const handleNotificationPress = (item) => {
-    console.log('Notification pressed:', item.id);
-    console.log('Notification status:', item.notificationStatus);
-    
-    // Navigate based on notification status
-    handleNavigation(item.notificationStatus);
-  };
-
   // Initial fetch on mount
   useEffect(() => {
     isMounted.current = true;
@@ -264,7 +327,7 @@ const AllNotification = ({ route }) => {
 
   return (
     <ScrollView 
-      className="flex-1 bg-gray-50 py-5 " 
+      className="flex-1 bg-gray-50 py-5" 
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl
@@ -284,6 +347,7 @@ const AllNotification = ({ route }) => {
           const iconColor = getIconColor(item.message, item.readStatus);
           const isUnread = item.readStatus !== "Read";
           const notificationStatusInfo = getNotificationStatus(item.status, item.notificationStatus);
+          const isReading = readingNotificationId === item.id;
           
           return (
             <TouchableOpacity
@@ -291,8 +355,9 @@ const AllNotification = ({ route }) => {
               className={`flex-row p-4 mx-4 mb-3 rounded-xl ${containerClass}`}
               onPress={() => handleNotificationPress(item)}
               activeOpacity={0.7}
+              disabled={isReading}
             >
-              {isUnread && (
+              {isUnread && !isReading && (
                 <View className="absolute top-4 right-4 z-10">
                   <View className="w-2 h-2 rounded-full bg-teal-500" />
                 </View>
@@ -300,7 +365,11 @@ const AllNotification = ({ route }) => {
 
               <View className="mr-3">
                 <View style={{ backgroundColor: iconColor + '20' }} className="w-12 h-12 rounded-full items-center justify-center">
-                  <Icon name={iconName} size={24} color={iconColor} />
+                  {isReading ? (
+                    <ActivityIndicator size="small" color={iconColor} />
+                  ) : (
+                    <Icon name={iconName} size={24} color={iconColor} />
+                  )}
                 </View>
               </View>
 
@@ -347,6 +416,13 @@ const AllNotification = ({ route }) => {
                   </View>
                   
                   <View className="flex-row items-center gap-2">
+                    {/* Read Status Badge */}
+                    <View className={`px-2 py-0.5 rounded-full ${isUnread ? 'bg-purple-100' : 'bg-blue-100'}`}>
+                      <Text className={`text-xs font-medium ${isUnread ? 'text-purple-700' : 'text-blue-700'}`}>
+                        {isUnread ? 'Unread' : 'Read'}
+                      </Text>
+                    </View>
+                    
                     {/* Notification Status Badge */}
                     <View className={`px-2 py-0.5 rounded-full ${notificationStatusInfo.color.split(' ')[0]}`}>
                       <Text className={`text-xs font-medium ${notificationStatusInfo.color.split(' ')[1]}`}>

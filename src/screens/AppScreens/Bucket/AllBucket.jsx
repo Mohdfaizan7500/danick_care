@@ -1,4 +1,4 @@
-import { View, Text, ActivityIndicator, FlatList, Image, TouchableOpacity, RefreshControl } from 'react-native'
+import { View, Text, ActivityIndicator, FlatList, Image, TouchableOpacity, RefreshControl, TextInput } from 'react-native'
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Clipboard } from 'react-native'
 import Icon from 'react-native-vector-icons/Ionicons'
@@ -40,10 +40,31 @@ const AllBucket = ({ route }) => {
   const isFirstLoadRef = useRef(true)
   const isFetchingRef = useRef(false)
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
   // Confirmation dialog state
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmItem, setConfirmItem] = useState(null);
+
+  // Filtered data based on search query
+  const searchedData = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return filteredData;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return filteredData.filter(item => 
+      item.part_name?.toLowerCase().includes(query) ||
+      item.id?.toString().toLowerCase().includes(query) ||
+      item.transfer_by?.toLowerCase().includes(query) ||
+      item.description?.toLowerCase().includes(query) ||
+      item.part_price?.toString().includes(query) ||
+      item.qr_code?.toLowerCase().includes(query)
+    );
+  }, [filteredData, searchQuery]);
 
   // Auto-refresh after error
   useEffect(() => {
@@ -186,6 +207,9 @@ const AllBucket = ({ route }) => {
 
       if (response?.data?.success) {
         setAllPartsData(response.data.data)
+        
+        // Clear search query when data changes
+        setSearchQuery('');
         
         // Refresh counts after successful fetch
         await refreshBucketCounts();
@@ -670,6 +694,36 @@ const AllBucket = ({ route }) => {
     );
   };
 
+  // Render search bar
+  const renderSearchBar = () => (
+    <View className="px-4 py-2 bg-gray-50">
+      <View className={`flex-row items-center bg-white rounded-2xl px-3 py-0 border ${
+        isSearchFocused ? 'border-teal-500' : 'border-gray-300'
+      }`}>
+        <Icon name="search-outline" size={20} color="#999" />
+        <TextInput
+          className="flex-1 ml-2 text-base text-gray-800"
+          placeholder="Search by name, ID, type, price, or QR code..."
+          placeholderTextColor="#999"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onFocus={() => setIsSearchFocused(true)}
+          onBlur={() => setIsSearchFocused(false)}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Icon name="close-circle" size={20} color="#999" />
+          </TouchableOpacity>
+        )}
+      </View>
+      {searchQuery.length > 0 && (
+        <Text className="text-xs text-gray-500 mt-1 ml-1">
+          Found {searchedData.length} result(s) for "{searchQuery}"
+        </Text>
+      )}
+    </View>
+  );
+
   // If offline, show NoInternet screen
   if (!isConnected && !loading) {
     return (
@@ -707,19 +761,22 @@ const AllBucket = ({ route }) => {
   // Empty state
   if (filteredData.length === 0 && !loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 p-4">
-        <Icon name="folder-open-outline" size={64} color="#9CA3AF" />
-        <Text className="text-gray-500 text-base text-center mt-4">
-          No {getTabType().toLowerCase()} parts found
-        </Text>
-        {!isConnected && (
-          <TouchableOpacity
-            onPress={handleRetryConnection}
-            className="mt-4 bg-teal-600 px-6 py-2 rounded-lg"
-          >
-            <Text className="text-white font-semibold">Retry</Text>
-          </TouchableOpacity>
-        )}
+      <View className="flex-1 bg-gray-50">
+        {renderSearchBar()}
+        <View className="flex-1 justify-center items-center p-4">
+          <Icon name="folder-open-outline" size={64} color="#9CA3AF" />
+          <Text className="text-gray-500 text-base text-center mt-4">
+            No {getTabType().toLowerCase()} parts found
+          </Text>
+          {!isConnected && (
+            <TouchableOpacity
+              onPress={handleRetryConnection}
+              className="mt-4 bg-teal-600 px-6 py-2 rounded-lg"
+            >
+              <Text className="text-white font-semibold">Retry</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     )
   }
@@ -730,8 +787,12 @@ const AllBucket = ({ route }) => {
       <View className="absolute inset-0 z-50 pointer-events-none">
         <Toaster />
       </View>
+      
+      {/* Search Bar - Rendered before FlatList */}
+      {renderSearchBar()}
+      
       <FlatList
-        data={filteredData}
+        data={searchedData}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={{ paddingVertical: 8 }}
@@ -745,6 +806,22 @@ const AllBucket = ({ route }) => {
             title="Pull to refresh"
             titleColor="#58A890"
           />
+        }
+        ListEmptyComponent={
+          searchQuery.length > 0 ? (
+            <View className="items-center justify-center py-10">
+              <Icon name="search-outline" size={60} color="#CCCCCC" />
+              <Text className="text-center text-gray-500 mt-4">
+                No items match your search
+              </Text>
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                className="mt-4 px-4 py-2 bg-teal-100 rounded-lg"
+              >
+                <Text className="text-teal-700 font-medium">Clear Search</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
         }
       />
 

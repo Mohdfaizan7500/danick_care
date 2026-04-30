@@ -12,10 +12,9 @@ import {
   ActivityIndicator,
   Keyboard,
   Linking,
-  BackHandler,
   FlatList,
-  Alert,
   RefreshControl,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -56,6 +55,7 @@ const AMCDetails = () => {
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // New states for fetched AMC complaint details
   const [loadingComplaintDetails, setLoadingComplaintDetails] = useState(false);
@@ -77,7 +77,7 @@ const AMCDetails = () => {
 
   console.log('AMCDetails route params:', route.params);
 
-  const { amc, complaintData, amcComplaintId, } = route.params || {};
+  const { amc, complaintData, amcComplaintId } = route.params || {};
 
   // Get parts from AMC data (use fetched data if available)
   const spareParts = fetchedAmcDetails?.parts || amc?.parts || [];
@@ -88,42 +88,47 @@ const AMCDetails = () => {
   // Check if all parts are linked
   const allPartsLinked = spareParts.length > 0 && linkedItems.length === spareParts.length;
 
-  // Auto-fill QR codes for parts that already have QR codes from the database
+  // Initialize from fetched data when available
   useEffect(() => {
-    if (spareParts.length > 0) {
+    if (fetchedAmcDetails?.parts && fetchedAmcDetails.parts.length > 0) {
       const preFilledQrCodes = {};
       const preLinkedItems = [];
+      const preReplacedParts = {};
 
-      spareParts.forEach((part, index) => {
+      fetchedAmcDetails.parts.forEach((part, index) => {
         const partId = part.id || index;
         if (part.qr_code && part.qr_code !== null && part.qr_code.trim() !== '') {
           preFilledQrCodes[partId] = part.qr_code;
           preLinkedItems.push(partId);
+          
+          // Check if this is a replaced part
+          if (part.replaced_with) {
+            preReplacedParts[partId] = part.replaced_with;
+          }
         }
       });
 
       if (Object.keys(preFilledQrCodes).length > 0) {
         setQrCodeNumbers(preFilledQrCodes);
         setLinkedItems(preLinkedItems);
+        setReplacedParts(preReplacedParts);
       }
     }
-  }, [spareParts]);
+  }, [fetchedAmcDetails]);
 
-  // Refresh data when screen comes into focus
+  // Refresh data when screen comes into focus - only initial load
   useFocusEffect(
     React.useCallback(() => {
-      fetchAMCComplaintDetails();
-      return () => {
-        // Cleanup if needed
-      };
+      if (!fetchedAmcDetails) {
+        fetchAMCComplaintDetails();
+      }
+      return () => {};
     }, [])
   );
 
   // Fetch AMC Complaint Details
   const fetchAMCComplaintDetails = async () => {
     const complaintId = amcComplaintId || complaintData?.id;
-
-
 
     if (!complaintId) {
       console.log('No complaint ID available for AMCComplaintDetails');
@@ -145,26 +150,12 @@ const AMCDetails = () => {
         const amcComplaintData = response.data.amc_complaint;
         const amcDetailsData = response.data.amc_details;
 
-        // console.log('AMC Complaint Data:', amcComplaintData);
-        // console.log('AMC Details Data:', amcDetailsData);
-
         setFetchedComplaint(amcComplaintData);
         setFetchedAmcDetails(amcDetailsData);
 
         if (amcComplaintData?.billing_id) {
           setBillingId(amcComplaintData.billing_id);
-        } else {
-          console.warn('⚠️ No billing_id found in amc_complaint data');
         }
-
-        toast.custom(
-          <StatusMessage
-            type='success'
-            title='AMC Details Loaded'
-            message={`Loaded details for ${amcDetailsData?.name || 'AMC Plan'}`}
-          />,
-          { duration: 2000 }
-        );
       } else {
         console.error('Failed to load AMC complaint details:', response?.data);
         toast.custom(
@@ -195,8 +186,6 @@ const AMCDetails = () => {
   const handleDeleteAMCRecord = async () => {
     const amcId = amcComplaintId?.toString() || fetchedComplaint?.id?.toString();
     const complaintId = fetchedComplaint?.complaint_id?.toString() || complaintData?.id?.toString();
-
-
 
     if (!amcId || !complaintId || !billingId) {
       toast.custom(
@@ -262,57 +251,27 @@ const AMCDetails = () => {
     }
   };
 
-  // Pull to refresh handler
+  // Pull to refresh handler - only for manual refresh
   const onRefresh = async () => {
     setRefreshing(true);
-
-    try {
-      setQrCodeNumbers({});
-      setLinkedItems([]);
-      setReplacedParts({});
-      setCurrentPartId(null);
-      setLoadingStates({});
-      setRemovalLoadingStates({});
-      setReplaceLoadingStates({});
-      setRemoveReplaceLoadingStates({});
-
-      await fetchAMCComplaintDetails();
-
-      toast.custom(
-        <StatusMessage
-          type='success'
-          title='Refreshed'
-          message='AMC details have been updated successfully.'
-        />,
-        { duration: 2000 }
-      );
-    } catch (error) {
-      console.error('Error refreshing:', error);
-      toast.custom(
-        <StatusMessage
-          type='error'
-          title='Refresh Failed'
-          message={error.message || 'Please try again'}
-        />,
-        { duration: 3000 }
-      );
-    } finally {
-      setRefreshing(false);
-    }
+    await fetchAMCComplaintDetails();
+    setRefreshing(false);
   };
 
   // Keyboard listeners
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       'keyboardDidShow',
-      () => {
+      (e) => {
         setIsKeyboardVisible(true);
+        setKeyboardHeight(e.endCoordinates.height);
       }
     );
     const keyboardDidHideListener = Keyboard.addListener(
       'keyboardDidHide',
       () => {
         setIsKeyboardVisible(false);
+        setKeyboardHeight(0);
       }
     );
 
@@ -430,8 +389,20 @@ const AMCDetails = () => {
       console.log('AMC QR Code Insert Part response:', response);
 
       if (response?.data?.success) {
+        // Update UI immediately without reload
         if (!linkedItems.includes(partId)) {
           setLinkedItems([...linkedItems, partId]);
+        }
+
+        // Update the part in spareParts if needed (optional)
+        if (fetchedAmcDetails?.parts) {
+          const updatedParts = fetchedAmcDetails.parts.map(part => {
+            if ((part.id || partIndex) === partId) {
+              return { ...part, qr_code: qrCode, qr_type: response.data.qr_type || 'linked' };
+            }
+            return part;
+          });
+          setFetchedAmcDetails({ ...fetchedAmcDetails, parts: updatedParts });
         }
 
         toast.custom(
@@ -442,10 +413,6 @@ const AMCDetails = () => {
           />,
           { duration: 2000 }
         );
-
-        setTimeout(() => {
-          fetchAMCComplaintDetails();
-        }, 500);
       } else {
         toast.custom(
           <StatusMessage
@@ -473,8 +440,6 @@ const AMCDetails = () => {
 
   // Handle Replace Part (Bucket Icon Click)
   const handleReplacePart = async (partId, partName) => {
-
-
     setSelectedReplacePart({ id: partId, name: partName });
     setLoadingParts(true);
     setShowReplaceModal(true);
@@ -564,17 +529,20 @@ const AMCDetails = () => {
       console.log('AMCPartQRCodeUpdatePart response:', response);
 
       if (response?.data?.success) {
+        // Update UI immediately without reload
+        const replacementInfo = {
+          original_part_name: partName,
+          replacement_part_id: selectedReplacementPart.id,
+          replacement_part_name: selectedReplacementPart.part_name,
+          replacement_qr_code: selectedReplacementPart.qr_code,
+          replacement_image: selectedReplacementPart.part_image,
+          replacement_price: selectedReplacementPart.part_price,
+          replacement_description: selectedReplacementPart.description,
+        };
+
         setReplacedParts(prev => ({
           ...prev,
-          [partId]: {
-            original_part_name: partName,
-            replacement_part_id: selectedReplacementPart.id,
-            replacement_part_name: selectedReplacementPart.part_name,
-            replacement_qr_code: selectedReplacementPart.qr_code,
-            replacement_image: selectedReplacementPart.part_image,
-            replacement_price: selectedReplacementPart.part_price,
-            replacement_description: selectedReplacementPart.description,
-          }
+          [partId]: replacementInfo
         }));
 
         setQrCodeNumbers(prev => ({
@@ -584,6 +552,21 @@ const AMCDetails = () => {
 
         if (!linkedItems.includes(partId)) {
           setLinkedItems(prev => [...prev, partId]);
+        }
+
+        // Update the part in fetchedAmcDetails if available
+        if (fetchedAmcDetails?.parts) {
+          const updatedParts = fetchedAmcDetails.parts.map(part => {
+            if ((part.id || part.index) === partId) {
+              return {
+                ...part,
+                qr_code: selectedReplacementPart.qr_code,
+                replaced_with: replacementInfo
+              };
+            }
+            return part;
+          });
+          setFetchedAmcDetails({ ...fetchedAmcDetails, parts: updatedParts });
         }
 
         toast.custom(
@@ -599,10 +582,6 @@ const AMCDetails = () => {
         setSelectedReplacePart(null);
         setSelectedReplacementPart(null);
         setAvailableParts([]);
-
-        setTimeout(() => {
-          fetchAMCComplaintDetails();
-        }, 500);
       } else {
         toast.custom(
           <StatusMessage
@@ -628,7 +607,6 @@ const AMCDetails = () => {
     }
   };
 
-  // Updated handleRemoveQR function with conditional API call based on qr_type
   const handleRemoveQR = async (partId, partName, qrCode, qrType) => {
     if (!qrCode || !qrCode.trim()) {
       toast.custom(
@@ -643,9 +621,7 @@ const AMCDetails = () => {
     try {
       let response;
 
-      // Check qr_type to determine which API to call
       if (qrType === 'technician') {
-        // Call RemoveAMCPart API for technician QR type
         const payload = {
           technician_id: technicianId,
           amc_id: amcComplaintId || fetchedComplaint?.id?.toString() || amc?.id?.toString() || '',
@@ -658,7 +634,6 @@ const AMCDetails = () => {
         response = await RemoveAMCPart(payload);
         console.log('RemoveAMCPart response:', response);
       } else {
-        // Call AMCQRCodeRemove API for blank or other QR types
         const payload = {
           technician_id: technicianId,
           qr_code: qrCode,
@@ -670,17 +645,31 @@ const AMCDetails = () => {
       }
 
       if (response?.data?.success) {
+        // Update UI immediately without reload
         setLinkedItems(prev => prev.filter(id => id !== partId));
 
         if (replacedParts[partId]) {
           const newReplacedParts = { ...replacedParts };
           delete newReplacedParts[partId];
+          setReplacedParts(newReplacedParts);
         }
 
         setQrCodeNumbers(prev => ({
           ...prev,
           [partId]: ''
         }));
+
+        // Update the part in fetchedAmcDetails if available
+        if (fetchedAmcDetails?.parts) {
+          const updatedParts = fetchedAmcDetails.parts.map(part => {
+            if ((part.id || part.index) === partId) {
+              const { qr_code, replaced_with, ...rest } = part;
+              return rest;
+            }
+            return part;
+          });
+          setFetchedAmcDetails({ ...fetchedAmcDetails, parts: updatedParts });
+        }
 
         toast.custom(
           <StatusMessage
@@ -690,10 +679,6 @@ const AMCDetails = () => {
           />,
           { duration: 2000 }
         );
-
-        setTimeout(() => {
-          fetchAMCComplaintDetails();
-        }, 500);
       } else {
         toast.custom(
           <StatusMessage
@@ -739,6 +724,7 @@ const AMCDetails = () => {
       console.log('RemoveAMCPart response:', response);
 
       if (response?.data?.success) {
+        // Update UI immediately without reload
         setLinkedItems(prev => prev.filter(id => id !== partId));
 
         const newReplacedParts = { ...replacedParts };
@@ -750,6 +736,18 @@ const AMCDetails = () => {
           [partId]: ''
         }));
 
+        // Update the part in fetchedAmcDetails if available
+        if (fetchedAmcDetails?.parts) {
+          const updatedParts = fetchedAmcDetails.parts.map(part => {
+            if ((part.id || part.index) === partId) {
+              const { replaced_with, ...rest } = part;
+              return rest;
+            }
+            return part;
+          });
+          setFetchedAmcDetails({ ...fetchedAmcDetails, parts: updatedParts });
+        }
+
         toast.custom(
           <StatusMessage
             type='success'
@@ -758,10 +756,6 @@ const AMCDetails = () => {
           />,
           { duration: 3000 }
         );
-
-        setTimeout(() => {
-          fetchAMCComplaintDetails();
-        }, 500);
       } else {
         toast.custom(
           <StatusMessage
@@ -788,8 +782,6 @@ const AMCDetails = () => {
   };
 
   const handleNext = () => {
-
-
     navigation.replace('AMCBilling', {
       linkedParts: linkedItems.map(id => ({
         id,
@@ -855,16 +847,14 @@ const AMCDetails = () => {
   };
 
   const renderHeaderRight = () => {
-
-    return <TouchableOpacity
-      onPress={() => setShowDeleteConfirmModal(true)}
-      className=""
-    >
-      <Icon name="trash-outline" size={20} color="#EF4444" />
-    </TouchableOpacity>;
+    return (
+      <TouchableOpacity onPress={() => setShowDeleteConfirmModal(true)} className="">
+        <Icon name="trash-outline" size={20} color="#EF4444" />
+      </TouchableOpacity>
+    );
   };
 
-  if (loadingComplaintDetails) {
+  if (loadingComplaintDetails && !fetchedAmcDetails) {
     return (
       <SafeAreaView className="flex-1 bg-white">
         <Header
@@ -900,271 +890,279 @@ const AMCDetails = () => {
         containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
       />
 
-      <ScrollView
-        className="flex-1 px-4 bg-gray-100"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 50 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#14B8A6']}
-            tintColor="#14B8A6"
-            title="Pull to refresh"
-            titleColor="#14B8A6"
-          />
-        }
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {/* AMC Info Header */}
-        <View className="bg-white rounded-xl p-4 mb-4 mt-2 shadow-sm">
-          <Text className="text-lg font-bold text-gray-800">{fetchedAmcDetails?.name || amc?.name || 'AMC Plan'}</Text>
-          <Text className="text-sm text-gray-600 mt-1">Valid: {fetchedAmcDetails?.valid || amc?.valid || '1 Year'}</Text>
-          <Text className="text-sm text-teal-600 font-semibold mt-1">Price: ₹{fetchedAmcDetails?.price || amc?.price || '0'}</Text>
-          {billingId && (
-            <Text className="text-xs text-gray-500 mt-2">Billing ID: {billingId}</Text>
-          )}
+        <ScrollView
+          className="flex-1 px-4 bg-gray-100"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ 
+            paddingBottom: isKeyboardVisible && Platform.OS === 'android' ? keyboardHeight + 80 : 100 
+          }}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#14B8A6']}
+              tintColor="#14B8A6"
+              title="Pull to refresh"
+              titleColor="#14B8A6"
+            />
+          }
+        >
+          {/* AMC Info Header */}
+          <View className="bg-white rounded-xl p-4 mb-4 mt-2 shadow-sm">
+            <Text className="text-lg font-bold text-gray-800">{fetchedAmcDetails?.name || amc?.name || 'AMC Plan'}</Text>
+            <Text className="text-sm text-gray-600 mt-1">Valid: {fetchedAmcDetails?.valid || amc?.valid || '1 Year'}</Text>
+            <Text className="text-sm text-teal-600 font-semibold mt-1">Price: ₹{fetchedAmcDetails?.price || amc?.price || '0'}</Text>
+            {billingId && (
+              <Text className="text-xs text-gray-500 mt-2">Billing ID: {billingId}</Text>
+            )}
 
-          {fetchedComplaint && (
-            <View className="mt-3 pt-3 border-t border-gray-100">
-              <Text className="text-xs text-gray-500">Complaint ID: {fetchedComplaint.complaint_id}</Text>
-              <Text className="text-xs text-gray-500">Status: {fetchedComplaint.status}</Text>
-              <Text className="text-xs text-gray-500">Total Service: {fetchedComplaint.total_service}</Text>
-            </View>
-          )}
+            {fetchedComplaint && (
+              <View className="mt-3 pt-3 border-t border-gray-100">
+                <Text className="text-xs text-gray-500">Complaint ID: {fetchedComplaint.complaint_id}</Text>
+                <Text className="text-xs text-gray-500">Status: {fetchedComplaint.status}</Text>
+                <Text className="text-xs text-gray-500">Total Service: {fetchedComplaint.total_service}</Text>
+              </View>
+            )}
 
-          {spareParts.length > 0 && (
-            <View className="mt-3">
-              <View className="flex-row justify-between mb-1">
-                <Text className="text-xs text-gray-600">Linking Progress</Text>
-                <Text className="text-xs font-semibold text-teal-600">
-                  {linkedItems.length}/{spareParts.length} Parts Linked
+            {spareParts.length > 0 && (
+              <View className="mt-3">
+                <View className="flex-row justify-between mb-1">
+                  <Text className="text-xs text-gray-600">Linking Progress</Text>
+                  <Text className="text-xs font-semibold text-teal-600">
+                    {linkedItems.length}/{spareParts.length} Parts Linked
+                  </Text>
+                </View>
+                <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <View
+                    className="h-full bg-teal-500 rounded-full"
+                    style={{ width: `${(linkedItems.length / spareParts.length) * 100}%` }}
+                  />
+                </View>
+              </View>
+            )}
+
+            {linkedItems.length > 0 && linkedItems.length < spareParts.length && (
+              <View className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                <Text className="text-yellow-700 text-xs text-center">
+                  ⚠️ Please link all {spareParts.length} spare parts to continue
                 </Text>
               </View>
-              <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <View
-                  className="h-full bg-teal-500 rounded-full"
-                  style={{ width: `${(linkedItems.length / spareParts.length) * 100}%` }}
-                />
+            )}
+
+            {allPartsLinked && (
+              <View className="mt-3 bg-green-50 border border-green-200 rounded-lg p-2">
+                <Text className="text-green-700 text-xs text-center">
+                  ✓ All {spareParts.length} spare parts linked successfully! You can now proceed.
+                </Text>
               </View>
-            </View>
-          )}
+            )}
+          </View>
 
-          {linkedItems.length > 0 && linkedItems.length < spareParts.length && (
-            <View className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
-              <Text className="text-yellow-700 text-xs text-center">
-                ⚠️ Please link all {spareParts.length} spare parts to continue
-              </Text>
-            </View>
-          )}
+          {/* Spare Parts List */}
+          <View className="mb-4">
+            <Text className="text-lg font-bold text-gray-800 mb-3">
+              Spare Parts to Link ({spareParts.length})
+            </Text>
 
-          {allPartsLinked && (
-            <View className="mt-3 bg-green-50 border border-green-200 rounded-lg p-2">
-              <Text className="text-green-700 text-xs text-center">
-                ✓ All {spareParts.length} spare parts linked successfully! You can now proceed.
-              </Text>
-            </View>
-          )}
-        </View>
+            {spareParts.length > 0 ? (
+              spareParts.map((part, index) => {
+                const partId = part.id || index;
+                const partName = part.part_name;
+                const qrType = part.qr_type || '';
+                const isLinked = linkedItems.includes(partId);
+                const currentQrCode = qrCodeNumbers[partId];
+                const replacedInfo = replacedParts[partId];
+                const isRemovingReplace = removeReplaceLoadingStates[partId];
 
-        {/* Spare Parts List */}
-        <View className="mb-4">
-          <Text className="text-lg font-bold text-gray-800 mb-3">
-            Spare Parts to Link ({spareParts.length})
-          </Text>
-
-          {spareParts.length > 0 ? (
-            spareParts.map((part, index) => {
-              const partId = part.id || index;
-              const partName = part.part_name;
-              const qrType = part.qr_type || ''; // Get qr_type from part data
-              const isLinked = linkedItems.includes(partId);
-              const currentQrCode = qrCodeNumbers[partId];
-              const replacedInfo = replacedParts[partId];
-              const isRemovingReplace = removeReplaceLoadingStates[partId];
-
-              return (
-                <View key={partId} className="bg-white rounded-xl p-3 mb-3 shadow-sm">
-                  <View className="flex-row items-center justify-between mb-2">
-                    <View className="flex-row items-center flex-1">
-                      <Text className="text-base font-semibold text-gray-800">
-                        {partName}
-                      </Text>
-                      {isLinked && (
-                        <View className="bg-green-500 px-2 py-0.5 rounded ml-2">
-                          <Text className="text-white text-xs font-semibold">✓ QR Linked</Text>
-                        </View>
-                      )}
-
-                    </View>
-
-
-
-                    {isLinked && !replacedInfo && (
-                      <TouchableOpacity
-                        onPress={() => handleRemoveQR(partId, partName, currentQrCode, qrType)}
-                        disabled={removalLoadingStates[partId]}
-                        className="bg-red-500 px-3 py-1.5 rounded-lg flex-row items-center"
-                      >
-                        {removalLoadingStates[partId] ? (
-                          <ActivityIndicator size="small" color="white" />
-                        ) : (
-                          <>
-                            <Icon name="trash-outline" size={14} color="white" />
-                            <Text className="text-white text-xs font-medium ml-1">Remove</Text>
-                          </>
+                return (
+                  <View key={partId} className="bg-white rounded-xl p-3 mb-3 shadow-sm">
+                    <View className="flex-row items-center justify-between mb-2">
+                      <View className="flex-row items-center flex-1">
+                        <Text className="text-base font-semibold text-gray-800">
+                          {partName}
+                        </Text>
+                        {isLinked && (
+                          <View className="bg-green-500 px-2 py-0.5 rounded ml-2">
+                            <Text className="text-white text-xs font-semibold">✓ QR Linked</Text>
+                          </View>
                         )}
-                      </TouchableOpacity>
-                    )}
-                  </View>
+                      </View>
 
-                  {/* Display QR Type info when linked */}
-                  {isLinked && qrType && (
-                    <View className="mb-2 px-2 py-1 bg-gray-100 rounded-lg">
-                      <Text className="text-xs text-gray-600">
-                        QR Type: <Text className="font-semibold">{qrType}</Text>
-                      </Text>
+                      {isLinked && !replacedInfo && (
+                        <TouchableOpacity
+                          onPress={() => handleRemoveQR(partId, partName, currentQrCode, qrType)}
+                          disabled={removalLoadingStates[partId]}
+                          className="bg-red-500 px-3 py-1.5 rounded-lg flex-row items-center"
+                        >
+                          {removalLoadingStates[partId] ? (
+                            <ActivityIndicator size="small" color="white" />
+                          ) : (
+                            <>
+                              <Icon name="trash-outline" size={14} color="white" />
+                              <Text className="text-white text-xs font-medium ml-1">Remove</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      )}
                     </View>
-                  )}
 
-                  <View className="pt-2 border-t border-gray-100">
-                    {isLinked && replacedInfo ? (
-                      <View>
-                        <View className="bg-orange-50 rounded-lg p-3 border border-orange-200">
-                          <View className="flex-row">
+                    {/* Display QR Type info when linked */}
+                    {isLinked && qrType && (
+                      <View className="mb-2 px-2 py-1 bg-gray-100 rounded-lg">
+                        <Text className="text-xs text-gray-600">
+                          QR Type: <Text className="font-semibold">{qrType}</Text>
+                        </Text>
+                      </View>
+                    )}
+
+                    <View className="pt-2 border-t border-gray-100">
+                      {isLinked && replacedInfo ? (
+                        <View>
+                          <View className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                            <View className="flex-row">
+                              <TouchableOpacity
+                                onPress={() => handleImagePress(replacedInfo.replacement_image, replacedInfo.replacement_part_name)}
+                                className="w-20 h-20 bg-gray-200 rounded-lg mr-3 overflow-hidden"
+                              >
+                                {replacedInfo.replacement_image ? (
+                                  <Image
+                                    source={{ uri: replacedInfo.replacement_image }}
+                                    className="w-full h-full"
+                                    resizeMode="cover"
+                                  />
+                                ) : (
+                                  <View className="w-full h-full items-center justify-center">
+                                    <Icon name="image-outline" size={24} color="#999" />
+                                  </View>
+                                )}
+                              </TouchableOpacity>
+
+                              <View className="flex-1">
+                                <Text className="text-sm font-semibold text-gray-800">
+                                  {replacedInfo.replacement_part_name}
+                                </Text>
+                                <Text className="text-xs text-gray-600 mt-1" numberOfLines={2}>
+                                  {replacedInfo.replacement_description || 'Replacement part for this component'}
+                                </Text>
+                                <View className="flex-row justify-between items-center mt-2">
+                                  <Text className="text-base font-bold text-teal-600">
+                                    ₹{replacedInfo.replacement_price}
+                                  </Text>
+                                  <Text className="text-xs text-gray-500">
+                                    QR: {replacedInfo.replacement_qr_code}
+                                  </Text>
+                                </View>
+                              </View>
+                            </View>
+
                             <TouchableOpacity
-                              onPress={() => handleImagePress(replacedInfo.replacement_image, replacedInfo.replacement_part_name)}
-                              className="w-20 h-20 bg-gray-200 rounded-lg mr-3 overflow-hidden"
+                              onPress={() => handleRemoveReplacement(partId, partName)}
+                              disabled={isRemovingReplace}
+                              className="mt-3 bg-red-500 py-2 rounded-lg flex-row items-center justify-center"
                             >
-                              {replacedInfo.replacement_image ? (
-                                <Image
-                                  source={{ uri: replacedInfo.replacement_image }}
-                                  className="w-full h-full"
-                                  resizeMode="cover"
-                                />
+                              {isRemovingReplace ? (
+                                <ActivityIndicator size="small" color="white" />
                               ) : (
-                                <View className="w-full h-full items-center justify-center">
-                                  <Icon name="image-outline" size={24} color="#999" />
+                                <>
+                                  <Icon name="close-circle-outline" size={18} color="white" />
+                                  <Text className="text-white text-sm font-medium ml-2">
+                                    Remove Replacement
+                                  </Text>
+                                </>
+                              )}
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : isLinked && !replacedInfo ? (
+                        <View className="flex-row items-center bg-gray-50 rounded-lg p-3">
+                          <Icon name="qr-code" size={20} color="#4CAF50" />
+                          <Text className="text-sm text-gray-700 ml-2 flex-1">{currentQrCode}</Text>
+                        </View>
+                      ) : (
+                        <View>
+                          <View className="flex-row items-center">
+                            <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-lg bg-white px-3">
+                              <Icon name="qr-code-outline" size={18} color="#666" />
+                              <TextInput
+                                className="flex-1 ml-2 text-sm text-gray-800 py-3"
+                                placeholder="Enter QR Code Number"
+                                placeholderTextColor={'gray'}
+                                value={currentQrCode || ''}
+                                onChangeText={(value) => handleQrCodeChange(partId, value)}
+                                keyboardType="default"
+                              />
+                              {(currentQrCode || '').length > 0 && (
+                                <TouchableOpacity
+                                  onPress={() => handleQrCodeChange(partId, '')}
+                                  className="ml-2"
+                                >
+                                  <Icon name="close-circle-outline" size={18} color="#999" />
+                                </TouchableOpacity>
+                              )}
+                            </View>
+
+                            <TouchableOpacity
+                              onPress={() => handleScan(partId)}
+                              className="rounded-r-lg px-3 py-3 border items-center justify-center bg-teal-500 border-teal-500"
+                            >
+                              <Icon name="camera-outline" size={18} color="white" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              className="py-2.5 px-3 rounded-lg items-center bg-orange-500 ml-2"
+                              onPress={() => handleLinkQR(partId, partName, index)}
+                              disabled={loadingStates[partId]}
+                            >
+                              {loadingStates[partId] ? (
+                                <ActivityIndicator size="small" color="white" />
+                              ) : (
+                                <View className="flex-row items-center">
+                                  <LinkQrCodeIcon color="white" size={16} />
                                 </View>
                               )}
                             </TouchableOpacity>
 
-                            <View className="flex-1">
-                              <Text className="text-sm font-semibold text-gray-800">
-                                {replacedInfo.replacement_part_name}
-                              </Text>
-                              <Text className="text-xs text-gray-600 mt-1" numberOfLines={2}>
-                                {replacedInfo.replacement_description || 'Replacement part for this component'}
-                              </Text>
-                              <View className="flex-row justify-between items-center mt-2">
-                                <Text className="text-base font-bold text-teal-600">
-                                  ₹{replacedInfo.replacement_price}
-                                </Text>
-                                <Text className="text-xs text-gray-500">
-                                  QR: {replacedInfo.replacement_qr_code}
-                                </Text>
-                              </View>
-                            </View>
+                            <TouchableOpacity
+                              className="py-2.5 px-3 rounded-lg items-center bg-red-500 ml-2"
+                              onPress={() => handleReplacePart(partId, partName)}
+                              disabled={loadingStates[partId]}
+                            >
+                              <BucketIcon color="white" size={16} />
+                            </TouchableOpacity>
                           </View>
-
-                          <TouchableOpacity
-                            onPress={() => handleRemoveReplacement(partId, partName)}
-                            disabled={isRemovingReplace}
-                            className="mt-3 bg-red-500 py-2 rounded-lg flex-row items-center justify-center"
-                          >
-                            {isRemovingReplace ? (
-                              <ActivityIndicator size="small" color="white" />
-                            ) : (
-                              <>
-                                <Icon name="close-circle-outline" size={18} color="white" />
-                                <Text className="text-white text-sm font-medium ml-2">
-                                  Remove Replacement
-                                </Text>
-                              </>
-                            )}
-                          </TouchableOpacity>
                         </View>
-                      </View>
-                    ) : isLinked && !replacedInfo ? (
-                      <View className="flex-row items-center bg-gray-50 rounded-lg p-3">
-                        <Icon name="qr-code" size={20} color="#4CAF50" />
-                        <Text className="text-sm text-gray-700 ml-2 flex-1">{currentQrCode}</Text>
-                      </View>
-                    ) : (
-                      <View>
-                        <View className="flex-row items-center">
-                          <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-lg bg-white px-3">
-                            <Icon name="qr-code-outline" size={18} color="#666" />
-                            <TextInput
-                              className="flex-1 ml-2 text-sm text-gray-800 py-3"
-                              placeholder="Enter QR Code Number"
-                              placeholderTextColor={'gray'}
-                              value={currentQrCode || ''}
-                              onChangeText={(value) => handleQrCodeChange(partId, value)}
-                              keyboardType="default"
-                            />
-                            {(currentQrCode || '').length > 0 && (
-                              <TouchableOpacity
-                                onPress={() => handleQrCodeChange(partId, '')}
-                                className="ml-2"
-                              >
-                                <Icon name="close-circle-outline" size={18} color="#999" />
-                              </TouchableOpacity>
-                            )}
-                          </View>
-
-                          <TouchableOpacity
-                            onPress={() => handleScan(partId)}
-                            className="rounded-r-lg px-3 py-3  border items-center justify-center bg-teal-500 border-teal-500"
-                          >
-                            <Icon name="camera-outline" size={18} color="white" />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            className="py-2.5 px-3 rounded-lg items-center bg-orange-500 ml-2"
-                            onPress={() => handleLinkQR(partId, partName, index)}
-                            disabled={loadingStates[partId]}
-                          >
-                            {loadingStates[partId] ? (
-                              <ActivityIndicator size="small" color="white" />
-                            ) : (
-                              <View className="flex-row items-center">
-                                <LinkQrCodeIcon color="white" size={16} />
-                              </View>
-                            )}
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            className="py-2.5 px-3 rounded-lg items-center bg-red-500 ml-2"
-                            onPress={() => handleReplacePart(partId, partName)}
-                            disabled={loadingStates[partId]}
-                          >
-                            <BucketIcon color="white" size={16} />
-                          </TouchableOpacity>
-                        </View>
-
-
-                      </View>
-                    )}
+                      )}
+                    </View>
                   </View>
-                </View>
-              );
-            })
-          ) : (
-            <View className="bg-white rounded-xl p-8 items-center justify-center">
-              <Icon name="cube-outline" size={60} color="#CCCCCC" />
-              <Text className="text-gray-500 text-center mt-4">
-                No spare parts found for this AMC plan
-              </Text>
-            </View>
+                );
+              })
+            ) : (
+              <View className="bg-white rounded-xl p-8 items-center justify-center">
+                <Icon name="cube-outline" size={60} color="#CCCCCC" />
+                <Text className="text-gray-500 text-center mt-4">
+                  No spare parts found for this AMC plan
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Bottom Spacer for Android */}
+          {isKeyboardVisible && Platform.OS === 'android' && (
+            <View style={{ height: keyboardHeight + 80 }} />
           )}
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Next Button */}
       {!isKeyboardVisible && spareParts.length > 0 && (
         <View className='bg-white w-full absolute bottom-0 py-3 border-t border-t-gray-200 left-0 right-0'>
           <TouchableOpacity
-            className={`py-3.5 mx-5  rounded-xl items-center ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'
-              }`}
+            className={`py-3.5 mx-5 rounded-xl items-center ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'}`}
             onPress={handleNext}
           >
             <Text className="text-white text-lg font-bold">

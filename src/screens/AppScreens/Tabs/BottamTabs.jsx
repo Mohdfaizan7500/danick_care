@@ -1,4 +1,4 @@
-import { StyleSheet, Text, Pressable, View } from 'react-native';
+import { StyleSheet, Text, Pressable, View, Platform } from 'react-native';
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Home from './Home';
@@ -17,6 +17,27 @@ import { useRoute } from '@react-navigation/native';
 import NoInternet from '../../NoInternet';
 
 const Tab = createBottomTabNavigator();
+
+// Helper function to get Android version
+const getAndroidVersion = () => {
+  if (Platform.OS === 'android') {
+    // Get the Android version number (e.g., 13, 14, etc.)
+    const androidVersion = Platform.constants?.Release || '';
+    const versionNumber = parseInt(androidVersion, 10);
+    return isNaN(versionNumber) ? 0 : versionNumber;
+  }
+  return 0;
+};
+
+// Helper function to get Android API level
+const getAndroidApiLevel = () => {
+  if (Platform.OS === 'android') {
+    // Check API level (Android 13 = API level 33)
+    const apiLevel = Platform.constants?.ApiLevel || 0;
+    return apiLevel;
+  }
+  return 0;
+};
 
 // Custom tab bar button that checks online status before navigating
 const CustomTabBarButton = ({ children, onPress, isOnline, style, ...props }) => {
@@ -69,9 +90,75 @@ const BottomTabs = () => {
 
   console.log("BottomTabs - initialScreen:", initialScreen);
   console.log("BottomTabs - screenParams:", screenParams);
+  console.log("Android Version:", getAndroidVersion());
+  console.log("Android API Level:", getAndroidApiLevel());
+  console.log("Platform Version:", Platform.Version);
+  
   const { IsOnline } = useAuth();
   const insets = useSafeAreaInsets();
   const { orderCount } = useOrder(); // Get count from context, don't manage local state
+
+  // Calculate dynamic tab bar height based on Android version
+  const getTabBarHeight = () => {
+    const androidVersion = getAndroidVersion();
+    const apiLevel = getAndroidApiLevel();
+    
+    if (Platform.OS === 'android') {
+      // For Android 13 (API 33) and above - decrease height
+      if (androidVersion >= 13 || apiLevel >= 33) {
+        return 50 + insets.bottom;
+      } 
+      // For Android below 13 - increase height
+      else {
+        return 70 + insets.bottom;
+      }
+    } 
+    // For iOS or other platforms
+    else {
+      return 80 + insets.bottom;
+    }
+  };
+
+  // Calculate dynamic padding bottom based on Android version
+  const getTabBarPaddingBottom = () => {
+    const androidVersion = getAndroidVersion();
+    const apiLevel = getAndroidApiLevel();
+    
+    if (Platform.OS === 'android') {
+      if (androidVersion >= 13 || apiLevel >= 33) {
+        return 12; // Reduced padding for Android 13+
+      } else {
+        return 20; // Original padding for older versions
+      }
+    }
+    return 20;
+  };
+
+  // Calculate dynamic icon size based on Android version
+  const getIconSize = (defaultSize) => {
+    const androidVersion = getAndroidVersion();
+    const apiLevel = getAndroidApiLevel();
+    
+    if (Platform.OS === 'android') {
+      if (androidVersion >= 13 || apiLevel >= 33) {
+        return defaultSize * 0.9; // Slightly smaller icons for Android 13+
+      }
+    }
+    return defaultSize;
+  };
+
+  // Calculate dynamic font size for labels
+  const getLabelFontSize = () => {
+    const androidVersion = getAndroidVersion();
+    const apiLevel = getAndroidApiLevel();
+    
+    if (Platform.OS === 'android') {
+      if (androidVersion >= 13 || apiLevel >= 33) {
+        return 11; // Smaller font for Android 13+
+      }
+    }
+    return 12;
+  };
 
   return (
     <Tab.Navigator
@@ -84,11 +171,11 @@ const BottomTabs = () => {
           backgroundColor: Colors.background.primary,
           borderTopWidth: 1,
           borderTopColor: Colors.ui.border,
-          height: 80 + insets.bottom,
-          paddingBottom: 20,
+          height: getTabBarHeight(),
+          paddingBottom: getTabBarPaddingBottom(),
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: getLabelFontSize(),
           fontWeight: '500',
         },
         tabBarItemStyle: {
@@ -117,13 +204,13 @@ const BottomTabs = () => {
           tabBarIcon: ({ color, size, focused }) => (
             <HomeIcon
               color={focused ? Colors.brand.primary : Colors.gray[600]}
-              size={size}
+              size={getIconSize(size)}
             />
           ),
           tabBarLabel: ({ focused }) => (
             <Text style={{
               color: focused ? Colors.brand.primary : Colors.gray[600],
-              fontSize: 12,
+              fontSize: getLabelFontSize(),
               fontWeight: focused ? '600' : '500'
             }}>
               Home
@@ -141,7 +228,7 @@ const BottomTabs = () => {
             <View>
               <OrderIcon
                 stroke={focused ? Colors.brand.primary : Colors.gray[600]}
-                size={size}
+                size={getIconSize(size)}
               />
               <Badge count={orderCount} />
             </View>
@@ -150,7 +237,7 @@ const BottomTabs = () => {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{
                 color: focused ? Colors.brand.primary : Colors.gray[600],
-                fontSize: 12,
+                fontSize: getLabelFontSize(),
                 fontWeight: focused ? '600' : '500'
               }}>
                 Orders
@@ -168,15 +255,15 @@ const BottomTabs = () => {
           tabBarIcon: ({ color, size, focused }) => (
             <ScanIcon
               stroke={focused ? Colors.brand.primary : Colors.gray[600]}
-              size={size}
-              width={size}
-              height={size}
+              size={getIconSize(size)}
+              width={getIconSize(size)}
+              height={getIconSize(size)}
             />
           ),
           tabBarLabel: ({ focused }) => (
             <Text style={{
               color: focused ? Colors.brand.primary : Colors.gray[600],
-              fontSize: 12,
+              fontSize: getLabelFontSize(),
               fontWeight: focused ? '600' : '500'
             }}>
               Scan
@@ -193,13 +280,13 @@ const BottomTabs = () => {
           tabBarIcon: ({ color, size, focused }) => (
             <PartIcon
               fill={focused ? Colors.brand.primary : Colors.gray[600]}
-              size={size}
+              size={getIconSize(size)}
             />
           ),
           tabBarLabel: ({ focused }) => (
             <Text style={{
               color: focused ? Colors.brand.primary : Colors.gray[600],
-              fontSize: 12,
+              fontSize: getLabelFontSize(),
               fontWeight: focused ? '600' : '500'
             }}>
               Parts
@@ -216,13 +303,13 @@ const BottomTabs = () => {
           tabBarIcon: ({ color, size, focused }) => (
             <ProfileIcon
               stroke={focused ? Colors.brand.primary : Colors.gray[600]}
-              size={size}
+              size={getIconSize(size)}
             />
           ),
           tabBarLabel: ({ focused }) => (
             <Text style={{
               color: focused ? Colors.brand.primary : Colors.gray[600],
-              fontSize: 12,
+              fontSize: getLabelFontSize(),
               fontWeight: focused ? '600' : '500'
             }}>
               Profile

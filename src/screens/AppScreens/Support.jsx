@@ -34,14 +34,15 @@ const Support = () => {
           mobile: supportInfo.mobile || '',
           mobile2: supportInfo.mobile2 || '',
           email: supportInfo.email || '',
-          hours: supportInfo.hours || '24/7 Support Available'
+          hours: supportInfo.hours || '24/7 Support Available',
+          address:supportInfo?.address
         })
       } else {
         // Set default values if API response structure is unexpected
         setSupportData({
-          mobile: '+917055880880',
-          mobile2: '+917252043100',
-          email: 'dainikcare@gmail.com',
+          mobile: 'N/A',
+          mobile2: 'N/A',
+          email: 'N/A',
           hours: '24/7 Support Available'
         })
       }
@@ -120,7 +121,7 @@ const Support = () => {
         <Text className="text-gray-800 text-base">{item.value}</Text>
       </View>
 
-      {item.type !== 'hours' && (
+      {item.type !== 'hours' && item.type !== 'address'  && (
         <Icon name="open-in-new" size={18} color="#BBBBBB" />
       )}
     </TouchableOpacity>
@@ -153,6 +154,13 @@ const Support = () => {
       id: '4',
       type: 'hours',
       value: supportData.hours,
+      icon: 'access-time',
+      color: '#777777'
+    },
+    {
+      id: '5',
+      type: 'address',
+      value: supportData.address,
       icon: 'access-time',
       color: '#777777'
     }

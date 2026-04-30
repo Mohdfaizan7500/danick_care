@@ -92,7 +92,7 @@ const AllQRCodes = ({ route }) => {
                             status: item.complaint_id ? 'used' : 'fresh',
                             imageUrl: item.qr_img ? `${imagUrl}${item.qr_img}` : null,
                             qr_img: item.qr_img,
-                            isUsed: item.complaint_id !== null && item.complaint_id !== "",
+                            isUsed: item.complaint_id ? true :false,
                             partName: item.part_name || 'Spare Part',
                             customerName: item.customer_name || null,
                             technicianName: item.technician_name || null

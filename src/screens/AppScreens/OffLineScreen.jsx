@@ -1,18 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { getProfile } from '../../lib/api';
+import { getProfile, TermsSupport } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import DialogBox from '../../components/DilaogBox';
 
 const OffLineScreen = ({ navigation }) => {
-    const serviceNumber = '1800-123-4567';
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [dialogVisible, setDialogVisible] = useState(false);
     const [dialogMessage, setDialogMessage] = useState('');
     const [dialogType, setDialogType] = useState('info');
+    const [serviceNumber, setServiceNumber] = useState('1800-123-4567'); // Default fallback number
+    const [loadingNumber, setLoadingNumber] = useState(true);
 
     const { user, setIsOnline, setAuthData, updateProfileData } = useAuth();
+
+    // Fetch support details when component mounts
+    useEffect(() => {
+        fetchSupportDetails();
+    }, []);
+
+    const fetchSupportDetails = async () => {
+        try {
+            setLoadingNumber(true);
+            console.log('Fetching support details in OfflineScreen...');
+            const response = await TermsSupport();
+            console.log('TermsSupport response:', response);
+            
+            if (response?.data?.success && response?.data?.data?.[0]) {
+                const supportData = response.data.data[0];
+                // Format the mobile number if needed
+                const mobile = supportData.mobile || supportData.mobile2 || '1800-123-4567';
+                setServiceNumber(mobile);
+                console.log('Service number set to:', mobile);
+            } else {
+                console.log('No support data found, using default number');
+                setServiceNumber('1800-123-4567');
+            }
+        } catch (error) {
+            console.log('Error fetching support details:', error);
+            setServiceNumber('1800-123-4567');
+        } finally {
+            setLoadingNumber(false);
+        }
+    };
 
     const showDialog = (type, message) => {
         setDialogType(type);
@@ -21,7 +52,7 @@ const OffLineScreen = ({ navigation }) => {
     };
 
     const handleCallPress = () => {
-        const phoneNumber = serviceNumber.replace(/-/g, '');
+        const phoneNumber = serviceNumber.replace(/[-\s]/g, '');
         Linking.openURL(`tel:${phoneNumber}`);
     };
 
@@ -79,9 +110,17 @@ const OffLineScreen = ({ navigation }) => {
                     );
 
                     showDialog('success', 'You are now online! Redirecting...');
+                    
+                    // Navigate back to Home after successful refresh
+                    setTimeout(() => {
+                        setDialogVisible(false);
+                        navigation?.replace('Home');
+                    }, 2000);
 
                 } else {
                     showDialog('info', 'You are still offline. Please contact service center.');
+                    // Refresh the support number in case it was updated
+                    await fetchSupportDetails();
                 }
             } else {
                 showDialog('error', 'Invalid response from server');
@@ -97,12 +136,36 @@ const OffLineScreen = ({ navigation }) => {
 
     const dialogFooter = (
         <TouchableOpacity
-            className={`py-3 rounded-lg ${dialogType === 'error' ? 'bg-red-500' : 'bg-teal-500'}`}
-            onPress={() => setDialogVisible(false)}
+            className={`py-3 rounded-lg ${dialogType === 'error' ? 'bg-red-500' : dialogType === 'success' ? 'bg-green-500' : 'bg-teal-500'}`}
+            onPress={() => {
+                setDialogVisible(false);
+                // If success, navigate to Home after dialog closes
+                if (dialogType === 'success') {
+                    navigation?.replace('Home');
+                }
+            }}
         >
             <Text className="text-white text-center font-semibold">OK</Text>
         </TouchableOpacity>
     );
+
+    // Format phone number for display (add hyphens)
+    const formatPhoneNumber = (number) => {
+        if (!number) return '1800-123-4567';
+        // Remove all non-digits
+        const cleaned = number.replace(/\D/g, '');
+        // Format based on length
+        if (cleaned.length === 10) {
+            return `${cleaned.slice(0, 4)}-${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+        } else if (cleaned.length === 11) {
+            return `${cleaned.slice(0, 4)}-${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+        } else if (cleaned.length === 12) {
+            return `${cleaned.slice(0, 4)}-${cleaned.slice(4, 8)}-${cleaned.slice(8)}`;
+        }
+        return number;
+    };
+
+    const displayNumber = formatPhoneNumber(serviceNumber);
 
     return (
         <>
@@ -118,15 +181,22 @@ const OffLineScreen = ({ navigation }) => {
                     Contact your service center for assistance.
                 </Text>
 
-                <Text className="text-primary-sage600 text-lg font-semibold mb-8">
-                    {serviceNumber}
-                </Text>
+                {loadingNumber ? (
+                    <View className="flex-row items-center justify-center mb-8">
+                        <ActivityIndicator size="small" color="#10b981" />
+                        <Text className="text-gray-500 ml-2">Loading support number...</Text>
+                    </View>
+                ) : (
+                    <Text className="text-primary-sage600 text-lg font-semibold mb-8">
+                        {displayNumber}
+                    </Text>
+                )}
 
                 <View className='flex-row gap-4'>
                     <TouchableOpacity
                         onPress={handleCallPress}
                         className="bg-primary-sage500 py-3 px-8 rounded-xl flex-row items-center"
-                        disabled={isRefreshing}
+                        disabled={isRefreshing || loadingNumber}
                     >
                         <Icon name="phone" size={20} color="white" />
                         <Text className="text-white font-semibold text-base ml-2">Call Now</Text>
@@ -135,7 +205,7 @@ const OffLineScreen = ({ navigation }) => {
                     <TouchableOpacity
                         onPress={handleRefresh}
                         className="bg-primary-sage500 py-3 px-8 rounded-xl flex-row items-center"
-                        disabled={isRefreshing}
+                        disabled={isRefreshing || loadingNumber}
                     >
                         {isRefreshing ? (
                             <ActivityIndicator color="white" size="small" />

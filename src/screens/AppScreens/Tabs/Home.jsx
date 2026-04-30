@@ -42,7 +42,7 @@ import { check, request, RESULTS, PERMISSIONS } from 'react-native-permissions';
 import Geolocation from '@react-native-community/geolocation';
 import { Platform } from 'react-native';
 import { openSettings } from 'react-native-permissions';
-import{getFCMToken} from '../../../service/getToken';
+import { getFCMToken } from '../../../service/getToken';
 const { width: screenWidth } = Dimensions.get('window');
 
 const Home = () => {
@@ -98,7 +98,7 @@ const Home = () => {
     profileImage: getProfileImageSource(),
     isActive: profileData?.login_status !== 'Online',
     notificationCount: 3,
-    technician_id :profileData?.technician_id,
+    technician_id: profileData?.technician_id,
     walletBalance: '₹2,500',
   };
 
@@ -131,7 +131,7 @@ const Home = () => {
     Geolocation.getCurrentPosition(
       position => {
         const { latitude, longitude } = position.coords;
-       
+
       },
       error => {
         console.log('Location error:', error);
@@ -274,9 +274,9 @@ const Home = () => {
     try {
       const payload = {
         technician_id: user?.id.toString(),
-        city_id:user?.city_id.toString()
+        city_id: user?.city_id.toString()
       };
-      console.log("deshboards count payload :",payload)
+      console.log("deshboards count payload :", payload)
       const response = await getDeshBoardCount(payload);
       const data = response?.data;
       if (data?.success) {
@@ -295,14 +295,14 @@ const Home = () => {
       console.log('No user ID available for refresh');
       return;
     }
-    
+
     console.log('Refreshing all data...');
     try {
       await Promise.all([
         fetchProfile(),
         fetchDashboardCount(),
       ]);
-      
+
       if (showToast) {
         toast.custom(
           <StatusMessage type='success' title={"Data refreshed successfully"} />,
@@ -325,10 +325,10 @@ const Home = () => {
   useFocusEffect(
     useCallback(() => {
       console.log('Home screen focused - refreshing data');
-      
+
       // Refresh all data when screen comes into focus
       refreshAllData(false); // false means don't show toast for auto-refresh
-      
+
       return () => {
         // Cleanup function when screen loses focus
         console.log('Home screen unfocused');
@@ -411,9 +411,9 @@ const Home = () => {
     }
   }, [user?.id, isInitialLoad]);
 
-  useEffect(()=>{
+  useEffect(() => {
     console.log(getFCMToken())
-  },[])
+  }, [])
 
   // ---------- Network listener ----------
   useEffect(() => {
@@ -504,7 +504,7 @@ const Home = () => {
                 className={`text-xs font-medium ${IsOnline ? 'text-green-600' : 'text-gray-500'
                   }`}
               >
-                {IsOnline ? '● Active ' : '● Inactive'} 
+                {IsOnline ? '● Active ' : '● Inactive'}
               </Text>
             </View>
           </View>
@@ -595,14 +595,14 @@ const Home = () => {
                 </Text>
               </View>
               <View className='flex-row gap-2 items-center'>
-              <Text
-                className={`text-xs font-medium ${IsOnline ? 'text-green-600' : 'text-gray-500'
-                  }`}
-              >
-                {IsOnline ? '● Active ' : '● Inactive'} 
-              </Text>
-              <Text className='font-normal text-xs text-gray-700'>ID:{userProfile?.technician_id || 'N/A'}</Text>
-            </View>
+                <Text
+                  className={`text-xs font-medium ${IsOnline ? 'text-green-600' : 'text-gray-500'
+                    }`}
+                >
+                  {IsOnline ? '● Active ' : '● Inactive'}
+                </Text>
+                <Text className='font-normal text-xs text-gray-700'>ID:{userProfile?.technician_id || 'N/A'}</Text>
+              </View>
             </View>
           </View>
 

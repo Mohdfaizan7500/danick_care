@@ -1,9 +1,19 @@
-// ComplaintsTopNavigation.js
-import { StyleSheet, Text, View, Pressable, Animated, ScrollView, useWindowDimensions } from 'react-native'
-import React, { useRef, useEffect, useState, useCallback } from 'react'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import Header from '../../components/Header'
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs'
+// src/navigation/ComplaintsTopNavigation/ComplaintsTopNavigation.js
+import {
+  StyleSheet,
+  Text,
+  View,
+  Pressable,
+  Animated,
+  ScrollView,
+  useWindowDimensions,
+  ActivityIndicator,
+} from 'react-native';
+import React, { useRef, useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { useRoute } from '@react-navigation/native';
+import Header from '../../components/Header';
 import AllComplaints from '../../screens/AppScreens/ComplaintsNav/AllComplaints';
 import Assigned from '../../screens/AppScreens/ComplaintsNav/Assigned';
 import OnProgress from '../../screens/AppScreens/ComplaintsNav/OnProgress';
@@ -11,28 +21,28 @@ import Complete from '../../screens/AppScreens/ComplaintsNav/Complete';
 import Cancel from '../../screens/AppScreens/ComplaintsNav/Cancel';
 import { getDeshBoardCount } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { useRoute } from '@react-navigation/native';
-import { useDashboard } from '../../context/DashboardContext'; // Import the context
+import { useDashboard } from '../../context/DashboardContext';
 
 const Tab = createMaterialTopTabNavigator();
 
-// Custom Tab Bar Component with auto-scrolling and counts
+// Custom Tab Bar Component
 const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
   const scrollViewRef = useRef(null);
   const tabRefs = useRef({});
   const { width } = useWindowDimensions();
 
-  const getDisplayLabel = (routeName) => {
-    return {
-      'AllComplaints': 'All',
-      'Assigned': 'Assigned',
-      'OnProgress': 'On Progress',
-      'Complete': 'Complete',
-      'Cancel': 'Cancelled'
-    }[routeName] || routeName;
+  const getDisplayLabel = routeName => {
+    const labels = {
+      AllComplaints: 'All',
+      Assigned: 'Assigned',
+      OnProgress: 'On Progress',
+      Complete: 'Complete',
+      Cancel: 'Cancelled',
+    };
+    return labels[routeName] || routeName;
   };
 
-  const getTabCount = (routeName) => {
+  const getTabCount = routeName => {
     switch (routeName) {
       case 'AllComplaints':
         return counts?.all || 0;
@@ -62,10 +72,6 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
     }
   }, [state.index, width]);
 
-  const handleTabPress = (route, index, onPress) => {
-    onPress();
-  };
-
   const inputRange = state.routes.map((_, i) => i);
 
   return (
@@ -78,8 +84,7 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
           paddingHorizontal: 16,
           paddingVertical: 8,
           gap: 12,
-        }}
-      >
+        }}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
           const displayLabel = getDisplayLabel(route.name);
@@ -93,28 +98,20 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
             });
 
             if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name, route.params);
+              navigation.navigate(route.name);
             }
-          };
-
-          const onLongPress = () => {
-            navigation.emit({
-              type: 'tabLongPress',
-              target: route.key,
-            });
           };
 
           const opacity = position.interpolate({
             inputRange,
-            outputRange: inputRange.map((i) => (i === index ? 1 : 0.6)),
+            outputRange: inputRange.map(i => (i === index ? 1 : 0.6)),
           });
 
           return (
             <Pressable
               key={route.key}
-              ref={(ref) => tabRefs.current[index] = ref}
-              onPress={() => handleTabPress(route, index, onPress)}
-              onLongPress={onLongPress}
+              ref={ref => (tabRefs.current[index] = ref)}
+              onPress={onPress}
               style={{
                 paddingHorizontal: 16,
                 paddingVertical: 6,
@@ -125,8 +122,7 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 6,
-              }}
-            >
+              }}>
               <Animated.Text
                 style={{
                   opacity,
@@ -134,8 +130,7 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
                   fontSize: 12,
                   fontWeight: isFocused ? '600' : '500',
                   textAlign: 'center',
-                }}
-              >
+                }}>
                 {displayLabel}
               </Animated.Text>
               {count > 0 && (
@@ -148,15 +143,13 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
                     minWidth: 20,
                     alignItems: 'center',
                     justifyContent: 'center',
-                  }}
-                >
+                  }}>
                   <Text
                     style={{
                       color: 'white',
                       fontSize: 10,
                       fontWeight: '600',
-                    }}
-                  >
+                    }}>
                     {count}
                   </Text>
                 </View>
@@ -170,8 +163,42 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
 };
 
 const ComplaintsTopNavigation = () => {
-  const routes = useRoute();
-  const status = routes.params?.status;
+  const route = useRoute();
+  console.log('========== COMPLAINTS TOP NAVIGATION ==========');
+  console.log('Full route params:', route?.params);
+
+  // Get tab parameter from deep linking
+  const tabParam = route?.params?.tab;
+  const statusParam = route?.params?.status;
+
+  console.log('Tab param:', tabParam);
+  console.log('Status param:', statusParam);
+
+  // Determine initial tab
+  let initialTabName = 'AllComplaints';
+
+  if (tabParam === 'assign' || statusParam === 'Assign') {
+    initialTabName = 'Assigned';
+    console.log('✅ Navigating to ASSIGNED tab');
+  } else if (tabParam === 'all' || statusParam === 'All') {
+    initialTabName = 'AllComplaints';
+    console.log('✅ Navigating to ALL tab');
+  } else if (tabParam === 'onworking' || statusParam === 'Onworking') {
+    initialTabName = 'OnProgress';
+    console.log('✅ Navigating to ON PROGRESS tab');
+  } else if (tabParam === 'complete' || statusParam === 'Complete') {
+    initialTabName = 'Complete';
+    console.log('✅ Navigating to COMPLETE tab');
+  } else if (tabParam === 'cancel' || statusParam === 'Cancel') {
+    initialTabName = 'Cancel';
+    console.log('✅ Navigating to CANCELLED tab');
+  } else {
+    console.log('⚠️ No valid tab parameter, defaulting to ALL tab');
+  }
+
+  console.log('Initial tab name:', initialTabName);
+  console.log('================================================');
+
   const [dashboardCounts, setDashboardCounts] = useState({
     all: 0,
     assign: 0,
@@ -187,32 +214,18 @@ const ComplaintsTopNavigation = () => {
   const { user } = useAuth();
   const { registerRefreshFunction } = useDashboard();
 
-  const initialRoute = (status) => {
-    switch (status) {
-      case "All":
-        return "AllComplaints";
-      case "Assign":
-        return "Assigned";
-      case "Onworking":
-        return "OnProgress";
-      case "Complete":
-        return "Complete";
-      case "Cancel":
-        return "Cancel";
-      default:
-        return "AllComplaints";
-    }
-  }
-
   const fetchDashboardCounts = async () => {
     try {
       setLoading(true);
       const payload = {
         technician_id: user?.id?.toString() || '1',
+        city_id: user?.city_id?.toString(),
       };
 
-      const response = await getDeshBoardCount(payload);
+      console.log('Fetching dashboard counts with payload:', payload);
 
+      const response = await getDeshBoardCount(payload);
+      console.log('Dashboard counts response:', response);
 
       if (response?.data?.success) {
         const data = response.data;
@@ -227,6 +240,7 @@ const ComplaintsTopNavigation = () => {
           prebooking: data.prebooking || 0,
           payout: data.payout || 0,
         });
+        console.log('Dashboard counts updated - Assign count:', data.assign);
       }
     } catch (error) {
       console.error('Error fetching dashboard counts:', error);
@@ -237,54 +251,89 @@ const ComplaintsTopNavigation = () => {
 
   useEffect(() => {
     fetchDashboardCounts();
-    // Register the refresh function with the context
-    registerRefreshFunction(fetchDashboardCounts);
+    if (registerRefreshFunction) {
+      registerRefreshFunction(fetchDashboardCounts);
+    }
   }, []);
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <Header title={'Complaints'} />
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#059669" />
+          <Text style={styles.loaderText}>Loading complaints...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView className='bg-white flex-1' edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header title={'Complaints'} />
-      <View className='flex-1 bg-gray-50'>
+      <View style={styles.tabContainer}>
         <Tab.Navigator
-          initialRouteName={initialRoute(status)}
-          tabBar={(props) => <CustomTabBar {...props} counts={dashboardCounts} />}
+          initialRouteName={initialTabName}
+          tabBar={props => <CustomTabBar {...props} counts={dashboardCounts} />}
           screenOptions={{
             swipeEnabled: true,
             animationEnabled: true,
             lazy: true,
-          }}
-        >
+            tabBarStyle: { backgroundColor: 'white' },
+            tabBarIndicatorStyle: { backgroundColor: '#059669', height: 3 },
+            tabBarActiveTintColor: '#059669',
+            tabBarInactiveTintColor: '#4B5563',
+          }}>
           <Tab.Screen
-            name='AllComplaints'
+            name="AllComplaints"
             component={AllComplaints}
-            options={{ tabBarLabel: 'All' }}
+            options={{ title: 'All' }}
           />
           <Tab.Screen
-            name='Assigned'
+            name="Assigned"
             component={Assigned}
-            options={{ tabBarLabel: 'Assigned' }}
+            options={{ title: 'Assigned' }}
           />
           <Tab.Screen
-            name='OnProgress'
+            name="OnProgress"
             component={OnProgress}
-            options={{ tabBarLabel: 'On Progress' }}
+            options={{ title: 'On Progress' }}
           />
           <Tab.Screen
-            name='Complete'
+            name="Complete"
             component={Complete}
-            options={{ tabBarLabel: 'Complete' }}
+            options={{ title: 'Complete' }}
           />
           <Tab.Screen
-            name='Cancel'
+            name="Cancel"
             component={Cancel}
-            options={{ tabBarLabel: 'Cancelled' }}
+            options={{ title: 'Cancelled' }}
           />
         </Tab.Navigator>
       </View>
     </SafeAreaView>
-  )
-}
+  );
+};
 
-export default ComplaintsTopNavigation
+export default ComplaintsTopNavigation;
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  tabContainer: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderText: {
+    marginTop: 16,
+    color: '#6b7280',
+    fontSize: 14,
+  },
+});
