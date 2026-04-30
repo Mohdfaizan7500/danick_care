@@ -318,20 +318,20 @@ const ProfileDetails = () => {
           />
           <InfoRow
             icon={Wrench}
-            label="Per Product"
-            value={`₹${profileData.per_product || '0'}`}
+            label="Product"
+            value={`${profileData.per_product || '0'}%`}
             
           />
 
             <InfoRow
               icon={CreditCard}
-              label="Per Service"
-              value={`₹${profileData.per_service || '0'}`}
+              label="Service"
+              value={`${profileData.per_service || '0'}%`}
             />
             <InfoRow
               icon={ServerIcon}
-              label="Per AMC"
-              value={`₹${profileData.per_amc || '0'}`}
+              label="AMC"
+              value={`${profileData.per_amc || '0'}%`}
             />
 
           <InfoRow

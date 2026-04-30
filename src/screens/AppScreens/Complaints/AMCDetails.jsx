@@ -788,7 +788,7 @@ const AMCDetails = () => {
   };
 
   const handleNext = () => {
-   
+
 
     navigation.replace('AMCBilling', {
       linkedParts: linkedItems.map(id => ({
@@ -830,13 +830,18 @@ const AMCDetails = () => {
         </View>
 
         <View className="flex-1">
-          <Text className="text-base font-semibold text-gray-800">{item.part_name}</Text>
+          <View className='flex-row items-center justify-between'>
+            <Text className="text-base font-semibold text-gray-800">{item.part_name}</Text>
+            <View className='bg-red-100 px-2 py-1 rounded-lg'>
+              <Text className="text-base font-semibold text-red-700">{item?.transfer_by}</Text>
+            </View>
+          </View>
           <Text className="text-xs text-gray-600 mt-1" numberOfLines={2}>
             {item.description || 'No description available'}
           </Text>
           <View className="flex-row justify-between mt-2">
             <Text className="text-sm font-semibold text-teal-600">₹{item.part_price}</Text>
-            <Text className="text-xs text-gray-500">QR: {item.qr_code}</Text>
+            <Text className="text-xs text-black font-semibold">QR: {item.qr_code}</Text>
           </View>
         </View>
 

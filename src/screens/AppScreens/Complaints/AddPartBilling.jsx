@@ -315,9 +315,13 @@ const AddPartBilling = () => {
                             Part #: {item.partNumber}
                         </Text>
                         <Text className={`text-sm ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
+                            From: {item?.transfer_by}
+                        </Text>
+                       
+                    </View>
+                     <Text className={`text-sm ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
                             QR Code: {item.qr_code}
                         </Text>
-                    </View>
                     {item.description && (
                         <Text className={`text-xs mt-1 ${isAssigned ? 'text-gray-400' : 'text-text-tertiary'}`} numberOfLines={2}>
                             {item.description}

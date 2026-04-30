@@ -164,7 +164,6 @@ export const MarkAttandance = async (city_id, id, slot_date, month) => {
 };
 
 export const getComplaints = async (id, status, page = 1) => {
-    console.log("getComplaints called with:", { technician_id: id, status: status, page: page });
     try {
         // Send parameters as query parameters in URL
         const response = await apiClient.post('TechnicianAPI/TechnicianComplaints', null, {
@@ -174,7 +173,6 @@ export const getComplaints = async (id, status, page = 1) => {
                 page: page
             }
         });
-        console.log('Get complaints response:', response);
         return response;
     } catch (error) {
         console.error('API error in getComplaints:', error);
@@ -722,10 +720,8 @@ export const AcceptComplaint = async (payload) => {
 };
 
 export const PendingComplaintCount = async (payload) => {
-    console.log('payload for order cound in bottom tab ', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/PendingComplaintCount', payload);
-        console.log('PendingComplaintCount api  response:', response);
         return response;
     } catch (error) {
         console.error('API error in PendingComplaintCount:', error);

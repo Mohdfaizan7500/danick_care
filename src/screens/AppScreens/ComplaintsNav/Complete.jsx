@@ -11,7 +11,6 @@ const Complete = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
   
   const navigation = useNavigation();
   const { user } = useAuth(); // Get user data from auth context
@@ -35,7 +34,6 @@ const Complete = () => {
         const currentPage = parseInt(response.data.page) || pageNum;
         const limit = response.data.limit || 10;
         
-        setTotalCount(response.data.result.length);
         
         if (isRefresh) {
           setComplaints(newComplaints);
@@ -121,53 +119,12 @@ const Complete = () => {
     );
   };
 
-  const mapApiStatusToDisplay = (status) => {
-    const statusMap = {
-      'assign': 'Assigned',
-      'onworking': 'On Progress',
-      'complete': 'Complete',
-      'success': 'Complete',
-      'cancel': 'Cancel',
-      'pending': 'Pending'
-    };
-    return statusMap[status] || status;
-  };
-
-  // Transform API response to match card expected format
-  const transformComplaintData = (complaint) => {
-    return {
-      id: complaint.id,
-      csn: complaint.csn,
-      status: complaint.status, // Keep original status for navigation
-      displayStatus: mapApiStatusToDisplay(complaint.status),
-      service: complaint.service,
-      service_name: complaint.service_name,
-      customer_name: complaint.customer_name,
-      service_address: complaint.service_address,
-      customer_mobile: complaint.customer_mobile,
-      tot_amt: complaint.tot_amt,
-      slot_date: complaint.slot_date,
-      slot_time: complaint.slot_time,
-      isRecomplaint: complaint.recomplaint === 'Yes',
-      days: complaint.days,
-      rating: complaint.rating,
-      remark: complaint.remark,
-      upload_image: complaint.upload_image,
-      verify_otp: complaint.verify_otp,
-      platform_fee: complaint.platform_fee,
-      service_id: complaint.service_id,
-
-
-    };
-  };
-
-  // Transform complaints data before passing to card
-  const transformedComplaints = complaints.map(transformComplaintData);
+ 
 
   return (
     <View className="flex-1 bg-gray-50">
       <FlatList
-        data={transformedComplaints}
+        data={complaints}
         renderItem={renderComplaintCard}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}

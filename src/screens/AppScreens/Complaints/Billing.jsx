@@ -78,10 +78,11 @@ const Billing = () => {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef(null);
 
-
-
   // Check if it's a recomplaint
   const isRecomplaint = complaintData?.recomplaint === 'Yes';
+
+  // Check if complaint type is AMC
+  const isAMCComplaint = complaintData?.complaint_type === 'AMC';
 
   // Calculate total amounts
   const totalPartsPrice = parts?.reduce((sum, part) => sum + part.price, 0) || 0;
@@ -209,17 +210,22 @@ const Billing = () => {
     if (!selectedReplacePart || !partToReplace) return;
 
     setReplacingPart(true);
+    console.log("isRecomplaint:", isRecomplaint, "old complaint id:", complaintData?.oldcomp_id)
 
     try {
-      if (isRecomplaint && complaintData?.oldcomp_id) {
+      if (isRecomplaint) {
+        // Determine which complaint ID to use
+        let complaintId = complaintData?.oldcomp_id || complaintData?.id;
+
         const payload = {
-          complaint_id: complaintData.oldcomp_id?.toString(),
+          complaint_id: complaintId?.toString(),
           old_part_id: partToReplace.id?.toString(),
           new_part_id: selectedReplacePart.id?.toString(),
-          status: "0"
+          status: "0",
+          part_type:complaintData?.complaint_type,
         };
 
-        console.log('Calling ReplacedPartManagement with payload:', payload);
+        console.log('Calling ReplacedPartManagement for recomplaint with payload:', payload);
         const response = await ReplacedPartManagement(payload);
         console.log('ReplacedPartManagement response:', response);
 
@@ -269,6 +275,7 @@ const Billing = () => {
           throw new Error(response?.data?.message || 'Failed to replace part');
         }
       } else {
+        // New complaint (not recomplaint)
         const payload = {
           complaint_id: complaintData?.id?.toString(),
           old_part_id: partToReplace.id?.toString(),
@@ -276,7 +283,7 @@ const Billing = () => {
           status: "0"
         };
 
-        console.log('Removing and adding new part:', payload);
+        console.log('Calling AttechPartWithComplaints for new complaint with payload:', payload);
         const response = await AttechPartWithComplaints(payload);
         console.log('Replace part response:', response);
 
@@ -402,21 +409,27 @@ const Billing = () => {
       let partsData = [];
       let sourceMap = {}; // Track source of each part
 
-      if (isRecomplaint && complaintData.oldcomp_id) {
+      console.log("isRecomplaint:", isRecomplaint, complaintData.oldcomp_id);
+      console.log("isAMCComplaint:", isAMCComplaint, complaintData.amc_complaint_id);
+
+      // Check if it's a recomplaint or AMC complaint
+      if (isAMCComplaint && complaintData.amc_complaint_id) {
+        // AMC Complaint payload
         const payload = {
-          technician_id: user?.id?.toString() || '1',
-          oldcomp_id: complaintData.oldcomp_id?.toString()
+          oldcomp_id: "",
+          amc_complaint_id: complaintData.amc_complaint_id?.toString() || ""
         };
+
         const payload_for_new = {
           technician_id: user?.id?.toString() || '1',
           complaint_id: complaintData.id?.toString()
         };
 
-        console.log('Fetching recomplaint parts with payload:', payload);
+        console.log('Fetching AMC recomplaint parts with payload:', payload);
         response = await RecomplaitAttechPart(payload);
         const response2 = await FetchPartForComplaints(payload_for_new);
         console.log('New Complaint API Response:', response2);
-        console.log('Recomplaint API Response:', response);
+        console.log('AMC Recomplaint API Response:', response);
 
         let recomplaintParts = [];
         let newParts = [];
@@ -461,10 +474,75 @@ const Billing = () => {
         partsData = [...recomplaintParts, ...newParts];
         setPartSource(sourceMap);
 
-      } else {
+      }
+      else if (isRecomplaint && complaintData.oldcomp_id) {
+        // Regular Recomplaint payload (non-AMC)
         const payload = {
+          oldcomp_id: complaintData.oldcomp_id?.toString() || "",
+          amc_complaint_id: ""
+        };
+
+        const payload_for_new = {
           technician_id: user?.id?.toString() || '1',
           complaint_id: complaintData.id?.toString()
+        };
+
+        console.log('Fetching regular recomplaint parts with payload:', payload);
+        response = await RecomplaitAttechPart(payload);
+        const response2 = await FetchPartForComplaints(payload_for_new);
+        console.log('New Complaint API Response:', response2);
+        console.log('Regular Recomplaint API Response:', response);
+
+        let recomplaintParts = [];
+        let newParts = [];
+
+        // Extract recomplaint parts and mark them as 'recomplaint'
+        if (response?.data?.data && Array.isArray(response.data.data)) {
+          recomplaintParts = response.data.data;
+          recomplaintParts.forEach(part => {
+            sourceMap[part.id] = 'recomplaint';
+          });
+        } else if (response?.data?.result && Array.isArray(response.data.result)) {
+          recomplaintParts = response.data.result;
+          recomplaintParts.forEach(part => {
+            sourceMap[part.id] = 'recomplaint';
+          });
+        } else if (Array.isArray(response?.data)) {
+          recomplaintParts = response.data;
+          recomplaintParts.forEach(part => {
+            sourceMap[part.id] = 'recomplaint';
+          });
+        }
+
+        // Extract new parts and mark them as 'new'
+        if (response2?.data?.data && Array.isArray(response2.data.data)) {
+          newParts = response2.data.data;
+          newParts.forEach(part => {
+            sourceMap[part.id] = 'new';
+          });
+        } else if (response2?.data?.result && Array.isArray(response2.data.result)) {
+          newParts = response2.data.result;
+          newParts.forEach(part => {
+            sourceMap[part.id] = 'new';
+          });
+        } else if (Array.isArray(response2?.data)) {
+          newParts = response2.data;
+          newParts.forEach(part => {
+            sourceMap[part.id] = 'new';
+          });
+        }
+
+        // Combine parts from both responses
+        partsData = [...recomplaintParts, ...newParts];
+        setPartSource(sourceMap);
+
+      }
+      else {
+        // New complaint (non-recomplaint)
+        const payload = {
+          technician_id: user?.id?.toString() || '1',
+          complaint_id: complaintData.id?.toString(),
+          amc_type: complaintData?.amc_type?.toString() || '',
         };
 
         console.log('Fetching new complaint parts with payload:', payload);
@@ -490,7 +568,7 @@ const Billing = () => {
 
       // Filter parts based on status for non-recomplaint
       let attachedParts = partsData;
-      if (!isRecomplaint) {
+      if (!isRecomplaint && !isAMCComplaint) {
         attachedParts = partsData.filter(part =>
           part.status === "1" || part.status === 1
         );
@@ -904,9 +982,13 @@ const Billing = () => {
             Part #: {item.partNumber}
           </Text>
           <Text className="text-text-secondary text-sm">
-            QR Code: {item.qr_code || 'N/A'}
+            From: {item?.transfer_by}
           </Text>
+
         </View>
+        <Text className="text-text-secondary text-sm">
+          QR Code: {item.qr_code || 'N/A'}
+        </Text>
         <Text className="text-text-tertiary text-xs mt-1" numberOfLines={2}>
           {item.description}
         </Text>
@@ -1251,9 +1333,13 @@ const Billing = () => {
                             Part #: {part.partNumber}
                           </Text>
                           <Text className="text-text-secondary text-sm">
-                            QR Code: {part.qr_code || 'N/A'}
+                            From: {part?.transfer_by}
                           </Text>
+
                         </View>
+                        <Text className="text-text-secondary text-sm">
+                          QR Code: {part.qr_code || 'N/A'}
+                        </Text>
                         <Text className={`font-bold text-base mt-1 ${isPartTransferred ? 'text-gray-400' : 'text-primary-sage700'
                           }`}>
                           {isFromRecomplaint ? '₹0.00 (Recomplaint Part)' : `₹${part.price.toFixed(2)}`}
@@ -1426,6 +1512,7 @@ const Billing = () => {
 
       <CustomModal
         visible={removeReplacementDialogVisible}
+
         onClose={() => {
           setRemoveReplacementDialogVisible(false);
           setReplacementPartToRemove(null);
@@ -1453,7 +1540,7 @@ const Billing = () => {
         }}
         title={`Replace ${partToReplace?.name || 'Part'}`}
         size="lg"
-        footer={!isRecomplaint ? replaceDialogFooter : null}
+        footer={!isRecomplaint ? replaceDialogFooter : replaceDialogFooter}
         overlayColor="bg-black/70"
         position="bottom"
         containerStyle="flex-1 items-center justify-center"

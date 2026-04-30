@@ -131,8 +131,7 @@ const Home = () => {
     Geolocation.getCurrentPosition(
       position => {
         const { latitude, longitude } = position.coords;
-        console.log('Latitude:', latitude);
-        console.log('Longitude:', longitude);
+       
       },
       error => {
         console.log('Location error:', error);
@@ -428,7 +427,7 @@ const Home = () => {
   const handleNotificationPress = () => {
     if (!isConnected) return;
     if (!IsOnline) return toast.custom(<StatusMessage type='error' title={"You Can't access, contact to service center "} />, { duration: 1000 });
-    navigation.navigate('Notification');
+    navigation.navigate('NotificationTopNavigation');
   };
 
   const handleWalletPress = () => {
@@ -444,13 +443,14 @@ const Home = () => {
     else if (cardName === 'Assign') navigation.navigate('ComplaintsTopNavigation', { status: "Assign" });
     else if (cardName === 'Onworking') navigation.navigate('ComplaintsTopNavigation', { status: "Onworking" });
     else if (cardName === 'Complete') navigation.navigate('ComplaintsTopNavigation', { status: "Complete" });
-    else if (cardName === 'Bucket') navigation.navigate('Bucket');
+    // else if (cardName === 'Bucket') navigation.navigate('Bucket');
+    else if (cardName === 'Bucket') navigation.navigate('BucketNavigation');
     else if (cardName === 'AMC') navigation.navigate('AMC');
     else if (cardName === 'Pre-Booking') navigation.navigate('PreBooking');
     else if (cardName === 'Payout') navigation.navigate('PayOut');
-    else if (cardName === 'AllQRCodes') navigation.navigate('QRCodes', { status: "AllQRCodes" });
-    else if (cardName === 'Used') navigation.navigate('QRCodes', { status: "Used" });
-    else if (cardName === 'Fresh') navigation.navigate('QRCodes', { status: "Fresh" });
+    else if (cardName === 'AllQRCodes') navigation.navigate('QRCodeNavigation', { status: "AllQRCodes" });
+    else if (cardName === 'Used') navigation.navigate('QRCodeNavigation', { status: "UsedQRCodes" });
+    else if (cardName === 'Fresh') navigation.navigate('QRCodeNavigation', { status: "FreshQRCodes" });
   };
 
   const formatNumberToK = (num) => {

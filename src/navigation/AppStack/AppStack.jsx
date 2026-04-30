@@ -7,7 +7,6 @@ import Bucket from '../../screens/AppScreens/Bucket/Bucket';
 import AMC from '../../screens/AppScreens/AMC';
 import PreBooking from '../../screens/AppScreens/PreBooking';
 import PayOut from '../../screens/AppScreens/Payout/PayOut';
-import Notification from '../../screens/AppScreens/Notification';
 import Password from '../../screens/AppScreens/Password';
 import ReplaceParts from '../../screens/AppScreens/ReplaceParts';
 import TermsConditions from '../../screens/AppScreens/TermsConditions';
@@ -21,7 +20,7 @@ import AddPartBilling from '../../screens/AppScreens/Complaints/AddPartBilling';
 import Remarkscreen from '../../screens/AppScreens/Complaints/Remarkscreen';
 import AMCDetails from '../../screens/AppScreens/AMCDetails';
 import ProductDetails from '../../screens/AppScreens/Scan/ProductDetails';
-import QRCodes from '../../screens/AppScreens/QRCodes/QRCodes';
+import QRCodeNavigation from '../../navigation/QRCodeNavigation/QRCodeNavigation';
 import QRCodeDetails from '../../screens/AppScreens/QRCodes/QRCodeDetails';
 import AMCList from '../../screens/AppScreens/Complaints/AMCList';
 import ComplaintAMCDetails from '../../screens/AppScreens/Complaints/AMCDetails';
@@ -34,8 +33,12 @@ import CompleteAMCDetails from '../../screens/AppScreens/CompleteAMCDetails';
 import { useEffect, useRef } from 'react';
 import { OrderProvider } from '../../context/OrderContext';
 import ComplaintsTopNavigation from '../ComplaintsTopNavigation/ComplaintsTopNavigation';
-import {DashboardProvider } from '../../context/DashboardContext';
+import { DashboardProvider } from '../../context/DashboardContext';
 import { setNotificationNavigationHandler } from '../../notification/useNotification';
+import NotificationTopNavigation from '../../navigation/NotificationTopNavigation/NotificationTopNavigation';
+import { NotificationProvider } from '../../context/NotificationContext';
+import BucketNavigation from '../BucketNavigation/BucketNavigation';
+import { BucketProvider } from '../../context/BucketContext';
 const Stack = createNativeStackNavigator();
 
 
@@ -51,112 +54,109 @@ const AppStack = () => {
 
   return (
     <DashboardProvider>
-    <OrderProvider>
-      <Stack.Navigator 
-        initialRouteName="BottomTabs"
-        screenOptions={{
-          headerShown: false, // Hide header since BottomTabs has its own
-        }}
-      >
-        <Stack.Screen
-          name="BottomTabs"
-          component={BottomTabs}
-        />
-        <Stack.Screen
-          name="SparePartScreen"
-          component={SparePartScreen}
-        />
-        <Stack.Screen
-          name="PartDetails"
-          component={PartDetails}
-        />
-        <Stack.Screen
-          name="Complaints"
-          component={Complaints}
-        />
-         <Stack.Screen
-          name="ComplaintsTopNavigation"
-          component={ComplaintsTopNavigation}
-        />
-        <Stack.Screen
-          name="Bucket"
-          component={Bucket}
-        />
-        <Stack.Screen
-          name="BucketpartDetails"
-          component={BuckePartDetails}
-        />
-        <Stack.Screen
-          name="AMC"
-          component={AMC}
-        />
-        <Stack.Screen
-          name="PreBooking"
-          component={PreBooking}
-        />
-        <Stack.Screen
-          name="PayOut"
-          component={PayOut}
-        />
-        <Stack.Screen
-          name="Notification"
-          component={Notification}
-        />
+      <BucketProvider>
+      <NotificationProvider>
+        <OrderProvider>
+          <Stack.Navigator
+            initialRouteName="BottomTabs"
+            screenOptions={{
+              headerShown: false, // Hide header since BottomTabs has its own
+            }}
+          >
+            <Stack.Screen
+              name="BottomTabs"
+              component={BottomTabs}
+            />
+            <Stack.Screen
+              name="SparePartScreen"
+              component={SparePartScreen}
+            />
+            <Stack.Screen
+              name="PartDetails"
+              component={PartDetails}
+            />
+            <Stack.Screen
+              name="Complaints"
+              component={Complaints}
+            />
+            <Stack.Screen
+              name="ComplaintsTopNavigation"
+              component={ComplaintsTopNavigation}
+            />
+            <Stack.Screen
+              name="Bucket"
+              component={Bucket}
+            />
 
-        <Stack.Screen
-          name="Password"
-          component={Password}
-        />
-        <Stack.Screen
-          name="ReplaceParts"
-          component={ReplaceParts}
-        />
-        <Stack.Screen
-          name="TermsConditions"
-          component={TermsConditions}
-        />
-        <Stack.Screen
-          name="Support"
-          component={Support}
-        />
-        <Stack.Screen
-          name="MyComplaints"
-          component={MyComplaints}
-        />
-        <Stack.Screen
-          name="AddPart"
-          component={AddPart}
-        />
-        <Stack.Screen name="ComplaintDetail" component={ComplaintDetail} />
-        <Stack.Screen name="Billing" component={Billing} />
-        <Stack.Screen name="AddPartBilling" component={AddPartBilling} />
-        <Stack.Screen name="Remarkscreen" component={Remarkscreen} />
-        <Stack.Screen name="AMCDetails" component={AMCDetails} />
-        <Stack.Screen name="ProductDetails" component={ProductDetails} />
-        <Stack.Screen name="QRCodes" component={QRCodes} />
-        <Stack.Screen name="QRCodeDetails" component={QRCodeDetails} />
-        <Stack.Screen name="AMCList" component={AMCList} />
-        <Stack.Screen name="ComplaintAMCDetails" component={ComplaintAMCDetails} />
-        <Stack.Screen name="AMCBilling" component={AMCBilling} />
-        <Stack.Screen name="Parts" component={Parts} />
-        <Stack.Screen name="Services" component={Services} />
-        <Stack.Screen name="MyAmc" component={MyAmc} />
-        <Stack.Screen name="CompleteAMCDetails" component={CompleteAMCDetails} />
-        <Stack.Screen name="ProfileDetails" component={ProfileDetails} />
+            <Stack.Screen
+              name="BucketNavigation"
+              component={BucketNavigation}
+            />
+            <Stack.Screen
+              name="BuckePartDetails"
+              component={BuckePartDetails}
+            />
+            <Stack.Screen
+              name="AMC"
+              component={AMC}
+            />
+            <Stack.Screen
+              name="PreBooking"
+              component={PreBooking}
+            />
+            <Stack.Screen
+              name="PayOut"
+              component={PayOut}
+            />
 
 
-
-
-
-
-
-
-
-
-      </Stack.Navigator>
-    </OrderProvider>
+            <Stack.Screen
+              name="Password"
+              component={Password}
+            />
+            <Stack.Screen
+              name="ReplaceParts"
+              component={ReplaceParts}
+            />
+            <Stack.Screen
+              name="TermsConditions"
+              component={TermsConditions}
+            />
+            <Stack.Screen
+              name="Support"
+              component={Support}
+            />
+            <Stack.Screen
+              name="MyComplaints"
+              component={MyComplaints}
+            />
+            <Stack.Screen
+              name="AddPart"
+              component={AddPart}
+            />
+            <Stack.Screen name="ComplaintDetail" component={ComplaintDetail} />
+            <Stack.Screen name="Billing" component={Billing} />
+            <Stack.Screen name="AddPartBilling" component={AddPartBilling} />
+            <Stack.Screen name="Remarkscreen" component={Remarkscreen} />
+            <Stack.Screen name="AMCDetails" component={AMCDetails} />
+            <Stack.Screen name="ProductDetails" component={ProductDetails} />
+            <Stack.Screen name="QRCodeNavigation" component={QRCodeNavigation} />
+            <Stack.Screen name="QRCodeDetails" component={QRCodeDetails} />
+            <Stack.Screen name="AMCList" component={AMCList} />
+            <Stack.Screen name="ComplaintAMCDetails" component={ComplaintAMCDetails} />
+            <Stack.Screen name="AMCBilling" component={AMCBilling} />
+            <Stack.Screen name="Parts" component={Parts} />
+            <Stack.Screen name="Services" component={Services} />
+            <Stack.Screen name="MyAmc" component={MyAmc} />
+            <Stack.Screen name="CompleteAMCDetails" component={CompleteAMCDetails} />
+            <Stack.Screen name="ProfileDetails" component={ProfileDetails} />
+            <Stack.Screen name="NotificationTopNavigation" component={NotificationTopNavigation} />
+          </Stack.Navigator>
+        </OrderProvider>
+      </NotificationProvider>
+      </BucketProvider>
     </DashboardProvider>
-   
+
   )
 }
 

@@ -11,7 +11,6 @@ const Assigned = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
 
   const navigation = useNavigation();
   const { user } = useAuth();
@@ -40,7 +39,6 @@ const Assigned = () => {
         const currentPage = parseInt(response.data.page) || pageNum;
         const limit = response.data.limit || 10;
 
-        setTotalCount(newComplaints.length);
 
         if (isRefresh) {
           setComplaints(newComplaints);
@@ -115,51 +113,9 @@ const Assigned = () => {
     );
   };
 
-  const mapApiStatusToDisplay = (status) => {
-    const statusMap = {
-      'assign': 'Assigned',
-      'onworking': 'On Progress',
-      'complete': 'Complete',
-      'cancel': 'Cancel',
-      'pending': 'Pending'
-    };
-    return statusMap[status] || String(status || 'Pending');
-  };
 
-  // Transform API response to match card expected format
-  const transformComplaintData = (complaint) => {
-    if (!complaint) return null;
 
-    return {
-      id: complaint.id || 0,
-      csn: complaint.csn || String(complaint.id || ''),
-      status: complaint.status || 'assign',
-      displayStatus: mapApiStatusToDisplay(complaint.status),
-      service: complaint.service || '',
-      service_name: complaint.service_name || '',
-      customer_name: complaint.customer_name || '',
-      service_address: complaint.service_address || '',
-      customer_mobile: complaint.customer_mobile || '',
-      tot_amt: complaint.tot_amt || '0',
-      slot_date: complaint.slot_date || '',
-      slot_time: complaint.slot_time || '',
-      isRecomplaint: complaint.recomplaint === 'Yes',
-      days: complaint.days || 0,
-      rating: complaint.rating || '',
-      remark: complaint.remark || '',
-      upload_image: complaint.upload_image || '0',
-      verify_otp: complaint.verify_otp || '0',
-      platform_fee: complaint.platform_fee || '0',
-      service_id: complaint.service_id
-
-    };
-  };
-
-  // Transform complaints data - filter out null values
-  const transformedComplaints = complaints
-    .map(transformComplaintData)
-    .filter(item => item !== null);
-
+ 
   // Safe key extractor
   const getKey = (item, index) => {
     if (item && item.id) {
@@ -171,7 +127,7 @@ const Assigned = () => {
   return (
     <View className="flex-1 bg-gray-50">
       <FlatList
-        data={transformedComplaints}
+        data={complaints}
         renderItem={renderComplaintCard}
         keyExtractor={getKey}
         showsVerticalScrollIndicator={false}

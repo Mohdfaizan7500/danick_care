@@ -172,7 +172,6 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
 const ComplaintsTopNavigation = () => {
   const routes = useRoute();
   const status = routes.params?.status;
-  console.log("routes:", status);
   const [dashboardCounts, setDashboardCounts] = useState({
     all: 0,
     assign: 0,
@@ -212,10 +211,8 @@ const ComplaintsTopNavigation = () => {
         technician_id: user?.id?.toString() || '1',
       };
 
-      console.log('Fetching dashboard counts with payload:', payload);
       const response = await getDeshBoardCount(payload);
 
-      console.log('Dashboard counts response:', response);
 
       if (response?.data?.success) {
         const data = response.data;

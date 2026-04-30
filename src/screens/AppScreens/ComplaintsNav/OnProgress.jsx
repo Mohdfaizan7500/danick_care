@@ -15,7 +15,6 @@ const OnProgress = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
   const technicianId = user?.id;
-  console.log("")
 
   const fetchComplaints = async (pageNum = 1, isRefresh = false) => {
     try {
@@ -81,43 +80,13 @@ const OnProgress = () => {
     <Complaintscard item={item} onPress={handleComplaintPress} />
   );
 
-  const mapApiStatusToDisplay = (status) => {
-    const statusMap = {
-      'assign': 'Assigned',
-      'onworking': 'On Progress',
-      'complete': 'Complete',
-      'cancel': 'Cancel',
-    };
-    return statusMap[status] || status;
-  };
 
-  const transformComplaintData = (complaint) => ({
-    id: complaint.id,
-    csn: complaint.csn,
-    status: complaint.status, // Keep original status for navigation
-    displayStatus: mapApiStatusToDisplay(complaint.status),
-    service: complaint.service,
-    service_name: complaint.service_name,
-    customer_name: complaint.customer_name,
-    service_address: complaint.service_address,
-    customer_mobile: complaint.customer_mobile,
-    tot_amt: complaint.tot_amt,
-    slot_date: complaint.slot_date,
-    slot_time: complaint.slot_time,
-    isRecomplaint: complaint.recomplaint === 'Yes',
-    days: complaint.days,
-    upload_image: complaint.upload_image,
-    verify_otp: complaint.verify_otp,
-    service_id: complaint.service_id,
-    platform_fee: complaint.platform_fee,
-  });
 
-  const transformedComplaints = complaints.map(transformComplaintData);
-
+ 
   return (
     <View className="flex-1 bg-gray-50">
       <FlatList
-        data={transformedComplaints}
+        data={complaints}
         renderItem={renderComplaintCard}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}

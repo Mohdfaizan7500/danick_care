@@ -205,9 +205,9 @@ const Profile = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          flexGrow: 1,
-          paddingBottom: 20
+          paddingBottom: 20, // Add only necessary padding at bottom
         }}
+        className="flex-1"
       >
         {/* Profile Header Section */}
         <View className="bg-white p-5 items-center border-b border-gray-200">
@@ -221,8 +221,7 @@ const Profile = () => {
               className="w-24 h-24 rounded-full mb-4 border-3 border-white shadow-md"
             />
             
-            <View className={`absolute bottom-5 right-1 h-5 border-2 border-white w-5 rounded-full ${profileData.login_status === 'Online'? 'bg-green-500 ':'bg-red-500 '}`}  />
-
+            <View className={`absolute bottom-5 right-1 h-5 border-2 border-white w-5 rounded-full ${profileData?.login_status === 'Online' ? 'bg-green-500' : 'bg-red-500'}`} />
           </View>
 
           <Text className="text-2xl font-bold text-gray-800">
@@ -236,14 +235,13 @@ const Profile = () => {
             <Text className="text-xs text-gray-500 font-medium">
               +91 {profileData?.technician_mobile || '98765 43210'}
             </Text>
-            <View className="flex-row items-center ">
+            <View className="flex-row items-center">
               <BadgeCheck size={16} color="#3b82f6" />
-              <Text className="text-gray-500 text-sm ml-1">ID: {profileData.technician_id || 'N/A'}</Text>
+              <Text className="text-gray-500 text-sm ml-1">ID: {profileData?.technician_id || 'N/A'}</Text>
             </View>
-
           </View>
 
-          <View className="flex-row items-center gap-2">
+          <View className="flex-row items-center gap-2 mt-1">
             <Mail size={14} color="gray" />
             <Text className="text-xs text-gray-500 font-medium">
               {profileData?.email || 'No email provided'}
@@ -269,27 +267,17 @@ const Profile = () => {
         </View>
 
         {/* Logout Button */}
-        {/* <View className="mt-8 mx-5">
-          <TouchableOpacity
-            className="bg-red-500 p-4 rounded-xl flex-row items-center justify-center shadow-md"
-            onPress={handleLogoutPress}
-            disabled={isDialogLoggingOut}
-          >
-            <Icon name="logout" size={20} color="#fff" style={{ marginRight: 10 }} />
-            <Text className="text-base font-semibold text-white">Logout</Text>
-          </TouchableOpacity>
-        </View> */}
-        {/* Logout Button */}
         <TouchableOpacity
           onPress={handleLogoutPress}
           disabled={isDialogLoggingOut}
-          className="mx-4 mt-6 mb-4 bg-red-50 py-4 rounded-xl flex-row items-center justify-center border border-red-200">
+          className="mx-4 mt-6 mb-4 bg-red-50 py-4 rounded-xl flex-row items-center justify-center border border-red-200"
+        >
           <LogOut size={20} color="#ef4444" />
           <Text className="text-red-600 font-semibold ml-2">Logout</Text>
         </TouchableOpacity>
 
         {/* Version Text */}
-        <Text className="text-center mt-2.5 mb-5 text-gray-400 text-xs">
+        <Text className="text-center text-gray-400 text-xs pb-2">
           Version 1.0.0
         </Text>
       </ScrollView>
