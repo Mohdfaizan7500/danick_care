@@ -809,7 +809,7 @@ const Home = () => {
                     <View className="bg-orange-100 p-2 rounded-full mb-1">
                       <UsedQrCodeIcon width={24} height={24} fill="#F97316" />
                     </View>
-                    <Text className="text-lg font-bold text-gray-800">{count?.unusedQr || '0'}</Text>
+                    <Text className="text-lg font-bold text-gray-800">{count?.usedQr || '0'}</Text>
                     <Text className="text-xs text-gray-500 text-center">Used QR codes</Text>
                   </Pressable>
 
@@ -821,7 +821,7 @@ const Home = () => {
                     <View className="bg-teal-100 p-2 rounded-full mb-1">
                       <FreshQrCodeIcon width={24} height={24} fill="#14B8A6" />
                     </View>
-                    <Text className="text-lg font-bold text-gray-800">{count?.usedQr || '0'}</Text>
+                    <Text className="text-lg font-bold text-gray-800">{count?.unusedQr || '0'}</Text>
                     <Text className="text-xs text-gray-500 text-center">Fresh QR codes</Text>
                   </Pressable>
                 </View>
