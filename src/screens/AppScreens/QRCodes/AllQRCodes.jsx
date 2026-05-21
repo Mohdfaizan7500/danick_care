@@ -204,6 +204,7 @@ const AllQRCodes = ({ route }) => {
 
     // Render each QR code item using the QRCodeCard component
     const renderQRCodeItem = ({ item, index }) => {
+        console.log("Qr codes data:",item)
         return (
             <QRCodeCard
                 item={item}

@@ -622,7 +622,7 @@ export const CrossCircleIcon = (props) => (
 
 
 export const ImageIcon = (props) => (
-<Svg
+  <Svg
     xmlns="http://www.w3.org/2000/svg"
     height="24px"
     viewBox="0 -960 960 960"
@@ -636,11 +636,11 @@ export const ImageIcon = (props) => (
 
 export const NoImage = (props) => (
   <Svg
-    width="32px"
-    height="32px"
+    width={32}
+    height={32}
     viewBox="0 0 32 32"
     id="icon"
-    xmlns="http://www.w3.org/2000/svg"
+
     {...props}
   >
     <Defs></Defs>
@@ -650,9 +650,7 @@ export const NoImage = (props) => (
       id="_Transparent_Rectangle_"
       data-name="&lt;Transparent Rectangle&gt;"
       className="cls-1"
-      width={32}
-      height={32}
-    {...props}
+
 
     />
   </Svg>

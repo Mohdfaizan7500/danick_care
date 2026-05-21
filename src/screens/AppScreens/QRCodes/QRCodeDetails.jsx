@@ -8,13 +8,15 @@ import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { GetComplaintsDetails } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
-import { DownloadIcon } from '../../../assets/svgIcons/SVGIcons';
+import { DownloadIcon, ImageIcon, NoImage } from '../../../assets/svgIcons/SVGIcons';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import DialogBox from '../../../components/DilaogBox';
 
 const QRCodeDetails = () => {
   const route = useRoute();
   const status = route.params?.status || 'complaint';
+  const [imageError, setImageError] = useState(false);
+
   console.log('Status in QRCodeDetails:', status);
   const qrCode = route.params.qrData || route.params.complaint || route.params.qrCode || {};
   console.log('Route params in QRCodeDetails:', qrCode);
@@ -852,12 +854,18 @@ const QRCodeDetails = () => {
             {(expandedParts ? complaintDetails.parts : complaintDetails.parts.slice(0, 3)).map((part, index) => (
               <View key={part.id || index} className="border-t border-gray-100 pt-3 mt-2">
                 <View className="flex-row">
-                  {part.part_image && (
+                  {part.part_image && imageError === false ? (
                     <Image
                       source={{ uri: part.part_image }}
                       className="w-16 h-16 rounded-lg mr-3"
                       resizeMode="cover"
+                      onError={() => setImageError(true)}
                     />
+                  ) : (
+                    <View className='w-16 h-16 border border-gray-400 items-center justify-center mr-3 rounded-lg bg-gray-100'>
+                      <NoImage width={30} height={30} fill={'gray'} />
+                    </View>
+
                   )}
                   <View className="flex-1">
                     <Text className="text-text-primary font-semibold">{part.part_name}</Text>

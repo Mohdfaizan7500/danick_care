@@ -297,13 +297,7 @@ const CommissionTab = ({
           </View>
         </View>
 
-        {/* Mobile number if available */}
-        {item.mobile && (
-          <View className="flex-row items-center mt-2 pt-2 border-t border-gray-100">
-            <Icon name="call-outline" size={14} color="#6b7280" />
-            <Text className="text-gray-500 text-xs ml-1">Mobile: {item.mobile}</Text>
-          </View>
-        )}
+       
       </TouchableOpacity>
     );
   };

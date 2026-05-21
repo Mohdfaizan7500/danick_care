@@ -1,13 +1,14 @@
 // components/QRCodeCard.js
-import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native'
-import React from 'react'
+import { StyleSheet, Text, View, TouchableOpacity, Image, Alert } from 'react-native'
+import React, { useState } from 'react'
 import Icon from 'react-native-vector-icons/Ionicons'
 import Clipboard from '@react-native-clipboard/clipboard'
 import { toast } from 'sonner-native'
 import StatusMessage from './StatusMessage'
+import { NoImage } from '../assets/svgIcons/SVGIcons'
 
 const QRCodeCard = ({ item, index, onPress, onImagePress, onCopy, getImageUrl, getStatusBadge }) => {
-    
+    const [imageError, setImageError] = useState(false);
     const handleCopyQRCode = (qrCodeNumber) => {
         Clipboard.setString(qrCodeNumber);
         toast.custom(
@@ -22,7 +23,7 @@ const QRCodeCard = ({ item, index, onPress, onImagePress, onCopy, getImageUrl, g
     };
 
     const statusBadge = getStatusBadge(item.isUsed);
-    
+
     return (
         <View className="bg-white border border-gray-300 rounded-2xl p-4 mb-3">
             <TouchableOpacity onPress={() => onPress(item)} activeOpacity={0.7}>
@@ -30,14 +31,15 @@ const QRCodeCard = ({ item, index, onPress, onImagePress, onCopy, getImageUrl, g
                     {/* QR Code Image */}
                     <TouchableOpacity onPress={() => onImagePress(getImageUrl(item))}>
                         <View className="w-20 h-20 bg-gray-50 rounded-xl overflow-hidden border border-gray-200 items-center justify-center">
-                            {getImageUrl(item) ? (
+                            {getImageUrl(item) && imageError === false ? (
                                 <Image
                                     source={{ uri: getImageUrl(item) }}
                                     className="w-full h-full"
                                     resizeMode="cover"
+                                    onError={() => setImageError(true)}
                                 />
                             ) : (
-                                <Icon name="qr-code-outline" size={50} color="#000" />
+                                    <NoImage width={30} height={30} fill={'gray'} />
                             )}
                         </View>
                     </TouchableOpacity>
@@ -45,12 +47,12 @@ const QRCodeCard = ({ item, index, onPress, onImagePress, onCopy, getImageUrl, g
                     {/* QR Code Details */}
                     <View className="ml-4 flex-1">
                         <Text className="text-xs text-gray-500 mb-1">Sr: {index + 1}</Text>
-                        
+
                         <View className="flex-row items-center justify-between">
                             <View className="flex-row items-center flex-1">
                                 <Text className="text-lg font-bold text-text-primary">{item.qrCodeNumber}</Text>
                                 {/* Copy Icon */}
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     onPress={() => handleCopyQRCode(item.qrCodeNumber)}
                                     className="ml-2 p-1"
                                 >
@@ -88,7 +90,7 @@ const QRCodeCard = ({ item, index, onPress, onImagePress, onCopy, getImageUrl, g
                             </View>
                         )}
 
-                       
+
                     </View>
                 </View>
             </TouchableOpacity>
