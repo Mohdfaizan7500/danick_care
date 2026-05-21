@@ -596,7 +596,7 @@ export const CrossCircleIcon = (props) => (
       strokeWidth={1.66587}
       strokeLinecap="round"
       strokeLinejoin="round"
-    {...props}
+      {...props}
 
     />
     <Path
@@ -605,7 +605,7 @@ export const CrossCircleIcon = (props) => (
       strokeWidth={1.66587}
       strokeLinecap="round"
       strokeLinejoin="round"
-    {...props}
+      {...props}
 
     />
     <Path
@@ -614,6 +614,44 @@ export const CrossCircleIcon = (props) => (
       strokeWidth={1.66587}
       strokeLinecap="round"
       strokeLinejoin="round"
+      {...props}
+
+    />
+  </Svg>
+);
+
+
+export const ImageIcon = (props) => (
+<Svg
+    xmlns="http://www.w3.org/2000/svg"
+    height="24px"
+    viewBox="0 -960 960 960"
+    width="24px"
+    fill="#e3e3e3"
+    {...props}
+  >
+    <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z" />
+  </Svg>
+);
+
+export const NoImage = (props) => (
+  <Svg
+    width="32px"
+    height="32px"
+    viewBox="0 0 32 32"
+    id="icon"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <Defs></Defs>
+    <Path d="M30,3.4141,28.5859,2,2,28.5859,3.4141,30l2-2H26a2.0027,2.0027,0,0,0,2-2V5.4141ZM26,26H7.4141l7.7929-7.793,2.3788,2.3787a2,2,0,0,0,2.8284,0L22,19l4,3.9973Zm0-5.8318-2.5858-2.5859a2,2,0,0,0-2.8284,0L19,19.1682l-2.377-2.3771L26,7.4141Z" />
+    <Path d="M6,22V19l5-4.9966,1.3733,1.3733,1.4159-1.416-1.375-1.375a2,2,0,0,0-2.8284,0L6,16.1716V6H22V4H6A2.002,2.002,0,0,0,4,6V22Z" />
+    <Rect
+      id="_Transparent_Rectangle_"
+      data-name="&lt;Transparent Rectangle&gt;"
+      className="cls-1"
+      width={32}
+      height={32}
     {...props}
 
     />
