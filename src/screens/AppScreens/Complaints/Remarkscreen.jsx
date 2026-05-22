@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
     Text,
@@ -20,14 +20,15 @@ import StatusMessage from '../../../components/StatusMessage';
 import { launchCamera } from 'react-native-image-picker';
 import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import DialogBox from '../../../components/DilaogBox';
-import { UploadComplaintImage, deletComplaintImage, getComplaintImage, UpdateRemark, CheckProceedAMC } from '../../../lib/api';
-import ToggleSwitch from 'toggle-switch-react-native';
+import { UploadComplaintImage, deletComplaintImage, getComplaintImage, UpdateRemark } from '../../../lib/api';
+import EventEmitter from '../../../utils/eventBus'; // <-- import event bus
 
 const Remarkscreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { complaintData, isVerified, isImageUploaded } = route.params || {};
+    const { complaintData, isVerified, isImageUploaded, shouldSubmitOnReturn = false, returnToBilling = false } = route.params || {};
     console.log('Complaint Data received in Remarkscreen:', complaintData);
+    console.log('Should submit on return:', shouldSubmitOnReturn);
 
     // State for images
     const [image1Uri, setImage1Uri] = useState(null);
@@ -45,147 +46,53 @@ const Remarkscreen = () => {
     // State for Customer Type dropdown
     const [selectedCustomerType, setSelectedCustomerType] = useState('');
     const [customerTypeDropdownVisible, setCustomerTypeDropdownVisible] = useState(false);
-    const customerTypeOptions = ['A', 'B', 'C', 'D'];
+    const customerTypeOptions = ['A', 'B', 'C', 'D','E'];
 
     // State for remark
     const [remark, setRemark] = useState('');
 
     // State for delete confirmation dialog
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
-    const [imageToDelete, setImageToDelete] = useState(null); // '1' or '2'
+    const [imageToDelete, setImageToDelete] = useState(null);
 
-    // State for Convert to AMC toggle
-    const [convertToAMC, setConvertToAMC] = useState(false);
-    const [isAMCLocked, setIsAMCLocked] = useState(false);
-    const [checkingAMC, setCheckingAMC] = useState(true);
-    const [amcComplaintId, setAmcComplaintId] = useState(null);
-
-    // Compute if form is complete for regular service
-    const isRegularFormComplete =
+    const isFormComplete =
         (selectedCustomerType || '').trim() !== '' &&
         (remark || '').trim() !== '' &&
         image1Id !== null &&
         image2Id !== null;
 
-    // Compute if images are uploaded for AMC (when convertToAMC is true but not locked)
-    const areAmcImagesUploaded = image1Id !== null && image2Id !== null;
-
-    // Compute if form is ready for submission
     const isReadyForNext = () => {
-        if (refreshing || checkingAMC || submitting || loadingImages) return false;
-
-        if (convertToAMC) {
-            // For AMC, we just need both images uploaded
-            // No customer type or remark required for AMC
-            return areAmcImagesUploaded && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2;
-        } else {
-            // For regular service, need all fields
-            return isRegularFormComplete && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2;
-        }
+        if (refreshing || submitting || loadingImages) return false;
+        return isFormComplete && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2;
     };
 
-    // Function to check if AMC already proceeded
-    const checkAMCStatus = async () => {
-        setCheckingAMC(true);
-        try {
-            const payload = {
-                complaint_id: complaintData?.id?.toString() || '',
-                technician_id: complaintData?.technician_id?.toString() || '62'
-            };
-
-            console.log('Checking AMC status with payload:', payload);
-            const response = await CheckProceedAMC(payload);
-            console.log('CheckProceedAMC response:', response);
-
-            if (response?.data?.success) {
-                const status = response.data.status;
-                const msg = response.data.msg;
-                const amcComplaintIdFromResponse = response.data.amc_complaint_id;
-
-                if (status === '1') {
-                    setConvertToAMC(true);
-                    setIsAMCLocked(true);
-                    setAmcComplaintId(amcComplaintIdFromResponse);
-                } else {
-                    setConvertToAMC(false);
-                    setIsAMCLocked(false);
-                    setAmcComplaintId(null);
-                }
-            } else {
-                setConvertToAMC(false);
-                setIsAMCLocked(false);
-                setAmcComplaintId(null);
-                console.log('CheckProceedAMC unsuccessful:', response?.data?.msg);
-            }
-        } catch (error) {
-            console.error('Error checking AMC status:', error);
-            setConvertToAMC(false);
-            setIsAMCLocked(false);
-            setAmcComplaintId(null);
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title="Failed to check AMC status"
-                    description="Please proceed with caution"
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
-        } finally {
-            setCheckingAMC(false);
-        }
-    };
-
-    // Function to fetch existing images from server
     const fetchExistingImages = async () => {
         setLoadingImages(true);
-
         try {
-            const beforePayload = {
-                complaint_id: complaintData.id.toString(),
-                status: '2'
-            };
-
+            const beforePayload = { complaint_id: complaintData.id.toString(), status: '2' };
             const beforeResponse = await getComplaintImage(beforePayload);
-
-            const afterPayload = {
-                complaint_id: complaintData.id.toString(),
-                status: '3'
-            };
-
+            const afterPayload = { complaint_id: complaintData.id.toString(), status: '3' };
             const afterResponse = await getComplaintImage(afterPayload);
-
             if (beforeResponse?.data?.success && beforeResponse.data.result?.length > 0) {
                 const beforeImage = beforeResponse.data.result[0];
                 setImage1Uri(beforeImage.image);
                 setImage1Id(beforeImage.id);
             }
-
             if (afterResponse?.data?.success && afterResponse.data.result?.length > 0) {
                 const afterImage = afterResponse.data.result[0];
                 setImage2Uri(afterImage.image);
                 setImage2Id(afterImage.id);
             }
-
         } catch (error) {
             console.error('Error fetching existing images:', error);
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title="Failed to load existing images"
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
+            toast.custom(<StatusMessage type="error" title="Failed to load existing images" className="mx-4 mb-6" />, { duration: 3000 });
         } finally {
             setLoadingImages(false);
         }
     };
 
-    // Pull to refresh handler
     const onRefresh = async () => {
         setRefreshing(true);
-
         try {
             setImage1Uri(null);
             setImage2Uri(null);
@@ -193,136 +100,58 @@ const Remarkscreen = () => {
             setImage2Id(null);
             setSelectedCustomerType('');
             setRemark('');
-            setConvertToAMC(false);
-            setIsAMCLocked(false);
-            setAmcComplaintId(null);
-
-            await Promise.all([
-                fetchExistingImages(),
-                checkAMCStatus()
-            ]);
-
-            if (complaintData?.remark && complaintData.remark !== '') {
-                setRemark(complaintData.remark);
-            }
-            if (complaintData?.review && complaintData.review !== '') {
-                setSelectedCustomerType(complaintData.review);
-            }
-
-            toast.custom(
-                <StatusMessage
-                    type="success"
-                    title="Refreshed"
-                    description="All data has been updated successfully"
-                    className="mx-4 mb-6"
-                />,
-                { duration: 2000 }
-            );
+            await fetchExistingImages();
+            if (complaintData?.remark && complaintData.remark !== '') setRemark(complaintData.remark);
+            if (complaintData?.review && complaintData.review !== '') setSelectedCustomerType(complaintData.review);
+            toast.custom(<StatusMessage type="success" title="Refreshed" description="All data has been updated successfully" className="mx-4 mb-6" />, { duration: 2000 });
         } catch (error) {
             console.error('Error refreshing:', error);
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title="Refresh Failed"
-                    description={error.message || "Please try again"}
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
+            toast.custom(<StatusMessage type="error" title="Refresh Failed" description={error.message || "Please try again"} className="mx-4 mb-6" />, { duration: 3000 });
         } finally {
             setRefreshing(false);
         }
     };
 
-    // UseFocusEffect to check AMC status when screen comes into focus
     useFocusEffect(
         useCallback(() => {
-            checkAMCStatus();
             fetchExistingImages();
-
-            if (complaintData?.remark && complaintData.remark !== '') {
-                setRemark(complaintData.remark);
-            }
-            if (complaintData?.review && complaintData.review !== '') {
-                setSelectedCustomerType(complaintData.review);
-            }
-
+            if (complaintData?.remark && complaintData.remark !== '') setRemark(complaintData.remark);
+            if (complaintData?.review && complaintData.review !== '') setSelectedCustomerType(complaintData.review);
             return () => { };
         }, [complaintData?.id])
     );
 
-    // Initial data load
     useEffect(() => {
-        if (complaintData?.remark && complaintData.remark !== '') {
-            setRemark(complaintData.remark);
-        }
-        if (complaintData?.review && complaintData.review !== '') {
-            setSelectedCustomerType(complaintData.review);
-        }
+        if (complaintData?.remark && complaintData.remark !== '') setRemark(complaintData.remark);
+        if (complaintData?.review && complaintData.review !== '') setSelectedCustomerType(complaintData.review);
     }, [complaintData]);
 
-    // Camera permission functions
     const checkCameraPermission = async () => {
-        if (Platform.OS === 'ios') {
-            return await check(PERMISSIONS.IOS.CAMERA);
-        } else {
-            return await check(PERMISSIONS.ANDROID.CAMERA);
-        }
+        if (Platform.OS === 'ios') return await check(PERMISSIONS.IOS.CAMERA);
+        else return await check(PERMISSIONS.ANDROID.CAMERA);
     };
-
     const requestCameraPermission = async () => {
-        if (Platform.OS === 'ios') {
-            return await request(PERMISSIONS.IOS.CAMERA);
-        } else {
-            return await request(PERMISSIONS.ANDROID.CAMERA);
-        }
+        if (Platform.OS === 'ios') return await request(PERMISSIONS.IOS.CAMERA);
+        else return await request(PERMISSIONS.ANDROID.CAMERA);
     };
 
-    // Function to delete image from server
     const deleteImageFromServer = async (imageId, imageNumber) => {
         if (!imageId) return;
-
         try {
             if (imageNumber === 1) setDeletingImage1(true);
             else setDeletingImage2(true);
-
-            const payload = {
-                id: imageId.toString()
-            };
-
+            const payload = { id: imageId.toString() };
             const response = await deletComplaintImage(payload);
-
             if (response && response.data && response.data.success) {
-                toast.custom(
-                    <StatusMessage
-                        type="success"
-                        title={`Image ${imageNumber} deleted successfully!`}
-                        className="mx-4 mb-6"
-                    />,
-                    { duration: 3000 }
-                );
+                toast.custom(<StatusMessage type="success" title={`Image ${imageNumber} deleted successfully!`} className="mx-4 mb-6" />, { duration: 3000 });
                 return true;
             } else {
-                toast.custom(
-                    <StatusMessage
-                        type="error"
-                        title={response?.data?.msg || response?.data?.message || `Failed to delete image ${imageNumber}`}
-                        className="mx-4 mb-6"
-                    />,
-                    { duration: 3000 }
-                );
+                toast.custom(<StatusMessage type="error" title={response?.data?.msg || `Failed to delete image ${imageNumber}`} className="mx-4 mb-6" />, { duration: 3000 });
                 return false;
             }
         } catch (error) {
             console.error(`Error deleting image ${imageNumber}:`, error);
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title={error.message || `Failed to delete image ${imageNumber}. Please try again.`}
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
+            toast.custom(<StatusMessage type="error" title={error.message || `Failed to delete image ${imageNumber}. Please try again.`} className="mx-4 mb-6" />, { duration: 3000 });
             return false;
         } finally {
             if (imageNumber === 1) setDeletingImage1(false);
@@ -330,94 +159,38 @@ const Remarkscreen = () => {
         }
     };
 
-    // Function to upload image to server
     const uploadImageToServer = async (imageUri, imageNumber) => {
         try {
             if (imageNumber === 1) setUploadingImage1(true);
             else setUploadingImage2(true);
-
             const formData = new FormData();
             const fileUri = imageUri;
             const fileName = fileUri.split('/').pop();
-            const fileType = 'image/jpeg';
-
-            formData.append('image', {
-                uri: Platform.OS === 'ios' ? fileUri.replace('file://', '') : fileUri,
-                name: fileName || `photo_${Date.now()}.jpg`,
-                type: fileType,
-            });
-
+            formData.append('image', { uri: Platform.OS === 'ios' ? fileUri.replace('file://', '') : fileUri, name: fileName || `photo_${Date.now()}.jpg`, type: 'image/jpeg' });
             const imageType = 'after working';
             const status = imageNumber === 1 ? '2' : '3';
-
             formData.append('complaint_id', complaintData?.id?.toString() || '');
             formData.append('image_type', imageType);
             formData.append('status', status);
-
-            console.log('Uploading image with params:', {
-                complaint_id: complaintData?.id,
-                image_type: imageType,
-                status: status,
-                fileName: fileName,
-                imageNumber: imageNumber
-            });
-
+            console.log('Uploading image with params:', { complaint_id: complaintData?.id, image_type: imageType, status, fileName, imageNumber });
             const response = await UploadComplaintImage(formData);
-            console.log('Upload response for image', imageNumber, ':', response);
-
             if (response && response.data && response.data.success) {
                 const imageId = response.data.id;
-
-                if (imageNumber === 1) {
-                    setImage1Id(imageId);
-                } else {
-                    setImage2Id(imageId);
-                }
-
-                toast.custom(
-                    <StatusMessage
-                        type="success"
-                        title={`Image ${imageNumber} uploaded successfully!`}
-                        className="mx-4 mb-6"
-                    />,
-                    { duration: 3000 }
-                );
-
+                if (imageNumber === 1) setImage1Id(imageId);
+                else setImage2Id(imageId);
+                toast.custom(<StatusMessage type="success" title={`Image ${imageNumber} uploaded successfully!`} className="mx-4 mb-6" />, { duration: 3000 });
                 return true;
             } else {
-                if (imageNumber === 1) {
-                    setImage1Uri(null);
-                } else {
-                    setImage2Uri(null);
-                }
-
-                toast.custom(
-                    <StatusMessage
-                        type="error"
-                        title={response?.data?.msg || `Failed to upload image ${imageNumber}`}
-                        className="mx-4 mb-6"
-                    />,
-                    { duration: 3000 }
-                );
+                if (imageNumber === 1) setImage1Uri(null);
+                else setImage2Uri(null);
+                toast.custom(<StatusMessage type="error" title={response?.data?.msg || `Failed to upload image ${imageNumber}`} className="mx-4 mb-6" />, { duration: 3000 });
                 return false;
             }
         } catch (error) {
             console.error(`Error uploading image ${imageNumber}:`, error);
-
-            if (imageNumber === 1) {
-                setImage1Uri(null);
-            } else {
-                setImage2Uri(null);
-            }
-
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title={error.message || `Failed to upload image ${imageNumber}. Please try again.`}
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
+            if (imageNumber === 1) setImage1Uri(null);
+            else setImage2Uri(null);
+            toast.custom(<StatusMessage type="error" title={error.message || `Failed to upload image ${imageNumber}. Please try again.`} className="mx-4 mb-6" />, { duration: 3000 });
             return false;
         } finally {
             if (imageNumber === 1) setUploadingImage1(false);
@@ -425,610 +198,235 @@ const Remarkscreen = () => {
         }
     };
 
-    // Camera capture function
     const captureImage = async (imageNumber) => {
         try {
             const permissionStatus = await checkCameraPermission();
-
             if (permissionStatus === RESULTS.GRANTED) {
                 openCamera(imageNumber);
             } else if (permissionStatus === RESULTS.DENIED) {
                 const requestStatus = await requestCameraPermission();
-                if (requestStatus === RESULTS.GRANTED) {
-                    openCamera(imageNumber);
-                } else {
-                    toast.custom(
-                        <StatusMessage
-                            type="error"
-                            title="Camera permission denied"
-                            className="mx-4 mb-6"
-                        />,
-                        { duration: 2000 }
-                    );
-                }
+                if (requestStatus === RESULTS.GRANTED) openCamera(imageNumber);
+                else toast.custom(<StatusMessage type="error" title="Camera permission denied" className="mx-4 mb-6" />, { duration: 2000 });
             } else if (permissionStatus === RESULTS.BLOCKED) {
-                toast.custom(
-                    <StatusMessage
-                        type="error"
-                        title="Camera permission is blocked. Please enable it in settings to take photos."
-                        className="mx-4 mb-6"
-                    />,
-                    { duration: 3000 }
-                );
+                toast.custom(<StatusMessage type="error" title="Camera permission is blocked. Please enable it in settings to take photos." className="mx-4 mb-6" />, { duration: 3000 });
             }
         } catch (error) {
             console.log('Camera permission error:', error);
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title="Error accessing camera"
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
+            toast.custom(<StatusMessage type="error" title="Error accessing camera" className="mx-4 mb-6" />, { duration: 3000 });
         }
     };
 
     const openCamera = (imageNumber) => {
-        const options = {
-            mediaType: 'photo',
-            includeBase64: false,
-            maxHeight: 2000,
-            maxWidth: 2000,
-            quality: 0.8,
-            saveToPhotos: false,
-        };
-
+        const options = { mediaType: 'photo', includeBase64: false, maxHeight: 2000, maxWidth: 2000, quality: 0.8, saveToPhotos: false };
         launchCamera(options, async (response) => {
             if (response.didCancel) return;
             if (response.error) {
-                toast.custom(
-                    <StatusMessage
-                        type="error"
-                        title="Error taking photo"
-                        className="mx-4 mb-6"
-                    />,
-                    { duration: 3000 }
-                );
+                toast.custom(<StatusMessage type="error" title="Error taking photo" className="mx-4 mb-6" />, { duration: 3000 });
                 return;
             }
             if (response.assets && response.assets[0]) {
                 const uri = response.assets[0].uri;
-
-                if (imageNumber === 1) {
-                    setImage1Uri(uri);
-                } else {
-                    setImage2Uri(uri);
-                }
-
-                toast.custom(
-                    <StatusMessage
-                        type="success"
-                        title={`Image ${imageNumber} captured successfully`}
-                        className="mx-4 mb-6"
-                    />,
-                    { duration: 2000 }
-                );
-
+                if (imageNumber === 1) setImage1Uri(uri);
+                else setImage2Uri(uri);
+                toast.custom(<StatusMessage type="success" title={`Image ${imageNumber} captured successfully`} className="mx-4 mb-6" />, { duration: 2000 });
                 await uploadImageToServer(uri, imageNumber);
             }
         });
     };
 
-    // Show delete confirmation dialog
     const showDeleteConfirmation = (imageNumber) => {
         setImageToDelete(imageNumber);
         setDeleteDialogVisible(true);
     };
 
-    // Handle delete confirmation
     const handleDeleteConfirmed = async () => {
         const imageNumber = imageToDelete;
         const imageId = imageNumber === 1 ? image1Id : image2Id;
-
         setDeleteDialogVisible(false);
-
         if (imageId) {
             const deleted = await deleteImageFromServer(imageId, imageNumber);
-            if (!deleted) {
-                return;
-            }
+            if (!deleted) return;
         }
-
-        if (imageNumber === 1) {
-            setImage1Uri(null);
-            setImage1Id(null);
-        } else {
-            setImage2Uri(null);
-            setImage2Id(null);
-        }
-
+        if (imageNumber === 1) { setImage1Uri(null); setImage1Id(null); }
+        else { setImage2Uri(null); setImage2Id(null); }
         setImageToDelete(null);
     };
 
-    // Handle delete cancellation
     const handleDeleteCancelled = () => {
         setDeleteDialogVisible(false);
         setImageToDelete(null);
     };
 
-    const handleTryTotoggle = () => {
-        toast.custom(
-            <StatusMessage
-                type="error"
-                title="Cannot change AMC status"
-                message="Please delete the existing AMC complaint first before changing this option"
-                className="mx-4 mb-6"
-            />,
-            { duration: 3000 }
-        );
-    };
-
-    // Handle next button
     const handleNext = async () => {
-        // For AMC mode
-        if (convertToAMC) {
-            // Check if both images are uploaded for AMC
-            if (!image1Id || !image2Id) {
-                toast.custom(
-                    <StatusMessage
-                        type="error"
-                        title="Please capture both before and after images"
-                        className="mx-4 mb-6"
-                    />,
-                    { duration: 3000 }
-                );
-                return;
-            }
-
-            if (isAMCLocked) {
-                // AMC already proceeded - go to ComplaintAMCDetails
-                const amcData = {
-                    amc_complaint_id: amcComplaintId,
-                    complaint_id: complaintData?.id,
-                    status: '1',
-                    msg: 'AMC Already Proceed'
-                };
-
-                navigation.navigate('ComplaintAMCDetails', {
-                    complaintData: complaintData,
-                    amcData: amcData,
-                    amcComplaintId: amcComplaintId
-                });
-                return;
-            } else {
-                // AMC not proceeded yet - go to AMCList
-                navigation.navigate('AMCList', {
-                    complaintData: complaintData,
-                    image1Id: image1Id,
-                    image2Id: image2Id,
-                    image1Uri: image1Uri,
-                    image2Uri: image2Uri
-                });
-                return;
-            }
-        }
-
-        // For regular service mode
-        // Check if all required fields are filled
         if (!selectedCustomerType) {
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title="Please select customer type"
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
+            toast.custom(<StatusMessage type="error" title="Please select review" className="mx-4 mb-6" />, { duration: 3000 });
             return;
         }
-
         if (!remark.trim()) {
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title="Please add a remark"
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
+            toast.custom(<StatusMessage type="error" title="Please add a remark" className="mx-4 mb-6" />, { duration: 3000 });
             return;
         }
-
         if (!image1Id || !image2Id) {
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title="Please capture both before and after images"
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
+            toast.custom(<StatusMessage type="error" title="Please capture both before and after images" className="mx-4 mb-6" />, { duration: 3000 });
             return;
         }
 
         try {
             setSubmitting(true);
-
             const payload = {
                 complaint_id: complaintData?.id?.toString(),
                 remark: remark,
                 review: selectedCustomerType
             };
-
             const response = await UpdateRemark(payload);
-
             if (response?.data?.success) {
-                toast.custom(
-                    <StatusMessage
-                        type="success"
-                        title={response.data.msg || "Remark updated successfully!"}
-                        className="mx-4 mb-6"
-                    />,
-                    { duration: 2000 }
-                );
+                toast.custom(<StatusMessage type="success" title={response.data.msg || "Remark updated successfully!"} className="mx-4 mb-6" />, { duration: 2000 });
 
-                setTimeout(() => {
-                    navigation.replace('Billing', {
+                if (shouldSubmitOnReturn && returnToBilling) {
+                    // Emit event with remark data
+                    EventEmitter.emit('remarkSubmitted', {
                         selectedCustomerType,
                         remark,
-                        image1Id: image1Id,
-                        image2Id: image2Id,
-                        image1Uri: image1Uri,
-                        image2Uri: image2Uri,
-                        complaintData: complaintData,
-                        convertToAMC: convertToAMC
+                        image1Id,
+                        image2Id,
+                        image1Uri,
+                        image2Uri
                     });
-                }, 500);
+                    // Go back to Billing screen without replace
+                    navigation.goBack();
+                } else {
+                    // Original behavior (not used in this flow, but kept for compatibility)
+                    setTimeout(() => {
+                        navigation.replace('Billing', {
+                            selectedCustomerType,
+                            remark,
+                            image1Id,
+                            image2Id,
+                            image1Uri,
+                            image2Uri,
+                            complaintData: complaintData,
+                            convertToAMC: false
+                        });
+                    }, 500);
+                }
             } else {
                 throw new Error(response?.data?.msg || 'Failed to update remark');
             }
         } catch (error) {
             console.error('Error updating remark:', error);
-            toast.custom(
-                <StatusMessage
-                    type="error"
-                    title={error.message || 'Failed to update remark. Please try again.'}
-                    className="mx-4 mb-6"
-                />,
-                { duration: 3000 }
-            );
+            toast.custom(<StatusMessage type="error" title={error.message || 'Failed to update remark. Please try again.'} className="mx-4 mb-6" />, { duration: 3000 });
         } finally {
             setSubmitting(false);
         }
     };
 
-    // Get button text based on current state
     const getButtonText = () => {
         if (refreshing) return 'Refreshing...';
-        if (checkingAMC) return 'Checking AMC Status...';
         if (submitting) return 'Submitting...';
         if (loadingImages) return 'Loading Images...';
         if (uploadingImage1 || uploadingImage2) return 'Uploading Images...';
         if (deletingImage1 || deletingImage2) return 'Deleting Image...';
-
-        if (convertToAMC) {
-            if (isAMCLocked) return 'View AMC Details';
-            return 'Proceed to AMC';
-        }
         return 'Next';
     };
 
-    // Dropdown footer buttons
+    const getButtonBgColor = () => isReadyForNext() ? 'bg-green-600' : 'bg-gray-400';
+
     const customerTypeFooter = (
         <View className="flex-row justify-end gap-2">
-            <TouchableOpacity
-                onPress={() => setCustomerTypeDropdownVisible(false)}
-                className="px-4 py-2 rounded-lg bg-gray-200"
-            >
-                <Text className="text-gray-700 font-medium">Cancel</Text>
-            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setCustomerTypeDropdownVisible(false)} className="px-4 py-2 rounded-lg bg-gray-200"><Text className="text-gray-700 font-medium">Cancel</Text></TouchableOpacity>
         </View>
     );
 
-    // Delete confirmation dialog footer
     const deleteDialogFooter = (
         <View className="flex-row justify-end gap-2">
-            <TouchableOpacity
-                onPress={handleDeleteCancelled}
-                className="px-4 py-2 rounded-lg bg-gray-200"
-            >
-                <Text className="text-gray-700 font-medium">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-                onPress={handleDeleteConfirmed}
-                className="px-4 py-2 rounded-lg bg-red-500"
-            >
-                <Text className="text-white font-medium">Delete</Text>
-            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDeleteCancelled} className="px-4 py-2 rounded-lg bg-gray-200"><Text className="text-gray-700 font-medium">Cancel</Text></TouchableOpacity>
+            <TouchableOpacity onPress={handleDeleteConfirmed} className="px-4 py-2 rounded-lg bg-red-500"><Text className="text-white font-medium">Delete</Text></TouchableOpacity>
         </View>
     );
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            <View className="absolute inset-0 z-50 pointer-events-none">
-                <Toaster />
-            </View>
-
-            <Header
-                title="Remark"
-                titlePosition="left"
-                titleStyle="font-bold text-2xl ml-5"
-                showBackButton={true}
-                containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
-            />
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                className="flex-1"
-            >
-                <ScrollView
-                    className="flex-1 px-4 pt-4"
-                    showsVerticalScrollIndicator={false}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                            colors={['#000000']}
-                            tintColor="#000000"
-                            title="Pull to refresh"
-                            titleColor="#000000"
-                        />
-                    }
-                >
-                    {/* Loading Indicators */}
-                    {checkingAMC && !refreshing && (
-                        <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center">
-                            <ActivityIndicator size="large" color="#000" />
-                            <Text className="text-text-primary mt-2">Checking AMC status...</Text>
-                        </View>
+            <View className="absolute inset-0 z-50 pointer-events-none"><Toaster /></View>
+            <Header title="Remark" titlePosition="left" titleStyle="font-bold text-2xl ml-5" showBackButton={true} containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5" />
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+                <ScrollView className="flex-1 px-4 pt-4" showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#000000']} tintColor="#000000" title="Pull to refresh" titleColor="#000000" />}>
+                    {loadingImages && !refreshing && (
+                        <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center"><ActivityIndicator size="large" color="#000" /><Text className="text-text-primary mt-2">Loading existing images...</Text></View>
                     )}
-
-                    {loadingImages && !refreshing && !checkingAMC && (
-                        <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center">
-                            <ActivityIndicator size="large" color="#000" />
-                            <Text className="text-text-primary mt-2">Loading existing images...</Text>
-                        </View>
-                    )}
-
                     <Text className='text-black font-semibold text-sm'>Complaint: {complaintData?.service_name}</Text>
-                    <View className='bg-yellow-100 self-start px-4 py-2 mt-1 border border-yellow-500 rounded-xl'>
-                        <Text className='text-yellow-800 font-semibold text-sm'>Complaint ID: {complaintData?.id}</Text>
-                    </View>
-                    {/* Convert to AMC Toggle */}
-                    <View className="flex-row justify-between items-center mb-4 mt-3 p-3 bg-gray-50 rounded-xl">
-                        <View>
-                            <Text className="text-text-primary font-semibold text-base">
-                                Convert to AMC
-                            </Text>
-                            <Text className="text-text-tertiary text-xs mt-1">
-                                {convertToAMC ? 'Yes, convert to AMC' : 'No, regular service'}
-                                {isAMCLocked && ' (AMC already processed)'}
-                            </Text>
-                        </View>
-                        <ToggleSwitch
-                            isOn={convertToAMC}
-                            onToggle={isAMCLocked ? handleTryTotoggle : setConvertToAMC}
-                            onColor="#14B8A6"
-                            offColor="#D1D5DB"
-                            size="medium"
-                            animationSpeed={200}
-                        />
+                    <View className='bg-yellow-100 self-start px-4 py-2 mt-1 border border-yellow-500 rounded-xl'><Text className='text-yellow-800 font-semibold text-sm'>CSN ID: {complaintData?.csn}</Text></View>
+
+                    <View className="mb-4 mt-4">
+                        <Text className="text-text-primary font-semibold text-base mb-1">Review<Text className="text-red-500">*</Text></Text>
+                        <TouchableOpacity onPress={() => setCustomerTypeDropdownVisible(true)} className="border border-ui-border rounded-xl px-4 py-3 bg-background-secondary flex-row justify-between items-center">
+                            <Text className={selectedCustomerType ? 'text-text-primary' : 'text-text-tertiary'}>{selectedCustomerType || 'Choose Customer Type (A, B, C, D,E)'}</Text>
+                            <Icon name="chevron-down" size={20} color="#666" />
+                        </TouchableOpacity>
                     </View>
 
-                    {/* Regular Service Fields - Only show when NOT converting to AMC */}
-                    {!convertToAMC && (
-                        <>
-                            {/* Customer Type Dropdown */}
-                            <View className="mb-4">
-                                <Text className="text-text-primary font-semibold text-base mb-1">
-                                    Select Customer Type <Text className="text-red-500">*</Text>
-                                </Text>
-                                <TouchableOpacity
-                                    onPress={() => setCustomerTypeDropdownVisible(true)}
-                                    className="border border-ui-border rounded-xl px-4 py-3 bg-background-secondary flex-row justify-between items-center"
-                                >
-                                    <Text className={selectedCustomerType ? 'text-text-primary' : 'text-text-tertiary'}>
-                                        {selectedCustomerType || 'Choose Customer Type (A, B, C, D)'}
-                                    </Text>
-                                    <Icon name="chevron-down" size={20} color="#666" />
-                                </TouchableOpacity>
-                            </View>
+                    <View className="mb-4">
+                        <Text className="text-text-primary font-semibold text-base mb-1">Remark <Text className="text-red-500">*</Text></Text>
+                        <TextInput className="border border-ui-border rounded-xl px-4 py-3 text-text-primary bg-background-secondary" placeholder="Add any remarks" multiline numberOfLines={4} textAlignVertical="top" value={remark} onChangeText={setRemark} />
+                    </View>
 
-                            {/* Remark */}
-                            <View className="mb-4">
-                                <Text className="text-text-primary font-semibold text-base mb-1">
-                                    Remark <Text className="text-red-500">*</Text>
-                                </Text>
-                                <TextInput
-                                    className="border border-ui-border rounded-xl px-4 py-3 text-text-primary bg-background-secondary"
-                                    placeholder="Add any remarks"
-                                    multiline
-                                    numberOfLines={4}
-                                    textAlignVertical="top"
-                                    value={remark}
-                                    onChangeText={setRemark}
-                                />
-                            </View>
-                        </>
-                    )}
-
-                    {/* Image Upload Section - Always show */}
-                    <Text className="text-text-primary font-semibold text-base mb-2">
-                        Capture Images <Text className="text-red-500">*</Text>
-                    </Text>
-
-                    {convertToAMC && !isAMCLocked && (
-                        <Text className="text-blue-600 text-sm mb-2">
-                            Please capture both images before proceeding to AMC
-                        </Text>
-                    )}
-
+                    <Text className="text-text-primary font-semibold text-base mb-2">Capture Images <Text className="text-red-500">*</Text></Text>
                     <View className='flex-row justify-between gap-4'>
-                        {/* Image 1 - Before Working */}
                         <View className="flex-1 mb-4">
                             <Text className="text-text-secondary text-sm mb-1">Before Working Image</Text>
                             {image1Uri ? (
                                 <View className="relative">
-                                    <Image
-                                        source={{ uri: image1Uri }}
-                                        className="w-full h-[200px] rounded-xl bg-gray-200"
-                                        resizeMode="cover"
-                                    />
-                                    <TouchableOpacity
-                                        onPress={() => showDeleteConfirmation(1)}
-                                        disabled={deletingImage1}
-                                        className="absolute top-2 right-2 bg-white/80 rounded-full p-1"
-                                    >
-                                        {deletingImage1 ? (
-                                            <ActivityIndicator size="small" color="#ff4444" />
-                                        ) : (
-                                            <Icon name="trash-outline" size={22} color="#ff4444" />
-                                        )}
+                                    <Image source={{ uri: image1Uri }} className="w-full h-[200px] rounded-xl bg-gray-200" resizeMode="cover" />
+                                    <TouchableOpacity onPress={() => showDeleteConfirmation(1)} disabled={deletingImage1} className="absolute top-2 right-2 bg-white/80 rounded-full p-1">
+                                        {deletingImage1 ? <ActivityIndicator size="small" color="#ff4444" /> : <Icon name="trash-outline" size={22} color="#ff4444" />}
                                     </TouchableOpacity>
-                                    {uploadingImage1 && (
-                                        <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center">
-                                            <ActivityIndicator size="large" color="#fff" />
-                                            <Text className="text-white mt-2">Uploading...</Text>
-                                        </View>
-                                    )}
-                                    {image1Id && !uploadingImage1 && !deletingImage1 && (
-                                        <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1">
-                                            <Text className="text-white text-xs">Uploaded ✓</Text>
-                                        </View>
-                                    )}
+                                    {uploadingImage1 && <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center"><ActivityIndicator size="large" color="#fff" /><Text className="text-white mt-2">Uploading...</Text></View>}
+                                    {image1Id && !uploadingImage1 && !deletingImage1 && <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1"><Text className="text-white text-xs">Uploaded ✓</Text></View>}
                                 </View>
                             ) : (
-                                <TouchableOpacity
-                                    onPress={() => captureImage(1)}
-                                    disabled={loadingImages || refreshing}
-                                    className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary"
-                                    style={{ minHeight: 200 }}
-                                >
-                                    <Icon name="camera-outline" size={40} color="#666" />
-                                    <Text className="text-text-primary font-semibold text-base mt-2 text-center">
-                                        Capture Before Working
-                                    </Text>
-                                    <Text className="text-text-tertiary text-sm text-center mt-1">
-                                        Tap to open camera
-                                    </Text>
+                                <TouchableOpacity onPress={() => captureImage(1)} disabled={loadingImages || refreshing} className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary" style={{ minHeight: 200 }}>
+                                    <Icon name="camera-outline" size={40} color="#666" /><Text className="text-text-primary font-semibold text-base mt-2 text-center">Capture Before Working</Text><Text className="text-text-tertiary text-sm text-center mt-1">Tap to open camera</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
-
-                        {/* Image 2 - After Working */}
                         <View className="flex-1 mb-4">
                             <Text className="text-text-secondary text-sm mb-1">After Working Image</Text>
                             {image2Uri ? (
                                 <View className="relative">
-                                    <Image
-                                        source={{ uri: image2Uri }}
-                                        className="w-full h-[200px] rounded-xl bg-gray-200"
-                                        resizeMode="cover"
-                                    />
-                                    <TouchableOpacity
-                                        onPress={() => showDeleteConfirmation(2)}
-                                        disabled={deletingImage2}
-                                        className="absolute top-2 right-2 bg-white/80 rounded-full p-1"
-                                    >
-                                        {deletingImage2 ? (
-                                            <ActivityIndicator size="small" color="#ff4444" />
-                                        ) : (
-                                            <Icon name="trash-outline" size={22} color="#ff4444" />
-                                        )}
+                                    <Image source={{ uri: image2Uri }} className="w-full h-[200px] rounded-xl bg-gray-200" resizeMode="cover" />
+                                    <TouchableOpacity onPress={() => showDeleteConfirmation(2)} disabled={deletingImage2} className="absolute top-2 right-2 bg-white/80 rounded-full p-1">
+                                        {deletingImage2 ? <ActivityIndicator size="small" color="#ff4444" /> : <Icon name="trash-outline" size={22} color="#ff4444" />}
                                     </TouchableOpacity>
-                                    {uploadingImage2 && (
-                                        <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center">
-                                            <ActivityIndicator size="large" color="#fff" />
-                                            <Text className="text-white mt-2">Uploading...</Text>
-                                        </View>
-                                    )}
-                                    {image2Id && !uploadingImage2 && !deletingImage2 && (
-                                        <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1">
-                                            <Text className="text-white text-xs">Uploaded ✓</Text>
-                                        </View>
-                                    )}
+                                    {uploadingImage2 && <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center"><ActivityIndicator size="large" color="#fff" /><Text className="text-white mt-2">Uploading...</Text></View>}
+                                    {image2Id && !uploadingImage2 && !deletingImage2 && <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1"><Text className="text-white text-xs">Uploaded ✓</Text></View>}
                                 </View>
                             ) : (
-                                <TouchableOpacity
-                                    onPress={() => captureImage(2)}
-                                    disabled={loadingImages || refreshing}
-                                    className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary"
-                                    style={{ minHeight: 200 }}
-                                >
-                                    <Icon name="camera-outline" size={40} color="#666" />
-                                    <Text className="text-text-primary font-semibold text-base mt-2 text-center">
-                                        Capture After Working
-                                    </Text>
-                                    <Text className="text-text-tertiary text-sm text-center mt-1">
-                                        Tap to open camera
-                                    </Text>
+                                <TouchableOpacity onPress={() => captureImage(2)} disabled={loadingImages || refreshing} className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary" style={{ minHeight: 200 }}>
+                                    <Icon name="camera-outline" size={40} color="#666" /><Text className="text-text-primary font-semibold text-base mt-2 text-center">Capture After Working</Text><Text className="text-text-tertiary text-sm text-center mt-1">Tap to open camera</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
                     </View>
 
-                    {/* Next Button */}
-                    <TouchableOpacity
-                        onPress={handleNext}
-                        disabled={!isReadyForNext()}
-                        className={`py-4 rounded-xl items-center mb-8 ${isReadyForNext() ? 'bg-black' : 'bg-gray-400'}`}
-                    >
-                        <Text className="text-white font-semibold text-base">
-                            {getButtonText()}
-                        </Text>
+                    <TouchableOpacity onPress={handleNext} disabled={!isReadyForNext()} className={`py-4 rounded-xl items-center mb-8 ${getButtonBgColor()}`}>
+                        <Text className="text-white font-semibold text-base">{getButtonText()}</Text>
                     </TouchableOpacity>
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* Customer Type Selection Dialog */}
-            <DialogBox
-                visible={customerTypeDropdownVisible}
-                onClose={() => setCustomerTypeDropdownVisible(false)}
-                title="Select Customer Type"
-                size="sm"
-                footer={customerTypeFooter}
-                closeOnBackdropPress={true}
-            >
+            <DialogBox visible={customerTypeDropdownVisible} onClose={() => setCustomerTypeDropdownVisible(false)} title="Select Review" size="sm" footer={customerTypeFooter} closeOnBackdropPress={true}>
                 <View className="py-2">
                     {customerTypeOptions.map((option) => (
-                        <TouchableOpacity
-                            key={option}
-                            onPress={() => {
-                                setSelectedCustomerType(option);
-                                setCustomerTypeDropdownVisible(false);
-                            }}
-                            className={`py-3 px-2 border-b border-gray-100 ${selectedCustomerType === option ? 'bg-primary-sage100' : ''
-                                }`}
-                        >
-                            <Text
-                                className={`text-base ${selectedCustomerType === option
-                                    ? 'text-primary-sage700 font-semibold'
-                                    : 'text-text-primary'
-                                    }`}
-                            >
-                                {option}
-                            </Text>
+                        <TouchableOpacity key={option} onPress={() => { setSelectedCustomerType(option); setCustomerTypeDropdownVisible(false); }} className={`py-3 px-2 border-b border-gray-100 ${selectedCustomerType === option ? 'bg-primary-sage100' : ''}`}>
+                            <Text className={`text-base ${selectedCustomerType === option ? 'text-primary-sage700 font-semibold' : 'text-text-primary'}`}>{option}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
             </DialogBox>
 
-            {/* Delete Confirmation Dialog */}
-            <DialogBox
-                visible={deleteDialogVisible}
-                onClose={handleDeleteCancelled}
-                title="Delete Image"
-                size="sm"
-                footer={deleteDialogFooter}
-                closeOnBackdropPress={true}
-            >
+            <DialogBox visible={deleteDialogVisible} onClose={handleDeleteCancelled} title="Delete Image" size="sm" footer={deleteDialogFooter} closeOnBackdropPress={true}>
                 <View className="py-4">
-                    <Text className="text-text-primary text-center">
-                        Are you sure you want to delete this image?
-                    </Text>
-                    <Text className="text-text-secondary text-center text-sm mt-2">
-                        This action cannot be undone.
-                    </Text>
+                    <Text className="text-text-primary text-center">Are you sure you want to delete this image?</Text>
+                    <Text className="text-text-secondary text-center text-sm mt-2">This action cannot be undone.</Text>
                 </View>
             </DialogBox>
         </SafeAreaView>

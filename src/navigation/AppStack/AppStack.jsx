@@ -38,7 +38,7 @@ import NotificationTopNavigation from '../../navigation/NotificationTopNavigatio
 import { NotificationProvider } from '../../context/NotificationContext';
 import BucketNavigation from '../BucketNavigation/BucketNavigation';
 import { BucketProvider } from '../../context/BucketContext';
-
+import ConetToAMCScreen from '../../screens/AppScreens/Complaints/ConetToAMCScreen';
 const Stack = createNativeStackNavigator();
 
 const AppStack = () => {
@@ -88,6 +88,8 @@ const AppStack = () => {
               <Stack.Screen name="Parts" component={Parts} />
               <Stack.Screen name="Services" component={Services} />
               <Stack.Screen name="MyAmc" component={MyAmc} />
+              <Stack.Screen name="ConetToAMCScreen" component={ConetToAMCScreen} />
+
               <Stack.Screen
                 name="CompleteAMCDetails"
                 component={CompleteAMCDetails}

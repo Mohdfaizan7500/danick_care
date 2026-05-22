@@ -1,6 +1,6 @@
 import { Text, View, FlatList, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native'
 import React, { useState, useEffect } from 'react'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Header from '../../../components/Header'
 import { AcceptComplaint, PendingComplaints, PendingComplaintCount } from '../../../lib/api'
 import DialogBox from '../../../components/DilaogBox'
@@ -9,6 +9,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons'
 import { useOrder } from '../../../context/OrderContext';
 
 const Orders = ({ route }) => {
+    const insets = useSafeAreaInsets();
     const { user } = useAuth();
     const city_id = user?.city_id;
     const technician_id = user?.id;
@@ -345,7 +346,7 @@ const Orders = ({ route }) => {
 
     if (loading && !refreshing) {
         return (
-            <SafeAreaView className="flex-1 bg-white">
+            <View className="flex-1 bg-white" style={{paddingTop:insets.top}}>
                 <Header
                     title="Pending Complaints"
                     titlePosition="left"
@@ -357,12 +358,12 @@ const Orders = ({ route }) => {
                     <ActivityIndicator size="large" color="#FF5722" />
                     <Text className="mt-2.5 text-base text-gray-500">Loading complaints...</Text>
                 </View>
-            </SafeAreaView>
+            </View>
         )
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
+        <View className="flex-1 bg-white" style={{paddingTop:insets.top}}>
             <Header
                 title={`Pending Complaints (${pendingCount})`}
                 titlePosition="left"
@@ -415,7 +416,7 @@ const Orders = ({ route }) => {
             >
                 {renderDialogContent()}
             </DialogBox>
-        </SafeAreaView>
+        </View>
     )
 }
 

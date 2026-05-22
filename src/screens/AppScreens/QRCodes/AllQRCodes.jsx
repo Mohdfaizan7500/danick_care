@@ -28,9 +28,9 @@ const SkeletonCard = () => (
 );
 
 const AllQRCodes = ({ route }) => {
-    console.log('rote',route)
+    console.log('route', route);
     const name = route.name;
-    console.log('rote',name)
+    console.log('name', name);
 
     const { user, imagUrl } = useAuth();
     const navigation = useNavigation();
@@ -44,36 +44,36 @@ const AllQRCodes = ({ route }) => {
     const hasFetched = useRef(false);
     const isMounted = useRef(true);
 
-    const getStatus = ()=>{
-        switch(name){
+    const getStatus = () => {
+        switch (name) {
             case "AllQRCodes":
                 return "";
             case "UsedQRCodes":
                 return "1";
-             case "FreshQRCodes":
+            case "FreshQRCodes":
                 return "0";
             default:
-                 return "";
+                return "";
         }
     }
 
     // Fetch QR codes from API
     const fetchQRCodes = async (isRefresh = false) => {
         if (!isMounted.current) return;
-        
+
         try {
             setError(null);
-            
+
             if (!isRefresh) {
                 setLoading(true);
             }
-            
+
             const payload = {
                 technician_id: user?.id?.toString() || "1",
                 status: getStatus(name) // Empty string for all QR codes
             };
-            
-            console.log('Fetching all QR codes with payload:', payload);
+
+            console.log('Fetching QR codes with payload:', payload);
             const response = await AssignQRCodeList(payload);
             console.log('AssignQRCodeList response:', response);
 
@@ -81,7 +81,7 @@ const AllQRCodes = ({ route }) => {
                 // Remove duplicates by qr_id
                 const uniqueQRCodes = [];
                 const seenIds = new Set();
-                
+
                 response.data.data.forEach((item, index) => {
                     if (!seenIds.has(item.qr_id)) {
                         seenIds.add(item.qr_id);
@@ -92,24 +92,34 @@ const AllQRCodes = ({ route }) => {
                             status: item.complaint_id ? 'used' : 'fresh',
                             imageUrl: item.qr_img ? `${imagUrl}${item.qr_img}` : null,
                             qr_img: item.qr_img,
-                            isUsed: item.complaint_id ? true :false,
+                            isUsed: !!item.complaint_id,
                             partName: item.part_name || 'Spare Part',
                             customerName: item.customer_name || null,
                             technicianName: item.technician_name || null
                         });
                     }
                 });
-                
+
                 setQrCodes(uniqueQRCodes);
-            } else if (response?.data?.success === false) {
-                const errorMessage = response?.data?.message || 'Failed to fetch QR codes';
-                setError(errorMessage);
-                toast.custom(
-                    <StatusMessage type='error' title={errorMessage} />,
-                    { duration: 2000 }
-                );
-                setQrCodes([]);
-            } else {
+            } 
+            else if (response?.data?.success === false) {
+                // Check for "No Assign QR Code Found" message - treat as empty data, not an error
+                if (response?.data?.msg === "No Assign QR Code Found") {
+                    console.log('No QR codes found, setting empty list');
+                    setQrCodes([]);
+                    // No error toast, just empty state
+                } else {
+                    // Real error
+                    const errorMessage = response?.data?.msg || response?.data?.message || 'Failed to fetch QR codes';
+                    setError(errorMessage);
+                    toast.custom(
+                        <StatusMessage type='error' title={errorMessage} />,
+                        { duration: 2000 }
+                    );
+                    setQrCodes([]);
+                }
+            } 
+            else {
                 setQrCodes([]);
             }
         } catch (err) {
@@ -156,17 +166,16 @@ const AllQRCodes = ({ route }) => {
     const handleQRCodePress = (item) => {
         console.log('QR Code pressed:', item.qrCodeNumber);
         if (item.complaintId && item.complaintId !== 'N/A' && item.complaintId !== null) {
-            // Navigate to QRCodeDetails screen
-            navigation.navigate('QRCodeDetails', { 
+            navigation.navigate('QRCodeDetails', {
                 qrData: item,
                 status: "qrcode"
             });
         } else {
             toast.custom(
-                <StatusMessage 
-                    type='info' 
-                    title='No Complaint Linked' 
-                    message='This QR code is not linked to any complaint.' 
+                <StatusMessage
+                    type='info'
+                    title='No Complaint Linked'
+                    message='This QR code is not linked to any complaint.'
                 />,
                 { duration: 1500 }
             );
@@ -178,7 +187,6 @@ const AllQRCodes = ({ route }) => {
         if (!searchQuery.trim()) {
             return qrCodes;
         }
-
         const query = searchQuery.toLowerCase().trim();
         return qrCodes.filter(item =>
             item.qrCodeNumber?.toLowerCase().includes(query) ||
@@ -204,7 +212,7 @@ const AllQRCodes = ({ route }) => {
 
     // Render each QR code item using the QRCodeCard component
     const renderQRCodeItem = ({ item, index }) => {
-        console.log("Qr codes data:",item)
+        console.log("QR codes data:", item);
         return (
             <QRCodeCard
                 item={item}
@@ -234,7 +242,6 @@ const AllQRCodes = ({ route }) => {
             hasFetched.current = true;
             fetchQRCodes();
         }
-        
         return () => {
             isMounted.current = false;
         };
@@ -256,7 +263,7 @@ const AllQRCodes = ({ route }) => {
         return renderSkeleton();
     }
 
-    // Error state - show retry
+    // Error state - show retry (only for real errors, not empty data)
     if (error && !loading && qrCodes.length === 0) {
         return (
             <View className="flex-1 justify-center items-center bg-gray-50 px-4">
@@ -275,7 +282,7 @@ const AllQRCodes = ({ route }) => {
     return (
         <View className="flex-1 bg-gray-50">
             {/* Header with total count */}
-            <View className="flex-row justify-between items-center px-4 py-3 bg-white border-b border-gray-200">
+            <View className="flex-row justify-between items-center px-4  bg-white border-b border-gray-200">
                 <Text className="text-sm text-gray-600">
                     Total QR Codes: <Text className="font-bold text-teal-600">{qrCodes.length}</Text>
                 </Text>
@@ -364,7 +371,7 @@ const AllQRCodes = ({ route }) => {
                             />
                         )}
                     </View>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => setModalVisible(false)}
                         className="absolute top-10 right-5 bg-black/50 rounded-full p-2"
                     >

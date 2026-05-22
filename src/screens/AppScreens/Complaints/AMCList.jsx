@@ -344,11 +344,11 @@ const AMCList = () => {
                 }
             />
 
-            {/* Confirmation Dialog */}
+            {/* Confirmation Dialog - Hinglish Version */}
             <DialogBox
                 visible={showConfirmModal}
                 onClose={handleCancelConversion}
-                title="Confirm AMC Conversion"
+                title="AMC Conversion Confirm"
                 size="md"
                 showCloseButton={true}
                 closeIconName="close"
@@ -380,26 +380,19 @@ const AMCList = () => {
                         </View>
                     )}
 
-                    {/* Question Text */}
+                    {/* Hinglish confirmation text */}
                     <Text className="text-lg font-semibold text-center text-gray-800 mb-3">
-                        क्या आप इस complaint को AMC में convert करना चाहते हैं?
+                        Kya aap is complaint ko AMC mein convert karna chahte hain?
                     </Text>
 
-                    <Text className="text-base text-center text-gray-600 mb-4">
-                        Do you want to convert this complaint to AMC?
-                    </Text>
-
-                    {/* Important Note Box */}
+                    {/* Important Note Box in Hinglish */}
                     <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                         <View className="flex-row items-center mb-2">
                             <Icon name="information-circle" size={20} color="#D97706" />
                             <Text className="text-yellow-700 font-semibold ml-2">Important Note:</Text>
                         </View>
                         <Text className="text-yellow-700 text-sm">
-                            ⚠️ अगर आप AMC cancel करना चाहते हैं, तो सभी QR codes को हटाना अनिवार्य है।
-                        </Text>
-                        <Text className="text-yellow-700 text-sm mt-1">
-                            ⚠️ If you want to cancel the AMC, you must detach all QR codes first.
+                            ⚠️ Agar aap AMC cancel karna chahte hain, toh saare QR codes ko detach karna zaroori hai.
                         </Text>
                     </View>
 
@@ -410,7 +403,7 @@ const AMCList = () => {
                             className="flex-1 bg-gray-200 py-3 rounded-lg mr-2"
                         >
                             <Text className="text-gray-700 text-center font-semibold text-base">
-                                नहीं / No
+                                Cancel / नहीं
                             </Text>
                         </TouchableOpacity>
 
@@ -420,7 +413,7 @@ const AMCList = () => {
                             disabled={processingAMC}
                         >
                             <Text className="text-white text-center font-semibold text-base">
-                                {processingAMC ? 'Processing...' : 'हाँ / Yes'}
+                                {processingAMC ? 'Processing...' : 'Confirm / हाँ'}
                             </Text>
                         </TouchableOpacity>
                     </View>

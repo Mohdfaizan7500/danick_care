@@ -1,6 +1,6 @@
 import { Text, View, TouchableOpacity, ActivityIndicator, Image, ScrollView, Platform } from 'react-native';
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { BadgeCheck, LockIcon, LogOut, Mail, Phone } from 'lucide-react-native';
@@ -13,6 +13,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { logoutApi } from '../../../lib/api';
 
 const Profile = () => {
+  const insets = useSafeAreaInsets();
   const { user, logout, profileData, imagUrl, setAuthData, setIsOnline } = useAuth();
   console.log("profileData:", profileData)
   const tech_id = user?.id;
@@ -197,7 +198,7 @@ const Profile = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <View className="flex-1 bg-white" style={{paddingTop:insets.top}}>
       <View className="absolute inset-0 z-50 pointer-events-none">
         <Toaster />
       </View>
@@ -212,15 +213,24 @@ const Profile = () => {
         {/* Profile Header Section */}
         <View className="bg-white p-5 items-center border-b border-gray-200">
           <View>
-            <Image
-              source={
-                profileData?.profile_photo
-                  ? { uri: `${imagUrl}${profileData.profile_photo}` }
-                  : require('../../../assets/images/profileImage.jpg')
-              }
-              className="w-24 h-24 rounded-full mb-4 border-3 border-white shadow-md"
-            />
-            
+            {
+              profileData?.profile_photo ?
+                <Image
+                  source={
+                    profileData?.profile_photo
+                      ? { uri: `${imagUrl}${profileData.profile_photo}` }
+                      : require('../../../assets/images/profileImage.jpg')
+                  }
+                  className="w-24 h-24 rounded-full mb-4 border-3 border-white shadow-md"
+                />
+                :
+                <View className=' items-center justify-center w-24 h-24 bg-gray-200 rounded-full mb-4 '>
+                  <UserIcon width={50} height={50} stroke={'gray'} />
+                </View>
+
+            }
+
+
             <View className={`absolute bottom-5 right-1 h-5 border-2 border-white w-5 rounded-full ${profileData?.login_status === 'Online' ? 'bg-green-500' : 'bg-red-500'}`} />
           </View>
 
@@ -321,7 +331,7 @@ const Profile = () => {
           )}
         </View>
       </DialogBox>
-    </SafeAreaView>
+    </View>
   );
 };
 

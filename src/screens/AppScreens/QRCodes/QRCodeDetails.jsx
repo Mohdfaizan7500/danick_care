@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ScrollView, Image, ActivityIndicator, TouchableOpacity, Linking, StatusBar, Platform, PermissionsAndroid } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Image, ActivityIndicator, TouchableOpacity, Linking, StatusBar, Platform, PermissionsAndroid, Modal } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,7 +15,8 @@ import DialogBox from '../../../components/DilaogBox';
 const QRCodeDetails = () => {
   const route = useRoute();
   const status = route.params?.status || 'complaint';
-  const [imageError, setImageError] = useState(false);
+  // Per-part image error tracking
+  const [imageErrors, setImageErrors] = useState({});
 
   console.log('Status in QRCodeDetails:', status);
   const qrCode = route.params.qrData || route.params.complaint || route.params.qrCode || {};
@@ -28,6 +29,10 @@ const QRCodeDetails = () => {
   const [expandedCommission, setExpandedCommission] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [hasStoragePermission, setHasStoragePermission] = useState(false);
+
+  // Image modal state
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState('');
 
   // Dialog state
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -592,6 +597,14 @@ const QRCodeDetails = () => {
     );
   };
 
+  // Handle image click to open modal
+  const handleImageClick = (imageUrl) => {
+    if (imageUrl) {
+      setSelectedImageUrl(imageUrl);
+      setImageModalVisible(true);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-white">
@@ -602,11 +615,6 @@ const QRCodeDetails = () => {
           titleStyle="font-bold text-2xl ml-5"
           showBackButton={true}
           containerStyle='flex-row bg-white pt-3 py-2 px-4'
-          showRightIcon={true}
-          customRightIconComponent={
-            <DownloadIcon width={24} height={24} fill="#555" />
-          }
-          onRightIconPress={handleDownloadPDF}
         />
         <View className="flex-1 justify-center items-center bg-gray-50">
           <ActivityIndicator size="large" color="#58A890" />
@@ -626,11 +634,6 @@ const QRCodeDetails = () => {
           titleStyle="font-bold text-2xl ml-5"
           showBackButton={true}
           containerStyle='flex-row bg-white pt-3 py-2 px-4'
-          showRightIcon={true}
-          customRightIconComponent={
-            <DownloadIcon width={24} height={24} fill="#555" />
-          }
-          onRightIconPress={handleDownloadPDF}
         />
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="document-text-outline" size={80} color="#CCCCCC" />
@@ -656,11 +659,7 @@ const QRCodeDetails = () => {
         titleStyle="font-bold text-2xl ml-5"
         showBackButton={true}
         containerStyle='flex-row bg-white pt-3 py-2 px-4'
-        showRightIcon={true}
-        customRightIconComponent={
-          <DownloadIcon width={24} height={24} fill="#555" />
-        }
-        onRightIconPress={handleDownloadPDF}
+        showRightIcon={false}
       />
       <View className="absolute inset-0 z-50 pointer-events-none">
         <Toaster />
@@ -720,23 +719,6 @@ const QRCodeDetails = () => {
             <Text className="text-text-primary font-semibold text-base">{complaintDetails.service_name || complaintDetails.service || 'N/A'}</Text>
           </View>
 
-          <View className="flex-row justify-between mb-3">
-            <View className="flex-1 mr-2">
-              <Text className="text-text-secondary text-sm">Customer Name</Text>
-              <Text className="text-text-primary font-semibold text-base">{complaintDetails.customer_name || 'N/A'}</Text>
-            </View>
-            <View className="flex-1 ml-2">
-              <Text className="text-text-secondary text-sm">Customer Mobile</Text>
-              <TouchableOpacity
-                onPress={() => handleCallPress(complaintDetails.customer_mobile)}
-                className="flex-row items-center"
-              >
-                <Icon name="call-outline" size={16} color="#58A890" />
-                <Text className="text-primary-sage600 ml-2 font-semibold text-base">{complaintDetails.customer_mobile || 'N/A'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
           <View className="mb-3">
             <Text className="text-text-secondary text-sm">Service Address</Text>
             <Text className="text-text-primary text-base">{complaintDetails.service_address || 'N/A'}</Text>
@@ -792,53 +774,44 @@ const QRCodeDetails = () => {
               <Text className="text-text-primary">{complaintDetails.review}</Text>
             </View>
           )}
-
-          {complaintDetails.invoice && (
-            <View className="mt-3 pt-3 border-t border-gray-100">
-              <TouchableOpacity
-                onPress={handleDownloadPDF}
-                disabled={downloading}
-                className="flex-row items-center justify-center bg-primary-sage600 py-3 rounded-xl"
-              >
-                {downloading ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <>
-                    <Icon name="document-text-outline" size={20} color="#ffffff" />
-                    <Text className="text-white font-semibold ml-2">Download Invoice PDF</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
 
         {/* Commission Card */}
-        {complaintDetails.commission && complaintDetails.commission.length > 0 && (
-          <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-gray-200">
-            <TouchableOpacity
-              onPress={() => setExpandedCommission(!expandedCommission)}
-              className="flex-row justify-between items-center mb-3"
-            >
-              <Text className="text-lg font-bold text-text-primary">Commission Details</Text>
+        <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-gray-200">
+          <TouchableOpacity
+            onPress={() => complaintDetails?.commission?.length > 0 && setExpandedCommission(!expandedCommission)}
+            className="flex-row justify-between items-center mb-3"
+            disabled={!complaintDetails?.commission || complaintDetails.commission.length === 0}
+          >
+            <Text className="text-lg font-bold text-text-primary">Commission Details</Text>
+            {complaintDetails?.commission && complaintDetails.commission.length > 0 && (
               <Icon name={expandedCommission ? "chevron-up-outline" : "chevron-down-outline"} size={20} color="#666" />
-            </TouchableOpacity>
-
-            {!expandedCommission && renderCommissionRow()}
-            {expandedCommission && renderMultipleCommissionRows()}
-
-            {complaintDetails.commission.length > 1 && (
-              <TouchableOpacity
-                onPress={() => setExpandedCommission(!expandedCommission)}
-                className="mt-3 items-center pt-2 border-t border-gray-100"
-              >
-                <Text className="text-primary-sage600 font-semibold">
-                  {expandedCommission ? 'Show Less' : `View All (${complaintDetails.commission.length} entries)`}
-                </Text>
-              </TouchableOpacity>
             )}
-          </View>
-        )}
+          </TouchableOpacity>
+
+          {complaintDetails?.commission && complaintDetails.commission.length > 0 ? (
+            <>
+              {!expandedCommission && renderCommissionRow()}
+              {expandedCommission && renderMultipleCommissionRows()}
+
+              {complaintDetails.commission.length > 1 && (
+                <TouchableOpacity
+                  onPress={() => setExpandedCommission(!expandedCommission)}
+                  className="mt-3 items-center pt-2 border-t border-gray-100"
+                >
+                  <Text className="text-primary-sage600 font-semibold">
+                    {expandedCommission ? 'Show Less' : `View All (${complaintDetails.commission.length} entries)`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          ) : (
+            <View className="py-4 items-center">
+              <Icon name="cash-outline" size={40} color="#CCCCCC" />
+              <Text className="text-text-tertiary text-base mt-2">No commission details available</Text>
+            </View>
+          )}
+        </View>
 
         {/* Parts Used Card */}
         {complaintDetails.parts && complaintDetails.parts.length > 0 && (
@@ -851,30 +824,51 @@ const QRCodeDetails = () => {
               <Icon name={expandedParts ? "chevron-up-outline" : "chevron-down-outline"} size={20} color="#666" />
             </TouchableOpacity>
 
-            {(expandedParts ? complaintDetails.parts : complaintDetails.parts.slice(0, 3)).map((part, index) => (
-              <View key={part.id || index} className="border-t border-gray-100 pt-3 mt-2">
-                <View className="flex-row">
-                  {part.part_image && imageError === false ? (
-                    <Image
-                      source={{ uri: part.part_image }}
-                      className="w-16 h-16 rounded-lg mr-3"
-                      resizeMode="cover"
-                      onError={() => setImageError(true)}
-                    />
-                  ) : (
-                    <View className='w-16 h-16 border border-gray-400 items-center justify-center mr-3 rounded-lg bg-gray-100'>
-                      <NoImage width={30} height={30} fill={'gray'} />
-                    </View>
+            {(expandedParts ? complaintDetails.parts : complaintDetails.parts.slice(0, 3)).map((part, index) => {
+              const partId = part.id || index;
+              const hasImageError = imageErrors[partId];
+              const imageUrl = part.part_image;
 
-                  )}
-                  <View className="flex-1">
-                    <Text className="text-text-primary font-semibold">{part.part_name}</Text>
-                    <Text className="text-text-secondary text-sm">QR Code: {part.qr_code || 'N/A'}</Text>
-                    <Text className="text-primary-sage600 font-bold mt-1">₹{part.part_price}</Text>
+              return (
+                <View key={partId} className="border-t border-gray-100 pt-3 mt-2">
+                  <View className="flex-row">
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        if (imageUrl && !hasImageError) {
+                          handleImageClick(imageUrl);
+                        } else if (!imageUrl) {
+                          toast.custom(
+                            <StatusMessage type='info' title='No Image' message='No image available for this part' />
+                          );
+                        }
+                      }}
+                      disabled={!imageUrl || hasImageError}
+                    >
+                      {imageUrl && !hasImageError ? (
+                        <Image
+                          source={{ uri: imageUrl }}
+                          className="w-16 h-16 rounded-lg mr-3"
+                          resizeMode="cover"
+                          onError={() => {
+                            setImageErrors(prev => ({ ...prev, [partId]: true }));
+                          }}
+                        />
+                      ) : (
+                        <View className='w-16 h-16 border border-gray-400 items-center justify-center mr-3 rounded-lg bg-gray-100'>
+                          <NoImage width={30} height={30} fill={'gray'} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                    <View className="flex-1">
+                      <Text className="text-text-primary font-semibold">{part.part_name}</Text>
+                      <Text className="text-text-secondary text-sm">QR Code: {part.qr_code || 'N/A'}</Text>
+                      <Text className="text-primary-sage600 font-bold mt-1">₹{part.part_price}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
 
             {complaintDetails.parts.length > 3 && !expandedParts && (
               <TouchableOpacity
@@ -911,6 +905,36 @@ const QRCodeDetails = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Image Modal - White background box with cross icon */}
+      <Modal
+        visible={imageModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setImageModalVisible(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center p-4">
+          <View className="bg-white rounded-2xl w-full max-w-[90%] max-h-[80%] overflow-hidden">
+            {/* Header with close icon */}
+            <View className="flex-row justify-end p-2">
+              <TouchableOpacity
+                onPress={() => setImageModalVisible(false)}
+                className="p-2"
+              >
+                <Icon name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            {/* Image */}
+            <View className="p-4 pt-0">
+              <Image
+                source={{ uri: selectedImageUrl }}
+                className="w-full h-80"
+                resizeMode="contain"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Dialog Box Component */}
       <DialogBox

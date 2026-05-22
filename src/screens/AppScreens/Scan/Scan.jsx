@@ -14,7 +14,7 @@ import {
   Pressable,
   Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { toast, Toaster } from 'sonner-native';
 import NetInfo from '@react-native-community/netinfo';
@@ -29,6 +29,7 @@ import StatusMessage from '../../../components/StatusMessage';
 import NoInternet from '../../NoInternet';
 
 const Scan = () => {
+  const insets = useSafeAreaInsets();
   const [searchText, setSearchText] = useState('');
   const [searchedProduct, setSearchedProduct] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
@@ -215,7 +216,7 @@ const Scan = () => {
   // If offline, show NoInternet screen
   if (!isConnected) {
     return (
-      <SafeAreaView className="flex-1 bg-white">
+      <View className="flex-1 bg-white" style={{paddingTop:insets.top}}>
         <Header
           title="Scan QR Code"
           titlePosition="left"
@@ -224,7 +225,7 @@ const Scan = () => {
           containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
         />
         <NoInternet onRetry={handleRetry} />
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -236,7 +237,7 @@ const Scan = () => {
 
   // Main UI when online
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <View className="flex-1 bg-white" style={{paddingTop:insets.top}}>
       <View className="absolute inset-0 z-50 pointer-events-none">
         <Toaster />
       </View>
@@ -485,7 +486,7 @@ const Scan = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

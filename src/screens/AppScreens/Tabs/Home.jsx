@@ -29,6 +29,7 @@ import {
   FileIcon,
   FreshQrCodeIcon,
   UsedQrCodeIcon,
+  UserIcon,
 } from '../../../assets/svgIcons/SVGIcons';
 import { useNavigation } from '@react-navigation/native';
 import NetInfo from '@react-native-community/netinfo';
@@ -95,7 +96,7 @@ const Home = () => {
   // Get user profile object
   const userProfile = {
     name: profileData?.technician_name || 'John Doe',
-    profileImage: getProfileImageSource(),
+    profileImage: profileData?.profile_photo,
     isActive: profileData?.login_status !== 'Online',
     notificationCount: 3,
     technician_id: profileData?.technician_id,
@@ -430,6 +431,12 @@ const Home = () => {
     navigation.navigate('NotificationTopNavigation');
   };
 
+  const handleProfilePress = () => {
+    if (!isConnected) return;
+    if (!IsOnline) return toast.custom(<StatusMessage type='error' title={"You Can't access, contact to service center "} />, { duration: 1000 });
+    navigation.navigate('Profile');
+  };
+
   const handleWalletPress = () => {
     if (!isConnected) return;
     if (!IsOnline) return toast.custom(<StatusMessage type='error' title={"You Can't access, contact to service center "} />, { duration: 1000 });
@@ -482,7 +489,9 @@ const Home = () => {
           className="w-full bg-transparent flex-row items-center justify-between px-4 "
           style={{ paddingTop: insets.top + 4, paddingBottom: 4 }}
         >
-          <View className="flex-row items-center flex-1">
+          <Pressable
+            onPress={() => handleProfilePress()}
+            className="flex-row items-center  flex-1">
             <View className="relative">
               <Image
                 source={userProfile.profileImage}
@@ -493,7 +502,7 @@ const Home = () => {
                   }`}
               />
             </View>
-            <View className="ml-3">
+            <View className="ml-3 ">
               <Text className="text-gray-700 text-sm">Welcome Back</Text>
               <View className="flex-row items-center">
                 <Text className="text-gray-900 font-bold text-lg">
@@ -507,7 +516,7 @@ const Home = () => {
                 {IsOnline ? '● Active ' : '● Inactive'}
               </Text>
             </View>
-          </View>
+          </Pressable>
 
           <View className="flex-row items-center">
             <TouchableOpacity
@@ -573,21 +582,31 @@ const Home = () => {
           className="w-full bg-transparent flex-row items-center justify-between px-4"
           style={{ paddingTop: insets.top + 4, paddingBottom: 4 }}
         >
-          <View className="flex-row items-center flex-1">
+          <Pressable
+            onPress={() => handleProfilePress()}
+            className="flex-row items-center flex-1">
             <View className="relative">
-              <Image
-                source={userProfile.profileImage}
-                className="w-12 h-12 rounded-full border-2 border-white"
-                onError={(error) => {
-                  console.log('Profile image loading error:', error.nativeEvent.error);
-                }}
-              />
+              {
+                userProfile.profileImage ?
+                  <Image
+                    source={userProfile.profileImage}
+                    className="w-12 h-12 rounded-full border-2 border-white"
+                    onError={(error) => {
+                      console.log('Profile image loading error:', error.nativeEvent.error);
+                    }}
+                  />
+                  :
+                  <View className=' items-center justify-center w-14 h-14 bg-gray-200 rounded-full '>
+                    <UserIcon width={28} height={28} stroke={'gray'} />
+                  </View>
+              }
+
               <View
-                className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${IsOnline ? 'bg-green-500' : 'bg-gray-400'
+                className={`absolute bottom-1 right-0 w-3 h-3 rounded-full border-2 border-white ${IsOnline ? 'bg-green-500' : 'bg-gray-400'
                   }`}
               />
             </View>
-            <View className="ml-3">
+            <View className="ml-3 ">
               <Text className="text-gray-700 text-sm">Welcome Back</Text>
               <View className="flex-row items-center">
                 <Text className="text-gray-900 font-bold text-lg">
@@ -604,7 +623,7 @@ const Home = () => {
                 <Text className='font-normal text-xs text-gray-700'>ID:{userProfile?.technician_id || 'N/A'}</Text>
               </View>
             </View>
-          </View>
+          </Pressable>
 
           <View className="flex-row items-center">
             <TouchableOpacity onPress={handleNotificationPress} className="relative">

@@ -1,7 +1,7 @@
-import { Text, View, ActivityIndicator, ScrollView, Image, TouchableOpacity } from 'react-native'
-import React, { useState, useEffect } from 'react'
-import { useAuth } from '../../context/AuthContext'
-import { getProfile } from '../../lib/api'
+import { Text, View, ActivityIndicator, ScrollView, Image, TouchableOpacity, Modal, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { getProfile } from '../../lib/api';
 import {
   User,
   Phone,
@@ -27,10 +27,14 @@ import {
   EyeOff,
   Download,
   UserCircle,
-  FileIcon
-} from 'lucide-react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import Header from '../../components/Header'
+  FileIcon,
+  EyeIcon,
+  CrossIcon,
+  X
+} from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Header from '../../components/Header';
+import { NodocumentIcon, UserIcon } from '../../assets/svgIcons/SVGIcons';
 
 const ProfileDetails = () => {
   const { user, imagUrl } = useAuth();
@@ -39,9 +43,14 @@ const ProfileDetails = () => {
   const [error, setError] = useState(null);
   const [showAadhar, setShowAadhar] = useState(false);
   const [imageError, setImageError] = useState(false);
+  
+  // Modal states
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalImageUrl, setModalImageUrl] = useState('');
+  const [modalDocTitle, setModalDocTitle] = useState('');
 
   const id = user?.id || 'N/A';
-  console.log("user :", user, id)
+  console.log("user :", user, id);
 
   useEffect(() => {
     fetchProfile();
@@ -149,7 +158,7 @@ const ProfileDetails = () => {
             )}
           </>
         ) : (
-          <View className="flex-col items-center justify-center  wifull h-32 mt-2">
+          <View className="flex-col items-center justify-center wifull h-32 mt-2">
             <FileIcon size={56} color="#9ca3af" />
             <Text className="text-gray-400 text-xs mt-3">Not uploaded yet</Text>
           </View>
@@ -158,13 +167,51 @@ const ProfileDetails = () => {
     </TouchableOpacity>
   );
 
+  // Enhanced Document2 component with availability text, modal handling and alert
+  const Document2 = ({ title, isAvailable, fileUrl, onPressIcon }) => {
+    const handlePress = () => {
+      if (isAvailable && fileUrl) {
+        onPressIcon(fileUrl, title);
+      } else {
+        Alert.alert('Document Not Available', `${title} has not been uploaded yet.`);
+      }
+    };
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={handlePress}
+        className={`p-4 border ${isAvailable ? 'border-green-600 bg-green-50' : 'border-gray-200 bg-gray-50'} mb-4 rounded-xl flex-row items-center justify-between`}
+      >
+        <View className="flex-row items-center gap-3 flex-1">
+          <View className={`${isAvailable ? 'bg-green-200' : 'bg-gray-200'} w-10 h-10 rounded-xl items-center justify-center`}>
+            <FileText size={20} color={isAvailable ? 'green' : 'gray'} />
+          </View>
+          <View className="flex-1">
+            <Text className={`text-gray-600 font-semibold text-base ${isAvailable ? 'text-green-600' : 'text-gray-400'}`}>
+              {title || 'N/A'}
+            </Text>
+            <Text className={`text-xs mt-0.5 ${isAvailable ? 'text-green-500' : 'text-red-500'}`}>
+              {isAvailable ? 'Available' : 'Not Available'}
+            </Text>
+          </View>
+        </View>
+        {isAvailable ? (
+          <EyeIcon stroke={'green'} width={24} height={24} />
+        ) : (
+          <NodocumentIcon fill={'red'} width={24} height={24} />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-white">
         <Header title={'Profile'} />
         <View className="flex-1 justify-center items-center bg-gray-50">
           <ActivityIndicator size="large" color="#3b82f6" />
-          <Text className="mt-4 text-gray-600 text-sm  font-medium">Loading profile...</Text>
+          <Text className="mt-4 text-gray-600 text-sm font-medium">Loading profile...</Text>
         </View>
       </SafeAreaView>
     );
@@ -230,8 +277,7 @@ const ProfileDetails = () => {
       >
         {/* Profile Image and Info */}
         <View className="items-center pt-8 pb-4 px-4 bg-white">
-          {/* Profile Image - Show big icon if no image or image error */}
-          <View className="w-28 h-28 rounded-full items-center justify-center shadow-lg border-4 border-white overflow-hidden bg-white">
+          <View className="w-28 h-28 rounded-full items-center justify-center border-2 border-gray overflow-hidden bg-gray-100">
             {profileData.profile_photo && !imageError ? (
               <Image
                 source={{ uri: `${imagUrl}${profileData.profile_photo}` }}
@@ -240,10 +286,8 @@ const ProfileDetails = () => {
                 onError={() => setImageError(true)}
               />
             ) : (
-              <View className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-700 items-center justify-center">
-                <Text className="text-white text-4xl font-bold">
-                  {getInitials(profileData.technician_name)}
-                </Text>
+              <View className="w-full h-full items-center justify-center">
+                <UserIcon width={60} height={60} stroke={'gray'} />
               </View>
             )}
           </View>
@@ -255,16 +299,13 @@ const ProfileDetails = () => {
             <Text className="text-gray-500 text-sm ml-1">ID: {profileData.technician_id || 'N/A'}</Text>
           </View>
 
-          <View className={`mt-3 px-4 py-1.5 rounded-full flex-row items-center ${profileData.login_status === 'Online' ? 'bg-green-50' : 'bg-gray-100'
-            }`}>
+          <View className={`mt-3 px-4 py-1.5 rounded-full flex-row items-center ${profileData.login_status === 'Online' ? 'bg-green-50' : 'bg-gray-100'}`}>
             <CircleDot size={14} color={profileData.login_status === 'Online' ? '#22c55e' : '#9ca3af'} />
-            <Text className={`ml-1.5 font-semibold ${profileData.login_status === 'Online' ? 'text-green-600' : 'text-gray-600'
-              }`}>
+            <Text className={`ml-1.5 font-semibold ${profileData.login_status === 'Online' ? 'text-green-600' : 'text-gray-600'}`}>
               {profileData.login_status || 'Offline'}
             </Text>
           </View>
 
-          {/* Rating Placeholder */}
           <View className="flex-row items-center mt-3">
             {[1, 2, 3, 4, 5].map((star) => (
               <Star key={star} size={16} color="#fbbf24" fill="#fbbf24" />
@@ -273,17 +314,14 @@ const ProfileDetails = () => {
           </View>
         </View>
 
-        
         {/* Personal Information */}
         <View className="bg-white rounded-2xl mx-4 mt-4 p-5 shadow-sm">
           <SectionHeader icon={User} title="Personal Information" />
-
           <InfoRow
             icon={Phone}
             label="Mobile Number"
             value={profileData.technician_mobile || 'N/A'}
           />
-
           <InfoRow
             icon={MapPin}
             label="Address"
@@ -291,7 +329,6 @@ const ProfileDetails = () => {
             valueColor="text-gray-600"
             multiline={true}
           />
-
           <InfoRow
             icon={Calendar}
             label="Registered On"
@@ -303,13 +340,11 @@ const ProfileDetails = () => {
         {/* Professional Information */}
         <View className="bg-white rounded-2xl mx-4 mt-4 p-5 shadow-sm">
           <SectionHeader icon={Briefcase} title="Professional Information" />
-
           <InfoRow
             icon={Truck}
             label="Technician Type"
             value={profileData.technician_type || 'N/A'}
           />
-
           <InfoRow
             icon={Wallet}
             label="Flat Value"
@@ -320,20 +355,17 @@ const ProfileDetails = () => {
             icon={Wrench}
             label="Product"
             value={`${profileData.per_product || '0'}%`}
-            
           />
-
-            <InfoRow
-              icon={CreditCard}
-              label="Service"
-              value={`${profileData.per_service || '0'}%`}
-            />
-            <InfoRow
-              icon={ServerIcon}
-              label="AMC"
-              value={`${profileData.per_amc || '0'}%`}
-            />
-
+          <InfoRow
+            icon={CreditCard}
+            label="Service"
+            value={`${profileData.per_service || '0'}%`}
+          />
+          <InfoRow
+            icon={ServerIcon}
+            label="AMC"
+            value={`${profileData.per_amc || '0'}%`}
+          />
           <InfoRow
             icon={FileText}
             label="Part Policy"
@@ -345,67 +377,91 @@ const ProfileDetails = () => {
         {/* Documents Section */}
         <View className="bg-white rounded-2xl mx-4 mt-4 p-5 shadow-sm mb-6">
           <SectionHeader icon={FileText} title="Documents" />
-
-          {/* Aadhar Card Document */}
-          <DocumentItem
+          <Document2
             title="Aadhar Card"
-            fileName={profileData.aadhar ? formatAadharForDisplay(profileData.aadhar) : null}
-            icon={IdCard}
-            bgColor="bg-orange-50"
-            iconColor="#f97316"
-            isImage={false}
-            isAadhar={true}
-            showValue={showAadhar}
-            onToggleVisibility={() => setShowAadhar(!showAadhar)}
+            isAvailable={!!profileData.aadhar}
+            fileUrl={profileData.aadhar ? `${imagUrl}${profileData.aadhar}` : null}
+            onPressIcon={(url, docTitle) => {
+              setModalImageUrl(url);
+              setModalDocTitle(docTitle);
+              setModalVisible(true);
+            }}
           />
-
-          {/* Driving License */}
-          <DocumentItem
+          <Document2
             title="Driving License"
-            fileName={profileData.dl || null}
-            icon={profileData.dl ? Truck : FileQuestion}
-            bgColor={profileData.dl ? "bg-blue-50" : "bg-gray-50"}
-            iconColor={profileData.dl ? "#3b82f6" : "#9ca3af"}
-            isImage={!!profileData.dl}
-            docImageError={false}
-            setDocImageError={() => { }}
+            isAvailable={!!profileData.dl}
+            fileUrl={profileData.dl ? `${imagUrl}${profileData.dl}` : null}
+            onPressIcon={(url, docTitle) => {
+              setModalImageUrl(url);
+              setModalDocTitle(docTitle);
+              setModalVisible(true);
+            }}
           />
-
-          {/* Cheque Copy */}
-          <DocumentItem
+          <Document2
             title="Cheque Copy"
-            fileName={profileData.cheque || null}
-            icon={profileData.cheque ? CreditCard : FileQuestion}
-            bgColor={profileData.cheque ? "bg-green-50" : "bg-gray-50"}
-            iconColor={profileData.cheque ? "#22c55e" : "#9ca3af"}
-            isImage={!!profileData.cheque}
-            docImageError={false}
-            setDocImageError={() => { }}
+            isAvailable={!!profileData.cheque}
+            fileUrl={profileData.cheque ? `${imagUrl}${profileData.cheque}` : null}
+            onPressIcon={(url, docTitle) => {
+              setModalImageUrl(url);
+              setModalDocTitle(docTitle);
+              setModalVisible(true);
+            }}
           />
-
-          {/* Stamp Copy - Last item, no border */}
-          <DocumentItem
+          <Document2
             title="Stamp Copy"
-            fileName={profileData.stamp || null}
-            icon={profileData.stamp ? Stamp : FileQuestion}
-            bgColor={profileData.stamp ? "bg-purple-50" : "bg-gray-50"}
-            iconColor={profileData.stamp ? "#a855f7" : "#9ca3af"}
-            isImage={!!profileData.stamp}
-            isLast={true}
-            docImageError={false}
-            setDocImageError={() => { }}
+            isAvailable={!!profileData.stamp}
+            fileUrl={profileData.stamp ? `${imagUrl}${profileData.stamp}` : null}
+            onPressIcon={(url, docTitle) => {
+              setModalImageUrl(url);
+              setModalDocTitle(docTitle);
+              setModalVisible(true);
+            }}
           />
-
-          {!profileData.dl && !profileData.cheque && !profileData.stamp && !profileData.aadhar && (
-            <View className="items-center py-6">
-              <FileText size={48} color="#d1d5db" />
-              <Text className="text-gray-400 text-center mt-2">No documents uploaded yet</Text>
-            </View>
-          )}
+           <Document2
+            title="Resume"
+            isAvailable={!!profileData.resume}
+            fileUrl={profileData.stamp ? `${imagUrl}${profileData.resume}` : null}
+            onPressIcon={(url, docTitle) => {
+              setModalImageUrl(url);
+              setModalDocTitle(docTitle);
+              setModalVisible(true);
+            }}
+          />
         </View>
       </ScrollView>
-    </SafeAreaView>
-  )
-}
 
-export default ProfileDetails
+      {/* Modal for Document Preview */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View className="flex-1 bg-black/80 justify-center items-center">
+          <View className="bg-white rounded-2xl w-11/12 max-h-[80%] p-4">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold text-gray-800">{modalDocTitle}</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <X size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ alignItems: 'center' }}>
+              {modalImageUrl ? (
+                <Image
+                  source={{ uri: modalImageUrl }}
+                  className="w-full h-80 rounded-lg"
+                  resizeMode="contain"
+                  onError={() => Alert.alert('Error', 'Failed to load document image')}
+                />
+              ) : (
+                <Text className="text-gray-500">No image available</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+};
+
+export default ProfileDetails;

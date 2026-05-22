@@ -118,9 +118,9 @@ const ProductDetails = () => {
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
                 {/* Product Image Section */}
                 <View className="bg-white">
-                    {product.imageUrl ? (
+                    {product?.imageUrl ? (
                         <Image
-                            source={{ uri: product.imageUrl }}
+                            source={{ uri: product?.imageUrl }}
                             className="w-full h-80"
                             resizeMode="contain"
                             onError={() => {
