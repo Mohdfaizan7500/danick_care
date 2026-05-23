@@ -1,3 +1,4 @@
+// Remarkscreen.js - with upload blocking overlay
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
@@ -10,25 +11,124 @@ import {
     Platform,
     ActivityIndicator,
     RefreshControl,
+    Modal,
+    StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import Header from '../../../components/Header';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import { launchCamera } from 'react-native-image-picker';
-import { check, request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import DialogBox from '../../../components/DilaogBox';
-import { UploadComplaintImage, deletComplaintImage, getComplaintImage, UpdateRemark } from '../../../lib/api';
-import EventEmitter from '../../../utils/eventBus'; // <-- import event bus
+import {
+    UploadComplaintImage,
+    deletComplaintImage,
+    getComplaintImage,
+    UpdateRemark,
+    ComplaintBilling,
+} from '../../../lib/api';
+
+// Camera Modal Component (unchanged)
+const CustomCameraModal = ({ visible, onClose, onCapture }) => {
+    const device = useCameraDevice('back');
+    const { hasPermission, requestPermission } = useCameraPermission();
+    const cameraRef = useRef(null);
+
+    useEffect(() => {
+        if (visible && !hasPermission) {
+            requestPermission();
+        }
+    }, [visible, hasPermission, requestPermission]);
+
+    const takePhoto = async () => {
+        if (!cameraRef.current) return;
+        try {
+            const photo = await cameraRef.current.takePhoto({
+                qualityPrioritization: 'quality',
+                flash: 'off',
+            });
+            const uri = `file://${photo.path}`;
+            onCapture(uri);
+            onClose();
+        } catch (error) {
+            console.error('Failed to take photo:', error);
+            toast.custom(<StatusMessage type="error" title="Could not take photo. Please try again." className="mx-4 mb-6" />, { duration: 3000 });
+        }
+    };
+
+    if (!visible) return null;
+
+    if (!hasPermission) {
+        return (
+            <Modal transparent animationType="slide" visible={visible}>
+                <View style={styles.modalContainer}>
+                    <View style={styles.permissionBox}>
+                        <Text style={styles.permissionText}>Camera permission required</Text>
+                        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+                            <Text style={styles.permissionButtonText}>Grant Permission</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={onClose}>
+                            <Text style={styles.closePermissionText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        );
+    }
+
+    if (!device) {
+        return (
+            <Modal transparent animationType="slide" visible={visible}>
+                <View style={styles.modalContainer}>
+                    <Text style={styles.errorText}>No back camera available on this device</Text>
+                    <TouchableOpacity onPress={onClose}>
+                        <Text style={styles.closeText}>Close</Text>
+                    </TouchableOpacity>
+                </View>
+            </Modal>
+        );
+    }
+
+    return (
+        <Modal transparent={false} animationType="slide" visible={visible}>
+            <View style={StyleSheet.absoluteFill}>
+                <Camera
+                    ref={cameraRef}
+                    style={StyleSheet.absoluteFill}
+                    device={device}
+                    isActive={true}
+                    photo={true}
+                />
+                <View style={styles.cameraControls}>
+                    <TouchableOpacity style={styles.captureButton} onPress={takePhoto}>
+                        <View style={styles.innerCaptureButton} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.closeCameraButton} onPress={onClose}>
+                        <Icon name="close" size={30} color="white" />
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+};
 
 const Remarkscreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { complaintData, isVerified, isImageUploaded, shouldSubmitOnReturn = false, returnToBilling = false } = route.params || {};
-    console.log('Complaint Data received in Remarkscreen:', complaintData);
+    const {
+        complaintData,
+        shouldSubmitOnReturn = false,
+        returnToBilling = false,
+        totalPayable = 0,
+        discount = 0,
+    } = route.params || {};
+
+    console.log('Complaint Data in Remarkscreen:', complaintData);
     console.log('Should submit on return:', shouldSubmitOnReturn);
+    console.log('Total Payable:', totalPayable);
+    console.log('Discount:', discount);
 
     // State for images
     const [image1Uri, setImage1Uri] = useState(null);
@@ -43,18 +143,25 @@ const Remarkscreen = () => {
     const [submitting, setSubmitting] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
-    // State for Customer Type dropdown
+    // Review & remark
     const [selectedCustomerType, setSelectedCustomerType] = useState('');
     const [customerTypeDropdownVisible, setCustomerTypeDropdownVisible] = useState(false);
-    const customerTypeOptions = ['A', 'B', 'C', 'D','E'];
-
-    // State for remark
+    const customerTypeOptions = ['A', 'B', 'C', 'D', 'E'];
     const [remark, setRemark] = useState('');
 
-    // State for delete confirmation dialog
+    // Delete & camera
     const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
     const [imageToDelete, setImageToDelete] = useState(null);
+    const [cameraVisible, setCameraVisible] = useState(false);
+    const [pendingImageNumber, setPendingImageNumber] = useState(null);
 
+    // Billing confirmation modal
+    const [submitConfirmationVisible, setSubmitConfirmationVisible] = useState(false);
+
+    // Helper: is any image currently uploading?
+    const isAnyUploading = uploadingImage1 || uploadingImage2;
+
+    // Form validation
     const isFormComplete =
         (selectedCustomerType || '').trim() !== '' &&
         (remark || '').trim() !== '' &&
@@ -62,10 +169,11 @@ const Remarkscreen = () => {
         image2Id !== null;
 
     const isReadyForNext = () => {
-        if (refreshing || submitting || loadingImages) return false;
-        return isFormComplete && !uploadingImage1 && !uploadingImage2 && !deletingImage1 && !deletingImage2;
+        if (refreshing || submitting || loadingImages || isAnyUploading) return false;
+        return isFormComplete && !deletingImage1 && !deletingImage2;
     };
 
+    // Fetch existing images (unchanged)
     const fetchExistingImages = async () => {
         setLoadingImages(true);
         try {
@@ -117,7 +225,7 @@ const Remarkscreen = () => {
             fetchExistingImages();
             if (complaintData?.remark && complaintData.remark !== '') setRemark(complaintData.remark);
             if (complaintData?.review && complaintData.review !== '') setSelectedCustomerType(complaintData.review);
-            return () => { };
+            return () => {};
         }, [complaintData?.id])
     );
 
@@ -126,15 +234,7 @@ const Remarkscreen = () => {
         if (complaintData?.review && complaintData.review !== '') setSelectedCustomerType(complaintData.review);
     }, [complaintData]);
 
-    const checkCameraPermission = async () => {
-        if (Platform.OS === 'ios') return await check(PERMISSIONS.IOS.CAMERA);
-        else return await check(PERMISSIONS.ANDROID.CAMERA);
-    };
-    const requestCameraPermission = async () => {
-        if (Platform.OS === 'ios') return await request(PERMISSIONS.IOS.CAMERA);
-        else return await request(PERMISSIONS.ANDROID.CAMERA);
-    };
-
+    // Delete image from server
     const deleteImageFromServer = async (imageId, imageNumber) => {
         if (!imageId) return;
         try {
@@ -159,6 +259,7 @@ const Remarkscreen = () => {
         }
     };
 
+    // Upload image to server
     const uploadImageToServer = async (imageUri, imageNumber) => {
         try {
             if (imageNumber === 1) setUploadingImage1(true);
@@ -166,7 +267,11 @@ const Remarkscreen = () => {
             const formData = new FormData();
             const fileUri = imageUri;
             const fileName = fileUri.split('/').pop();
-            formData.append('image', { uri: Platform.OS === 'ios' ? fileUri.replace('file://', '') : fileUri, name: fileName || `photo_${Date.now()}.jpg`, type: 'image/jpeg' });
+            formData.append('image', {
+                uri: Platform.OS === 'ios' ? fileUri.replace('file://', '') : fileUri,
+                name: fileName || `photo_${Date.now()}.jpg`,
+                type: 'image/jpeg',
+            });
             const imageType = 'after working';
             const status = imageNumber === 1 ? '2' : '3';
             formData.append('complaint_id', complaintData?.id?.toString() || '');
@@ -198,40 +303,19 @@ const Remarkscreen = () => {
         }
     };
 
-    const captureImage = async (imageNumber) => {
-        try {
-            const permissionStatus = await checkCameraPermission();
-            if (permissionStatus === RESULTS.GRANTED) {
-                openCamera(imageNumber);
-            } else if (permissionStatus === RESULTS.DENIED) {
-                const requestStatus = await requestCameraPermission();
-                if (requestStatus === RESULTS.GRANTED) openCamera(imageNumber);
-                else toast.custom(<StatusMessage type="error" title="Camera permission denied" className="mx-4 mb-6" />, { duration: 2000 });
-            } else if (permissionStatus === RESULTS.BLOCKED) {
-                toast.custom(<StatusMessage type="error" title="Camera permission is blocked. Please enable it in settings to take photos." className="mx-4 mb-6" />, { duration: 3000 });
-            }
-        } catch (error) {
-            console.log('Camera permission error:', error);
-            toast.custom(<StatusMessage type="error" title="Error accessing camera" className="mx-4 mb-6" />, { duration: 3000 });
-        }
+    const openCameraForImage = (imageNumber) => {
+        setPendingImageNumber(imageNumber);
+        setCameraVisible(true);
     };
 
-    const openCamera = (imageNumber) => {
-        const options = { mediaType: 'photo', includeBase64: false, maxHeight: 2000, maxWidth: 2000, quality: 0.8, saveToPhotos: false };
-        launchCamera(options, async (response) => {
-            if (response.didCancel) return;
-            if (response.error) {
-                toast.custom(<StatusMessage type="error" title="Error taking photo" className="mx-4 mb-6" />, { duration: 3000 });
-                return;
-            }
-            if (response.assets && response.assets[0]) {
-                const uri = response.assets[0].uri;
-                if (imageNumber === 1) setImage1Uri(uri);
-                else setImage2Uri(uri);
-                toast.custom(<StatusMessage type="success" title={`Image ${imageNumber} captured successfully`} className="mx-4 mb-6" />, { duration: 2000 });
-                await uploadImageToServer(uri, imageNumber);
-            }
-        });
+    const handleCapture = async (uri) => {
+        if (!pendingImageNumber) return;
+        const imageNumber = pendingImageNumber;
+        if (imageNumber === 1) setImage1Uri(uri);
+        else setImage2Uri(uri);
+        toast.custom(<StatusMessage type="success" title={`Image ${imageNumber} captured successfully`} className="mx-4 mb-6" />, { duration: 2000 });
+        await uploadImageToServer(uri, imageNumber);
+        setPendingImageNumber(null);
     };
 
     const showDeleteConfirmation = (imageNumber) => {
@@ -257,7 +341,69 @@ const Remarkscreen = () => {
         setImageToDelete(null);
     };
 
-    const handleNext = async () => {
+    // Update remark on server
+    const updateRemarkOnly = async () => {
+        try {
+            const payload = {
+                complaint_id: complaintData?.id?.toString(),
+                remark: remark,
+                review: selectedCustomerType,
+            };
+            const response = await UpdateRemark(payload);
+            if (!response?.data?.success) {
+                throw new Error(response?.data?.msg || 'Failed to update remark');
+            }
+            return true;
+        } catch (error) {
+            console.error('Error updating remark:', error);
+            toast.custom(<StatusMessage type="error" title={error.message || 'Failed to update remark'} className="mx-4 mb-6" />, { duration: 3000 });
+            return false;
+        }
+    };
+
+    // Submit billing with review and remark
+    const submitBilling = async () => {
+        if (!selectedCustomerType || !remark.trim() || !image1Id || !image2Id) {
+            toast.custom(<StatusMessage type="error" title="Please complete all required fields" className="mx-4 mb-6" />, { duration: 3000 });
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const remarkUpdated = await updateRemarkOnly();
+            if (!remarkUpdated) {
+                setSubmitting(false);
+                return;
+            }
+
+            const billingPayload = {
+                id: complaintData?.id?.toString(),
+                final_amount: totalPayable.toString(),
+                discount: discount.toString(),
+                review: selectedCustomerType,
+                remark: remark,
+            };
+            console.log('Submitting billing with payload:', billingPayload);
+            const response = await ComplaintBilling(billingPayload);
+            if (response?.data?.success) {
+                toast.custom(<StatusMessage type="success" title="Bill submitted successfully!" className="mx-4 mb-6" />, { duration: 2000 });
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'ComplaintsTopNavigation', params: { status: "Assign" } }],
+                });
+            } else {
+                throw new Error(response?.data?.message || 'Failed to submit bill');
+            }
+        } catch (error) {
+            console.error('Error submitting billing:', error);
+            toast.custom(<StatusMessage type="error" title={error.message || 'Failed to submit bill'} className="mx-4 mb-6" />, { duration: 3000 });
+        } finally {
+            setSubmitting(false);
+            setSubmitConfirmationVisible(false);
+        }
+    };
+
+    const handleMainButtonPress = () => {
         if (!selectedCustomerType) {
             toast.custom(<StatusMessage type="error" title="Please select review" className="mx-4 mb-6" />, { duration: 3000 });
             return;
@@ -271,44 +417,36 @@ const Remarkscreen = () => {
             return;
         }
 
+        if (shouldSubmitOnReturn && returnToBilling) {
+            setSubmitConfirmationVisible(true);
+        } else {
+            handleNextOriginal();
+        }
+    };
+
+    const handleNextOriginal = async () => {
         try {
             setSubmitting(true);
             const payload = {
                 complaint_id: complaintData?.id?.toString(),
                 remark: remark,
-                review: selectedCustomerType
+                review: selectedCustomerType,
             };
             const response = await UpdateRemark(payload);
             if (response?.data?.success) {
                 toast.custom(<StatusMessage type="success" title={response.data.msg || "Remark updated successfully!"} className="mx-4 mb-6" />, { duration: 2000 });
-
-                if (shouldSubmitOnReturn && returnToBilling) {
-                    // Emit event with remark data
-                    EventEmitter.emit('remarkSubmitted', {
+                setTimeout(() => {
+                    navigation.replace('Billing', {
                         selectedCustomerType,
                         remark,
                         image1Id,
                         image2Id,
                         image1Uri,
-                        image2Uri
+                        image2Uri,
+                        complaintData: complaintData,
+                        convertToAMC: false,
                     });
-                    // Go back to Billing screen without replace
-                    navigation.goBack();
-                } else {
-                    // Original behavior (not used in this flow, but kept for compatibility)
-                    setTimeout(() => {
-                        navigation.replace('Billing', {
-                            selectedCustomerType,
-                            remark,
-                            image1Id,
-                            image2Id,
-                            image1Uri,
-                            image2Uri,
-                            complaintData: complaintData,
-                            convertToAMC: false
-                        });
-                    }, 500);
-                }
+                }, 500);
             } else {
                 throw new Error(response?.data?.msg || 'Failed to update remark');
             }
@@ -326,40 +464,86 @@ const Remarkscreen = () => {
         if (loadingImages) return 'Loading Images...';
         if (uploadingImage1 || uploadingImage2) return 'Uploading Images...';
         if (deletingImage1 || deletingImage2) return 'Deleting Image...';
-        return 'Next';
+        return shouldSubmitOnReturn && returnToBilling ? 'Submit Bill' : 'Next';
     };
 
-    const getButtonBgColor = () => isReadyForNext() ? 'bg-green-600' : 'bg-gray-400';
+    const getButtonBgColor = () => {
+        if (!isReadyForNext()) return 'bg-gray-400';
+        return shouldSubmitOnReturn && returnToBilling ? 'bg-green-600' : 'bg-blue-600';
+    };
+
+    // Confirmation modal footer
+    const confirmationFooter = (
+        <View className="flex-row justify-end gap-2">
+            <TouchableOpacity onPress={() => setSubmitConfirmationVisible(false)} className="px-4 py-2 rounded-lg bg-gray-200">
+                <Text className="text-gray-700 font-medium">Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={submitBilling} disabled={submitting} className="px-4 py-2 rounded-lg bg-green-600">
+                {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-white font-medium">Confirm</Text>}
+            </TouchableOpacity>
+        </View>
+    );
 
     const customerTypeFooter = (
         <View className="flex-row justify-end gap-2">
-            <TouchableOpacity onPress={() => setCustomerTypeDropdownVisible(false)} className="px-4 py-2 rounded-lg bg-gray-200"><Text className="text-gray-700 font-medium">Cancel</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => setCustomerTypeDropdownVisible(false)} className="px-4 py-2 rounded-lg bg-gray-200">
+                <Text className="text-gray-700 font-medium">Cancel</Text>
+            </TouchableOpacity>
         </View>
     );
 
     const deleteDialogFooter = (
         <View className="flex-row justify-end gap-2">
-            <TouchableOpacity onPress={handleDeleteCancelled} className="px-4 py-2 rounded-lg bg-gray-200"><Text className="text-gray-700 font-medium">Cancel</Text></TouchableOpacity>
-            <TouchableOpacity onPress={handleDeleteConfirmed} className="px-4 py-2 rounded-lg bg-red-500"><Text className="text-white font-medium">Delete</Text></TouchableOpacity>
+            <TouchableOpacity onPress={handleDeleteCancelled} className="px-4 py-2 rounded-lg bg-gray-200">
+                <Text className="text-gray-700 font-medium">Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDeleteConfirmed} className="px-4 py-2 rounded-lg bg-red-500">
+                <Text className="text-white font-medium">Delete</Text>
+            </TouchableOpacity>
         </View>
     );
 
     return (
         <SafeAreaView className="flex-1 bg-white">
             <View className="absolute inset-0 z-50 pointer-events-none"><Toaster /></View>
-            <Header title="Remark" titlePosition="left" titleStyle="font-bold text-2xl ml-5" showBackButton={true} containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5" />
+            <Header
+                title="Remark"
+                titlePosition="left"
+                titleStyle="font-bold text-2xl ml-5"
+                showBackButton={true}
+                containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
+            />
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
-                <ScrollView className="flex-1 px-4 pt-4" showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#000000']} tintColor="#000000" title="Pull to refresh" titleColor="#000000" />}>
+                <ScrollView
+                    className="flex-1 px-4 pt-4"
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={['#000000']}
+                            tintColor="#000000"
+                            title="Pull to refresh"
+                            titleColor="#000000"
+                        />
+                    }
+                >
+                    {/* ... (rest of the UI remains the same) ... */}
                     {loadingImages && !refreshing && (
-                        <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center"><ActivityIndicator size="large" color="#000" /><Text className="text-text-primary mt-2">Loading existing images...</Text></View>
+                        <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center">
+                            <ActivityIndicator size="large" color="#000" />
+                            <Text className="text-text-primary mt-2">Loading existing images...</Text>
+                        </View>
                     )}
-                    <Text className='text-black font-semibold text-sm'>Complaint: {complaintData?.service_name}</Text>
-                    <View className='bg-yellow-100 self-start px-4 py-2 mt-1 border border-yellow-500 rounded-xl'><Text className='text-yellow-800 font-semibold text-sm'>CSN ID: {complaintData?.csn}</Text></View>
+                    <Text className="text-black font-semibold text-sm">Complaint: {complaintData?.service_name}</Text>
+                    <View className="bg-yellow-100 self-start px-4 py-2 mt-1 border border-yellow-500 rounded-xl">
+                        <Text className="text-yellow-800 font-semibold text-sm">CSN ID: {complaintData?.csn}</Text>
+                    </View>
 
                     <View className="mb-4 mt-4">
                         <Text className="text-text-primary font-semibold text-base mb-1">Review<Text className="text-red-500">*</Text></Text>
                         <TouchableOpacity onPress={() => setCustomerTypeDropdownVisible(true)} className="border border-ui-border rounded-xl px-4 py-3 bg-background-secondary flex-row justify-between items-center">
-                            <Text className={selectedCustomerType ? 'text-text-primary' : 'text-text-tertiary'}>{selectedCustomerType || 'Choose Customer Type (A, B, C, D,E)'}</Text>
+                            <Text className={selectedCustomerType ? 'text-text-primary' : 'text-text-tertiary'}>{selectedCustomerType || 'Choose Customer Type (A, B, C, D, E)'}</Text>
                             <Icon name="chevron-down" size={20} color="#666" />
                         </TouchableOpacity>
                     </View>
@@ -370,21 +554,32 @@ const Remarkscreen = () => {
                     </View>
 
                     <Text className="text-text-primary font-semibold text-base mb-2">Capture Images <Text className="text-red-500">*</Text></Text>
-                    <View className='flex-row justify-between gap-4'>
+                    <View className="flex-row justify-between gap-4">
                         <View className="flex-1 mb-4">
-                            <Text className="text-text-secondary text-sm mb-1">Before Working Image</Text>
+                            <Text className="text-text-secondary text-sm mb-1">CSN Sticker Image</Text>
                             {image1Uri ? (
                                 <View className="relative">
                                     <Image source={{ uri: image1Uri }} className="w-full h-[200px] rounded-xl bg-gray-200" resizeMode="cover" />
                                     <TouchableOpacity onPress={() => showDeleteConfirmation(1)} disabled={deletingImage1} className="absolute top-2 right-2 bg-white/80 rounded-full p-1">
                                         {deletingImage1 ? <ActivityIndicator size="small" color="#ff4444" /> : <Icon name="trash-outline" size={22} color="#ff4444" />}
                                     </TouchableOpacity>
-                                    {uploadingImage1 && <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center"><ActivityIndicator size="large" color="#fff" /><Text className="text-white mt-2">Uploading...</Text></View>}
-                                    {image1Id && !uploadingImage1 && !deletingImage1 && <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1"><Text className="text-white text-xs">Uploaded ✓</Text></View>}
+                                    {uploadingImage1 && (
+                                        <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center">
+                                            <ActivityIndicator size="large" color="#fff" />
+                                            <Text className="text-white mt-2">Uploading...</Text>
+                                        </View>
+                                    )}
+                                    {image1Id && !uploadingImage1 && !deletingImage1 && (
+                                        <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1">
+                                            <Text className="text-white text-xs">Uploaded ✓</Text>
+                                        </View>
+                                    )}
                                 </View>
                             ) : (
-                                <TouchableOpacity onPress={() => captureImage(1)} disabled={loadingImages || refreshing} className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary" style={{ minHeight: 200 }}>
-                                    <Icon name="camera-outline" size={40} color="#666" /><Text className="text-text-primary font-semibold text-base mt-2 text-center">Capture Before Working</Text><Text className="text-text-tertiary text-sm text-center mt-1">Tap to open camera</Text>
+                                <TouchableOpacity onPress={() => openCameraForImage(1)} disabled={loadingImages || refreshing} className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary" style={{ minHeight: 200 }}>
+                                    <Icon name="camera-outline" size={40} color="#666" />
+                                    <Text className="text-text-primary font-semibold text-base mt-2 text-center">Capture With CSN Sticker</Text>
+                                    <Text className="text-text-tertiary text-sm text-center mt-1">Tap to open camera (Back only)</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -396,23 +591,35 @@ const Remarkscreen = () => {
                                     <TouchableOpacity onPress={() => showDeleteConfirmation(2)} disabled={deletingImage2} className="absolute top-2 right-2 bg-white/80 rounded-full p-1">
                                         {deletingImage2 ? <ActivityIndicator size="small" color="#ff4444" /> : <Icon name="trash-outline" size={22} color="#ff4444" />}
                                     </TouchableOpacity>
-                                    {uploadingImage2 && <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center"><ActivityIndicator size="large" color="#fff" /><Text className="text-white mt-2">Uploading...</Text></View>}
-                                    {image2Id && !uploadingImage2 && !deletingImage2 && <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1"><Text className="text-white text-xs">Uploaded ✓</Text></View>}
+                                    {uploadingImage2 && (
+                                        <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center">
+                                            <ActivityIndicator size="large" color="#fff" />
+                                            <Text className="text-white mt-2">Uploading...</Text>
+                                        </View>
+                                    )}
+                                    {image2Id && !uploadingImage2 && !deletingImage2 && (
+                                        <View className="absolute bottom-2 left-2 bg-green-500/80 rounded-full px-2 py-1">
+                                            <Text className="text-white text-xs">Uploaded ✓</Text>
+                                        </View>
+                                    )}
                                 </View>
                             ) : (
-                                <TouchableOpacity onPress={() => captureImage(2)} disabled={loadingImages || refreshing} className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary" style={{ minHeight: 200 }}>
-                                    <Icon name="camera-outline" size={40} color="#666" /><Text className="text-text-primary font-semibold text-base mt-2 text-center">Capture After Working</Text><Text className="text-text-tertiary text-sm text-center mt-1">Tap to open camera</Text>
+                                <TouchableOpacity onPress={() => openCameraForImage(2)} disabled={loadingImages || refreshing} className="border-2 border-dashed border-ui-border rounded-xl p-6 items-center justify-center bg-background-secondary" style={{ minHeight: 200 }}>
+                                    <Icon name="camera-outline" size={40} color="#666" />
+                                    <Text className="text-text-primary font-semibold text-base mt-2 text-center">Capture After Working</Text>
+                                    <Text className="text-text-tertiary text-sm text-center mt-1">Tap to open camera (Back only)</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
                     </View>
 
-                    <TouchableOpacity onPress={handleNext} disabled={!isReadyForNext()} className={`py-4 rounded-xl items-center mb-8 ${getButtonBgColor()}`}>
+                    <TouchableOpacity onPress={handleMainButtonPress} disabled={!isReadyForNext()} className={`py-4 rounded-xl items-center mb-8 ${getButtonBgColor()}`}>
                         <Text className="text-white font-semibold text-base">{getButtonText()}</Text>
                     </TouchableOpacity>
                 </ScrollView>
             </KeyboardAvoidingView>
 
+            {/* Dialogs and modals (unchanged) */}
             <DialogBox visible={customerTypeDropdownVisible} onClose={() => setCustomerTypeDropdownVisible(false)} title="Select Review" size="sm" footer={customerTypeFooter} closeOnBackdropPress={true}>
                 <View className="py-2">
                     {customerTypeOptions.map((option) => (
@@ -429,8 +636,112 @@ const Remarkscreen = () => {
                     <Text className="text-text-secondary text-center text-sm mt-2">This action cannot be undone.</Text>
                 </View>
             </DialogBox>
+
+            <DialogBox visible={submitConfirmationVisible} onClose={() => setSubmitConfirmationVisible(false)} title="Confirm Bill Submission" size="sm" footer={confirmationFooter} closeOnBackdropPress={true}>
+                <View className="py-4">
+                    <Text className="text-text-primary text-center text-base">Total Payable: <Text className="font-bold text-green-700">₹{parseFloat(totalPayable).toFixed(2)}</Text></Text>
+                    <Text className="text-text-secondary text-center text-sm mt-3">Review: <Text className="font-semibold">{selectedCustomerType}</Text></Text>
+                    <Text className="text-text-secondary text-center text-sm">Remark: <Text className="font-semibold">{remark}</Text></Text>
+                    <Text className="text-text-secondary text-center text-sm mt-3">Proceed with billing?</Text>
+                </View>
+            </DialogBox>
+
+            <CustomCameraModal visible={cameraVisible} onClose={() => { setCameraVisible(false); setPendingImageNumber(null); }} onCapture={handleCapture} />
+
+            {/* 🚫 FULL-SCREEN BLOCKING OVERLAY DURING IMAGE UPLOAD */}
+            {isAnyUploading && (
+                <View style={styles.blockingOverlay}>
+                    <ActivityIndicator size="large" color="#ffffff" />
+                    <Text style={styles.blockingText}>Uploading image...</Text>
+                    <Text style={styles.blockingSubText}>Please do not close the app</Text>
+                </View>
+            )}
         </SafeAreaView>
     );
 };
+
+const styles = StyleSheet.create({
+    // ... existing camera modal styles ...
+
+    modalContainer: {
+        flex: 1,
+        backgroundColor: 'black',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cameraControls: {
+        position: 'absolute',
+        bottom: 30,
+        alignSelf: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 20,
+    },
+    captureButton: {
+        width: 70,
+        height: 70,
+        borderRadius: 35,
+        backgroundColor: 'white',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: 'gray',
+    },
+    innerCaptureButton: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#fff',
+    },
+    closeCameraButton: {
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        padding: 12,
+        borderRadius: 40,
+    },
+    permissionBox: {
+        backgroundColor: 'white',
+        padding: 20,
+        borderRadius: 20,
+        alignItems: 'center',
+    },
+    permissionText: {
+        fontSize: 18,
+        marginBottom: 20,
+    },
+    permissionButton: {
+        backgroundColor: '#58A890',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    permissionButtonText: { color: 'white', fontWeight: 'bold' },
+    closePermissionText: { marginTop: 15, color: 'red' },
+    errorText: { color: 'white', fontSize: 18, marginBottom: 20 },
+    closeText: { color: 'white', fontSize: 16 },
+
+    // Blocking overlay styles
+    blockingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    blockingText: {
+        color: '#ffffff',
+        fontSize: 18,
+        fontWeight: '600',
+        marginTop: 16,
+    },
+    blockingSubText: {
+        color: '#dddddd',
+        fontSize: 14,
+        marginTop: 8,
+    },
+});
 
 export default Remarkscreen;

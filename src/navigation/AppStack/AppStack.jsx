@@ -51,6 +51,7 @@ const AppStack = () => {
               initialRouteName="BottomTabs"
               screenOptions={{
                 headerShown: false,
+                animation:'slide_from_right'
               }}>
               <Stack.Screen name="BottomTabs" component={BottomTabs} />
               <Stack.Screen name="SparePartScreen" component={SparePartScreen} />

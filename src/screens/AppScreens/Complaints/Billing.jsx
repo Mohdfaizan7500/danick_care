@@ -1,4 +1,4 @@
-// Billing.js (final with improved image modal matching QRCodeDetails)
+// Billing.js - Truncates amounts to two decimals (no rounding)
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -13,7 +13,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  RefreshControl
+  RefreshControl,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -33,6 +34,13 @@ import {
 import { PlusIcon } from 'lucide-react-native';
 import EventEmitter from '../../../utils/eventBus';
 
+// Helper: Truncate number to two decimal places (no rounding)
+const truncateToTwoDecimals = (num) => {
+  if (isNaN(num)) return '0.00';
+  const truncated = Math.floor(num * 100) / 100;
+  return truncated.toFixed(2);
+};
+
 const Billing = () => {
   const navigation = useNavigation();
   const { importedPart, updateImportedPart, user, imagUrl } = useAuth();
@@ -49,6 +57,7 @@ const Billing = () => {
   console.log('Complaint Data in Billing:', complaintData);
 
   const baseAmount = parseFloat(complaintData?.tot_amt) || 0;
+  const platformFee = parseFloat(complaintData?.platform_fee) || 0;
 
   const [parts, setParts] = useState([]);
   const [loadingParts, setLoadingParts] = useState(true);
@@ -75,9 +84,11 @@ const Billing = () => {
   const [removeReplacementDialogVisible, setRemoveReplacementDialogVisible] = useState(false);
   const [replacementPartToRemove, setReplacementPartToRemove] = useState(null);
 
+  // Keyboard handling
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef(null);
+  const footerAnimatedHeight = useRef(new Animated.Value(0)).current;
 
   const isRecomplaint = complaintData?.recomplaint === 'Yes';
   const isAMCComplaint = complaintData?.complaint_type === 'AMC';
@@ -94,19 +105,32 @@ const Billing = () => {
     return `${base}${cleanPath}`;
   };
 
+  // Keyboard listeners
   useEffect(() => {
-    const keyboardDidShow = Keyboard.addListener('keyboardDidShow', (e) => {
+    const keyboardWillShow = Keyboard.addListener('keyboardWillShow', (e) => {
       setKeyboardVisible(true);
       setKeyboardHeight(e.endCoordinates.height);
-      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+      Animated.timing(footerAnimatedHeight, {
+        toValue: e.endCoordinates.height,
+        duration: 250,
+        useNativeDriver: false,
+      }).start();
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     });
-    const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () => {
+    const keyboardWillHide = Keyboard.addListener('keyboardWillHide', () => {
       setKeyboardVisible(false);
       setKeyboardHeight(0);
+      Animated.timing(footerAnimatedHeight, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: false,
+      }).start();
     });
     return () => {
-      keyboardDidShow.remove();
-      keyboardDidHide.remove();
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
     };
   }, []);
 
@@ -234,8 +258,8 @@ const Billing = () => {
       setBillingError(null);
       const payload = {
         id: complaintData?.id?.toString() || complaintData?.oldcomp_id?.toString(),
-        final_amount: totalPayable.toString(),
-        discount: discount.toString()
+        final_amount: truncateToTwoDecimals(totalPayable),
+        discount: truncateToTwoDecimals(discount),
       };
       console.log('Submitting billing with payload:', payload);
       const response = await ComplaintBilling(payload);
@@ -268,7 +292,7 @@ const Billing = () => {
   const handleDiscountChange = (text) => {
     const value = parseFloat(text) || 0;
     if (value > totalBeforeDiscount) {
-      setDiscountError(`Discount cannot exceed ₹${totalBeforeDiscount.toFixed(2)}`);
+      setDiscountError(`Discount cannot exceed ₹${truncateToTwoDecimals(totalBeforeDiscount)}`);
       setDiscount(totalBeforeDiscount);
     } else if (value < 0) {
       setDiscountError('Discount cannot be negative');
@@ -511,7 +535,7 @@ const Billing = () => {
         <Text className="text-text-secondary text-sm">QR Code: {item.qr_code || 'N/A'}</Text>
         <Text className="text-text-tertiary text-xs mt-1" numberOfLines={2}>{item.description}</Text>
         <View className="flex-row justify-between items-center mt-1">
-          <Text className="text-primary-sage700 font-bold">₹{item.price.toFixed(2)}</Text>
+          <Text className="text-primary-sage700 font-bold">₹{truncateToTwoDecimals(item.price)}</Text>
           {item.price === 0 && <Text className="text-green-600 text-xs font-medium">Free (AMC)</Text>}
         </View>
         {item.replace_part === "Yes" && <Text className="text-orange-600 text-xs mt-1">This is a replacement part</Text>}
@@ -596,7 +620,7 @@ const Billing = () => {
 
   const handleConfirmSubmit = () => {
     if (discount > totalBeforeDiscount) {
-      setDiscountError(`Discount cannot exceed ₹${totalBeforeDiscount.toFixed(2)}`);
+      setDiscountError(`Discount cannot exceed ₹${truncateToTwoDecimals(totalBeforeDiscount)}`);
       return;
     }
     setSubmitDialogVisible(false);
@@ -614,11 +638,13 @@ const Billing = () => {
       navigation.navigate('Remarkscreen', {
         complaintData: complaintData,
         shouldSubmitOnReturn: true,
-        returnToBilling: true
+        returnToBilling: true,
+        totalPayable: totalPayable,
+        discount: discount,
       });
     } else {
       if (discount > totalBeforeDiscount) {
-        setDiscountError(`Discount cannot exceed ₹${totalBeforeDiscount.toFixed(2)}`);
+        setDiscountError(`Discount cannot exceed ₹${truncateToTwoDecimals(totalBeforeDiscount)}`);
         return;
       }
       setSubmitDialogVisible(true);
@@ -638,11 +664,43 @@ const Billing = () => {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="absolute inset-0 z-50 pointer-events-none"><Toaster /></View>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} enabled={Platform.OS === 'ios'}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View className="flex-1">
-            <Header title={isRecomplaint ? "Recomplaint Billing" : "Billing"} titlePosition="left" titleStyle="font-bold text-2xl ml-5" showBackButton={true} showRightIcon={true} customRightIconComponent={<Icon name="bag-add-outline" size={24} color="#333" />} onRightIconPress={() => navigation.navigate('AddPartBilling', { complaintData })} containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5" />
-            <ScrollView ref={scrollViewRef} contentContainerStyle={{ paddingBottom: Platform.OS === 'android' && keyboardVisible ? keyboardHeight + 100 : 20 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} className="flex-1" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2E7D32', '#4CAF50', '#81C784']} tintColor="#2E7D32" title="Pull to refresh" titleColor="#2E7D32" progressBackgroundColor="#ffffff" />}>
+            <Header
+              title={isRecomplaint ? "Recomplaint Billing" : "Billing"}
+              titlePosition="left"
+              titleStyle="font-bold text-2xl ml-5"
+              showBackButton={true}
+              showRightIcon={true}
+              customRightIconComponent={<Icon name="bag-add-outline" size={24} color="#333" />}
+              onRightIconPress={() => navigation.navigate('AddPartBilling', { complaintData })}
+              containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
+            />
+            <ScrollView
+              ref={scrollViewRef}
+              contentContainerStyle={{
+                paddingBottom: Platform.OS === 'android' && keyboardVisible ? keyboardHeight + 100 : 100,
+              }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              className="flex-1"
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={['#2E7D32', '#4CAF50', '#81C784']}
+                  tintColor="#2E7D32"
+                  title="Pull to refresh"
+                  titleColor="#2E7D32"
+                  progressBackgroundColor="#ffffff"
+                />
+              }
+            >
               {loadingParts && !refreshing ? renderLoading() : error ? renderError() : parts && parts.length > 0 ? parts.map((part) => {
                 const isRemoving = removingPartId === part.id;
                 const isPartTransferred = part.part_accept === "0";
@@ -651,7 +709,7 @@ const Billing = () => {
                 const isFromNew = part.source === 'new';
                 const showDeleteIcon = isFromNew && !isRemoving && !isPartTransferred && !isReplacementPart;
                 const showReplaceIcon = isFromRecomplaint && !isReplacementPart && !isPartTransferred;
-                
+
                 const handleImageClick = () => {
                   if (part.imageUrl) {
                     setPreviewImageUrl(part.imageUrl);
@@ -664,8 +722,8 @@ const Billing = () => {
                 return (
                   <View key={part.id} className={`flex-row items-start p-2 mx-4 mb-2 rounded-xl border border-gray-300 ${isPartTransferred ? 'opacity-60 bg-gray-50' : ''}`} style={{ opacity: isRemoving ? 0.5 : 1 }}>
                     <TouchableOpacity onPress={handleImageClick} disabled={!part.imageUrl}>
-                      {part.imageUrl ? 
-                        <Image source={{ uri: part.imageUrl }} className="w-16 h-16 rounded-lg bg-gray-300" resizeMode="cover" /> : 
+                      {part.imageUrl ?
+                        <Image source={{ uri: part.imageUrl }} className="w-16 h-16 rounded-lg bg-gray-300" resizeMode="cover" /> :
                         <View className="w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center"><Icon name="cube-outline" size={24} color="#10b981" /></View>
                       }
                     </TouchableOpacity>
@@ -674,16 +732,16 @@ const Billing = () => {
                         <Text className="text-text-primary font-semibold text-sm flex-1 mr-1">{part.name}</Text>
                         {getStatusBadge(part)}
                       </View>
-                      <View className="flex-row gap-3 items-center ">
-                        <Text className="text-text-secondary text-xs ">Part #: {part.partNumber}</Text>
+                      <View className="flex-row gap-3 items-center">
+                        <Text className="text-text-secondary text-xs">Part #: {part.partNumber}</Text>
                         <Text className="text-text-secondary text-xs">From: {part?.transfer_by}</Text>
-                      <Text className="text-text-secondary text-xs ">QR: {part.qr_code || 'N/A'}</Text>
+                        <Text className="text-text-secondary text-xs">QR: {part.qr_code || 'N/A'}</Text>
                       </View>
-                      <Text className={`font-bold text-sm  ${isPartTransferred ? 'text-gray-400' : 'text-primary-sage700'}`}>
-                        {isFromRecomplaint ? '₹0.00 (Recomplaint Part)' : `₹${part.price.toFixed(2)}`}
+                      <Text className={`font-bold text-sm ${isPartTransferred ? 'text-gray-400' : 'text-primary-sage700'}`}>
+                        {isFromRecomplaint ? '₹0.00 (Recomplaint Part)' : `₹${truncateToTwoDecimals(part.price)}`}
                       </Text>
-                      {isFromRecomplaint && <Text className="text-orange-600 text-xs ">From previous complaint - needs replacement</Text>}
-                      {isFromNew && <Text className="text-blue-600 text-xs ">New part added</Text>}
+                      {isFromRecomplaint && <Text className="text-orange-600 text-xs">From previous complaint - needs replacement</Text>}
+                      {isFromNew && <Text className="text-blue-600 text-xs">New part added</Text>}
                     </TouchableOpacity>
                     <View className="flex-row">
                       {showReplaceIcon && <TouchableOpacity onPress={() => openReplaceDialog(part)} className="mr-1"><Icon name="refresh-outline" size={20} color="#3b82f6" /></TouchableOpacity>}
@@ -703,64 +761,70 @@ const Billing = () => {
               )}
             </ScrollView>
 
-            {/* Compact Footer with Total Payable (larger) and Larger Button */}
-            <View className="bg-white justify-end px-3 pt-2 pb-2 border-t border-gray-200" style={{ paddingBottom: Platform.OS === 'android' && keyboardVisible ? keyboardHeight : 4 }}>
-              <View className="border p-3 mb-2 border-gray-200 rounded-xl bg-gray-50">
-                <View className="flex-row justify-between items-center mb-1">
-                  <Text className="text-gray-600 text-xs leading-tight">Base Amount</Text>
-                  <Text className="text-gray-800 text-xs font-medium">₹{baseAmount - (complaintData?.platform_fee || 0)}</Text>
+            {/* Footer - with truncated two‑decimal formatting */}
+            <Animated.View
+              className="bg-white border-t border-gray-200"
+              style={{ paddingBottom: footerAnimatedHeight }}
+            >
+              <View className="px-3 pt-2 pb-2">
+                <View className="border p-3 mb-2 border-gray-200 rounded-xl bg-gray-50">
+                  <View className="flex-row justify-between items-center mb-1">
+                    <Text className="text-gray-600 text-xs leading-tight">Base Amount</Text>
+                    <Text className="text-gray-800 text-xs font-medium">
+                      ₹{truncateToTwoDecimals(baseAmount - platformFee)}
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between items-center mb-1">
+                    <Text className="text-gray-600 text-xs leading-tight">Platform Fee</Text>
+                    <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(platformFee)}</Text>
+                  </View>
+                  <View className="flex-row justify-between items-center mb-1">
+                    <Text className="text-gray-600 text-xs leading-tight">Total Base Amt</Text>
+                    <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(baseAmount)}</Text>
+                  </View>
+                  <View className="flex-row justify-between items-center mb-1">
+                    <Text className="text-gray-600 text-xs leading-tight">Parts Total</Text>
+                    <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(totalPartsPrice)}</Text>
+                  </View>
+                  <View className="flex-row justify-between items-center pt-1 border-t border-gray-200">
+                    <Text className="text-gray-700 text-xs font-semibold">Subtotal</Text>
+                    <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(totalBeforeDiscount)}</Text>
+                  </View>
+                  <View className="flex-row justify-between items-center mt-1">
+                    <Text className="text-gray-600 text-xs leading-tight">Discount</Text>
+                    <TextInput
+                      className="border border-gray-300 text-black rounded-md px-2 py-0.5 w-20 text-right text-xs"
+                      keyboardType="numeric"
+                      placeholder="amount"
+                      value={discount ? discount.toString() : ''}
+                      onChangeText={handleDiscountChange}
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                  {discountError && <Text className="text-red-500 text-[10px] text-right mt-0.5">{discountError}</Text>}
                 </View>
-                <View className="flex-row justify-between items-center mb-1">
-                  <Text className="text-gray-600 text-xs leading-tight">Platform Fee</Text>
-                  <Text className="text-gray-800 text-xs font-medium">₹{complaintData?.platform_fee || 0}</Text>
-                </View>
-                <View className="flex-row justify-between items-center mb-1">
-                  <Text className="text-gray-600 text-xs leading-tight">Total Base Amt</Text>
-                  <Text className="text-gray-800 text-xs font-medium">₹{baseAmount.toFixed(2)}</Text>
-                </View>
-                <View className="flex-row justify-between items-center mb-1">
-                  <Text className="text-gray-600 text-xs leading-tight">Parts Total</Text>
-                  <Text className="text-gray-800 text-xs font-medium">₹{totalPartsPrice.toFixed(2)}</Text>
-                </View>
-                <View className="flex-row justify-between items-center pt-1 border-t border-gray-200">
-                  <Text className="text-gray-700 text-xs font-semibold">Subtotal</Text>
-                  <Text className="text-gray-800 text-xs font-medium">₹{totalBeforeDiscount.toFixed(2)}</Text>
-                </View>
-                <View className="flex-row justify-between items-center mt-1">
-                  <Text className="text-gray-600 text-xs leading-tight">Discount</Text>
-                  <TextInput
-                    className="border border-gray-300 text-black rounded-md px-2 py-0.5 w-20 text-right text-xs"
-                    keyboardType="numeric"
-                    placeholder="amount"
-                    value={discount ? discount.toString() : ''}
-                    onChangeText={handleDiscountChange}
-                    placeholderTextColor="#999"
-                  />
-                </View>
-                {discountError && <Text className="text-red-500 text-[10px] text-right mt-0.5">{discountError}</Text>}
-              </View>
 
-              {/* Row with Total Payable (larger) and Larger Button */}
-              <View className="flex-row items-center justify-between gap-3 px-6">
-                <View className="flex-1">
-                  <Text className="text-gray-600 text-xl font-medium leading-tight">Total Payable</Text>
-                  <Text className="text-primary-sage700 font-bold text-2xl">₹{totalPayable.toFixed(2)}</Text>
+                <View className="flex-row items-center justify-between gap-3 px-6">
+                  <View className="flex-1">
+                    <Text className="text-gray-600 text-xl font-medium leading-tight">Total Payable</Text>
+                    <Text className="text-primary-sage700 font-bold text-2xl">₹{truncateToTwoDecimals(totalPayable)}</Text>
+                  </View>
+                  <TouchableOpacity
+                    className={`py-3 px-16 rounded-xl items-center justify-center ${getButtonColor()}`}
+                    onPress={handleMainButtonPress}
+                    disabled={isSubmitting}
+                    style={{ opacity: isSubmitting ? 0.5 : 1 }}
+                  >
+                    <Text className="text-white font-bold text-xl">{getButtonText()}</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  className={`py-3 px-16 rounded-xl items-center justify-center ${getButtonColor()}`}
-                  onPress={handleMainButtonPress}
-                  disabled={isSubmitting}
-                  style={{ opacity: isSubmitting ? 0.5 : 1 }}
-                >
-                  <Text className="text-white font-bold text-xl">{getButtonText()}</Text>
-                </TouchableOpacity>
               </View>
-            </View>
+            </Animated.View>
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-      {/* Image Preview Modal - White background box with cross icon (like QRCodeDetails) */}
+      {/* Modals (unchanged) */}
       <Modal visible={previewImageVisible} transparent={true} animationType="fade" onRequestClose={() => setPreviewImageVisible(false)}>
         <View className="flex-1 bg-black/50 justify-center items-center p-4">
           <View className="bg-white rounded-2xl w-full max-w-[90%] max-h-[80%] overflow-hidden">
@@ -776,7 +840,6 @@ const Billing = () => {
         </View>
       </Modal>
 
-      {/* Modals (unchanged) */}
       <CustomModal visible={removeDialogVisible} onClose={() => { setRemoveDialogVisible(false); setPartToRemove(null); }} title="Remove Part" size="sm" footer={removeDialogFooter} overlayColor="bg-black/60" position="center" closeOnBackdropPress={true} showCloseIcon={true}>
         <Text className="text-text-primary text-base">Are you sure you want to remove this part from the bill?</Text>
       </CustomModal>
@@ -796,7 +859,7 @@ const Billing = () => {
       </CustomModal>
 
       <CustomModal visible={submitDialogVisible} onClose={() => setSubmitDialogVisible(false)} title="Confirm Submission" size="md" footer={submitDialogFooter} overlayColor="bg-black/50" customPosition="justify-center items-center" closeOnBackdropPress={true} showCloseIcon={true}>
-        <View><View className="mt-3 border-gray-200"><Text className="text-text-primary text-base">Total Payable: <Text className="font-bold text-primary-sage700">₹{totalPayable.toFixed(2)}</Text></Text><Text className="text-text-secondary text-sm mt-1">Proceed with billing?</Text></View></View>
+        <View><View className="mt-3 border-gray-200"><Text className="text-text-primary text-base">Total Payable: <Text className="font-bold text-primary-sage700">₹{truncateToTwoDecimals(totalPayable)}</Text></Text><Text className="text-text-secondary text-sm mt-1">Proceed with billing?</Text></View></View>
       </CustomModal>
 
       <CustomModal visible={isSubmitting} onClose={() => { }} title="Processing" size="sm" overlayColor="bg-black/50" position="center" closeOnBackdropPress={false} showCloseIcon={false}>

@@ -104,9 +104,7 @@ const Complaintscard = ({ item, onPress }) => {
                         <Text style={{ color: '#666', fontSize: 12, fontWeight: '500' }}>
                             CSN: {csnValue}
                         </Text>
-                        <Text style={{ color: '#666', fontSize: 12, fontWeight: '500', marginTop: 2 }}>
-                            Complaint ID: {idValue}
-                        </Text>
+                       
                     </View>
                     <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: '#E8F5E9' }}>
                         <Text style={{ fontSize: 12, fontWeight: '500', color: '#2E7D32' }}>

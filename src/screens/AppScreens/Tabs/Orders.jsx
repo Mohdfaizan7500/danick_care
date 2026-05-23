@@ -1,12 +1,13 @@
 import { Text, View, FlatList, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import { SafeAreaView, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useFocusEffect } from '@react-navigation/native'
 import Header from '../../../components/Header'
 import { AcceptComplaint, PendingComplaints, PendingComplaintCount } from '../../../lib/api'
 import DialogBox from '../../../components/DilaogBox'
 import { useAuth } from '../../../context/AuthContext'
 import Icon from 'react-native-vector-icons/MaterialIcons'
-import { useOrder } from '../../../context/OrderContext';
+import { useOrder } from '../../../context/OrderContext'
 
 const Orders = ({ route }) => {
     const insets = useSafeAreaInsets();
@@ -26,10 +27,13 @@ const Orders = ({ route }) => {
     const [pendingCount, setPendingCount] = useState(0)
     const [searchQuery, setSearchQuery] = useState('')
 
-    useEffect(() => {
-        fetchPendingComplaints();
-        fetchPendingComplaintCount(); // Keep this
-    }, []);
+    // 🔁 Use useFocusEffect to refetch data every time screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            fetchPendingComplaints();
+            fetchPendingComplaintCount();
+        }, [])
+    );
 
     const fetchPendingComplaintCount = async () => {
         try {
@@ -43,7 +47,6 @@ const Orders = ({ route }) => {
             if (response?.data?.success) {
                 const count = response?.data?.Pendingcomplaints || 0
                 setPendingCount(count)
-                // Also update the badge count in BottomTabs if callback exists
                 if (refreshOrderCount) {
                     refreshOrderCount(count)
                 }
@@ -128,10 +131,6 @@ const Orders = ({ route }) => {
         setDialogVisible(true)
     }
 
-    // In Orders.jsx, update the useEffect:
-
-
-    // And in confirmAccept, use refreshOrderCount directly:
     const confirmAccept = async () => {
         try {
             setProcessingId(selectedComplaint.complaintId)
@@ -154,12 +153,10 @@ const Orders = ({ route }) => {
                 const newCount = Math.max(0, pendingCount - 1)
                 setPendingCount(newCount)
 
-                // Update global count - this will update the badge
                 if (refreshOrderCount) {
-                    refreshOrderCount(newCount) // Pass the new count directly
+                    refreshOrderCount(newCount)
                 }
 
-                // Show success message
                 setSelectedComplaint({
                     type: 'success',
                     title: 'Success',
@@ -167,7 +164,6 @@ const Orders = ({ route }) => {
                 })
                 setDialogVisible(true)
             } else {
-                // Handle error
                 setSelectedComplaint({
                     type: 'error',
                     title: 'Error',
@@ -210,12 +206,12 @@ const Orders = ({ route }) => {
 
                 <View className="p-4">
                     <View className='flex-row items-center justify-between'>
-                    <Text className="text-base font-bold text-gray-800 mb-1">
-                        {item.service_name}
-                    </Text>
-                    <Text className="text-base font-normal text-gray-800 mb-1">
-                        #{item.id}
-                    </Text>
+                        <Text className="text-base font-bold text-gray-800 mb-1">
+                            {item.service_name}
+                        </Text>
+                        <Text className="text-base font-normal text-gray-800 mb-1">
+                            #{item.id}
+                        </Text>
                     </View>
 
                     <Text className="text-xs text-gray-500 mb-1.5">
@@ -233,8 +229,6 @@ const Orders = ({ route }) => {
                             🕒 {item.slot_time || 'Time not set'}
                         </Text>
                     </View>
-
-                   
                 </View>
 
                 <View className="px-4 pb-4">
@@ -311,7 +305,6 @@ const Orders = ({ route }) => {
                             onPress={() => {
                                 setDialogVisible(false)
                                 setSelectedComplaint(null)
-                                // Refresh the list to ensure consistency
                                 handleRefresh()
                             }}
                         >
@@ -346,7 +339,7 @@ const Orders = ({ route }) => {
 
     if (loading && !refreshing) {
         return (
-            <View className="flex-1 bg-white" style={{paddingTop:insets.top}}>
+            <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
                 <Header
                     title="Pending Complaints"
                     titlePosition="left"
@@ -363,7 +356,7 @@ const Orders = ({ route }) => {
     }
 
     return (
-        <View className="flex-1 bg-white" style={{paddingTop:insets.top}}>
+        <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
             <Header
                 title={`Pending Complaints (${pendingCount})`}
                 titlePosition="left"

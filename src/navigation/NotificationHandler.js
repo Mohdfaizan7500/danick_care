@@ -60,6 +60,7 @@ async function displayNotification(remoteMessage) {
       smallIcon: 'ic_launcher',
       sound: 'notification',
       autoCancel: true,
+      progress:{max:100,current:45}
     },
     ios: {
       sound: 'notification',

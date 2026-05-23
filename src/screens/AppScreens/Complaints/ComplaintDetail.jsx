@@ -1,4 +1,4 @@
-// ComplaintDetail.js - Complete with timer, fine warning, and back-only camera (Vision Camera)
+// ComplaintDetail.js - Complete with timer (persistent), fine warning, back-only camera, and custom header
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
@@ -9,7 +9,6 @@ import {
     ScrollView,
     Image,
     Platform,
-    PermissionsAndroid,
     ActivityIndicator,
     Alert,
     KeyboardAvoidingView,
@@ -21,7 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import Header from '../../../components/Header';
+// No external Header import – we define our own below
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { sendOTP, verifyOTP, UploadComplaintImage, ReverseComplaint } from '../../../lib/api';
@@ -29,6 +28,75 @@ import { check, request, RESULTS, PERMISSIONS, openSettings } from 'react-native
 import Geolocation from '@react-native-community/geolocation';
 import { useDashboard } from '../../../context/DashboardContext';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+
+// --- Custom Header Component (replaces imported Header) ---
+const CustomHeader = ({
+    title,
+    titleStyle = 'text-base font-semibold text-gray-800',
+    titlePosition = 'left',
+    showBackButton = true,
+    onBackPress,
+    backButtonColor = '#333',
+    containerStyle = 'bg-white flex-row items-center justify-between px-4 py-4 border-gray-100 shadow-sm',
+    showRightIcon = false,
+    customRightIconComponent = null,
+}) => {
+    const navigation = useNavigation();
+
+    const handleBackPress = () => {
+        if (onBackPress) {
+            onBackPress();
+        } else {
+            if (navigation.canGoBack()) {
+                navigation.goBack();
+            } else {
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'BottomTabs' }],
+                });
+            }
+        }
+    };
+
+    // Determine title alignment
+    const getTitleContainerStyle = () => {
+        switch (titlePosition) {
+            case 'left': return 'flex-1 items-start ml-2';
+            case 'right': return 'flex-1 items-end mr-2';
+            default: return 'flex-1 items-center';
+        }
+    };
+
+    // Left container width (for back button)
+    const leftWidth = showBackButton ? 'w-10' : 'w-10';
+    const rightWidth = showRightIcon ? 'flex ' : 'w-10';
+
+    return (
+        <View className={containerStyle}>
+            {/* Left: Back Button */}
+            <View className={`${leftWidth} items-start`}>
+                {showBackButton && (
+                    <TouchableOpacity onPress={handleBackPress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Icon name="chevron-back-outline" size={24} color={backButtonColor} />
+                    </TouchableOpacity>
+                )}
+            </View>
+
+            {/* Center: Title */}
+            <View className={getTitleContainerStyle()}>
+                {title && <Text className={titleStyle}>{title}</Text>}
+            </View>
+
+            {/* Right: Custom Icon / Component */}
+            <View className={`${rightWidth} items-end  `}>
+                {showRightIcon && customRightIconComponent}
+            </View>
+        </View>
+    );
+};
+
+// --- CONFIGURABLE TIMER DURATION (in minutes) ---
+const TIMER_DURATION_MINUTES = 10;
 
 // Check if Android version is 15 (API 35) or higher
 const isAndroid15OrHigher = () => {
@@ -44,7 +112,7 @@ const isAndroid15OrHigher = () => {
 
 // Custom Camera Modal - Forces back camera only
 const CustomCameraModal = ({ visible, onClose, onCapture }) => {
-    const device = useCameraDevice('back'); // Only back camera
+    const device = useCameraDevice('back');
     const { hasPermission, requestPermission } = useCameraPermission();
     const cameraRef = useRef(null);
 
@@ -78,10 +146,7 @@ const CustomCameraModal = ({ visible, onClose, onCapture }) => {
                 <View style={styles.modalContainer}>
                     <View style={styles.permissionBox}>
                         <Text style={styles.permissionText}>Camera permission required</Text>
-                        <TouchableOpacity
-                            style={styles.permissionButton}
-                            onPress={requestPermission}
-                        >
+                        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
                             <Text style={styles.permissionButtonText}>Grant Permission</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={onClose}>
@@ -134,7 +199,6 @@ const ComplaintDetail = () => {
     const route = useRoute();
     const { complaint } = route.params;
     const { triggerRefresh } = useDashboard();
-    console.log('complaint:', complaint);
 
     // OTP flow states
     const [jobStarted, setJobStarted] = useState(false);
@@ -161,7 +225,7 @@ const ComplaintDetail = () => {
     // Camera states
     const [photoUri, setPhotoUri] = useState(null);
     const [sendingPhoto, setSendingPhoto] = useState(false);
-    const [showCamera, setShowCamera] = useState(false); // For custom camera modal
+    const [showCamera, setShowCamera] = useState(false);
 
     // Reverse reason states
     const [showReasonInput, setShowReasonInput] = useState(false);
@@ -176,19 +240,17 @@ const ComplaintDetail = () => {
 
     // Check if complaint status is complete (success)
     const isComplete = complaint.status === 'success';
-
     // Check if OTP is already verified (verify_otp is "1")
     const isOtpAlreadyVerified = complaint.verify_otp === "1";
 
-    // --- Timer Logic: extract date_time, add 10 minutes, countdown ---
+    // --- PERSISTENT TIMER LOGIC (runs regardless of OTP verification) ---
     useEffect(() => {
-        if (!isComplete && !isOtpAlreadyVerified && !verified && complaint.date_time) {
-            // Parse date_time
+        if (!isComplete && complaint.date_time) {
             const [datePart, timePart] = complaint.date_time.split(' ');
             const [year, month, day] = datePart.split('-');
             const [hours, minutes, seconds] = timePart.split(':');
             const complaintDate = new Date(year, month - 1, day, hours, minutes, seconds);
-            const targetDate = new Date(complaintDate.getTime() + 10 * 60 * 1000);
+            const targetDate = new Date(complaintDate.getTime() + TIMER_DURATION_MINUTES * 60 * 1000);
 
             const updateTimer = () => {
                 const now = new Date();
@@ -202,7 +264,6 @@ const ComplaintDetail = () => {
                     }
                 } else {
                     setTimerRemainingSeconds(Math.floor(diff / 1000));
-                    // DO NOT setTimerExpired(false) here – once expired, stays expired
                 }
             };
 
@@ -213,14 +274,12 @@ const ComplaintDetail = () => {
                 if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
             };
         } else {
-            // Do NOT reset timerExpired here – keep it as is
-            // Only clear the interval if it's running
             if (timerIntervalRef.current) {
                 clearInterval(timerIntervalRef.current);
                 timerIntervalRef.current = null;
             }
         }
-    }, [complaint.date_time, isComplete, isOtpAlreadyVerified, verified]);
+    }, [complaint.date_time, isComplete]);
 
     const formatTimer = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -298,7 +357,7 @@ const ComplaintDetail = () => {
                 try {
                     const location = await getCurrentLocation();
                     setCurrentLocation(location);
-                    toast.custom(<StatusMessage type="success" title="Location obtained successfully" />, { duration: 2000 });
+                    toast.custom(<StatusMessage type="success" title="Data obtained successfully" />, { duration: 2000 });
                     return location;
                 } catch (error) {
                     if (retryCount < maxRetries) {
@@ -318,7 +377,7 @@ const ComplaintDetail = () => {
                     try {
                         const location = await getCurrentLocation();
                         setCurrentLocation(location);
-                        toast.custom(<StatusMessage type="success" title="Location obtained successfully" />, { duration: 2000 });
+                        toast.custom(<StatusMessage type="success" title="Data obtained successfully" />, { duration: 2000 });
                         return location;
                     } catch (error) {
                         toast.custom(<StatusMessage type="error" title={error.message} />, { duration: 3000 });
@@ -430,7 +489,7 @@ const ComplaintDetail = () => {
         if (timerExpired && !showReasonInput) {
             Alert.alert(
                 "Fine Warning",
-                "10 minute ho gaye. Ab reverse karne par ₹100 ka fine lagega. Kya aap continue karna chahte hain?",
+                `${TIMER_DURATION_MINUTES} minute ho gaye. Ab reverse karne par ₹100 ka fine lagega. Kya aap continue karna chahte hain?`,
                 [
                     { text: "Cancel", style: "cancel" },
                     { text: "Continue", onPress: () => setShowReasonInput(true) },
@@ -488,7 +547,7 @@ const ComplaintDetail = () => {
                 location = await getCurrentLocation();
                 setCurrentLocation(location);
             } catch (error) {
-                toast.custom(<StatusMessage type="error" title={error.message || "Unable to get current location. Please enable GPS."} className="mx-4 mb-6" />, { duration: 3000 });
+                toast.custom(<StatusMessage type="error" title={error.message || "Unable to get Data. Please enable GPS."} className="mx-4 mb-6" />, { duration: 3000 });
                 setIsGettingLocation(false);
                 return;
             }
@@ -694,19 +753,7 @@ const ComplaintDetail = () => {
                 <View className="flex-row items-center justify-between">
                     <Text className="text-text-primary text-2xl font-bold mb-2">{complaintData.service_name}</Text>
                 </View>
-                <View className={`self-start px-4 py-2 rounded-full mb-2 ${getStatusColorClass()}`}>
-                    <Text className={`text-sm font-medium ${getStatusTextColorClass()}`}>{getStatusDisplay()}</Text>
-                </View>
-                {!isComplete && !showVerifiedContent && (
-                    <View className="mb-4">
-                        <View className={`flex-row items-center ${hasLocationPermission && currentLocation ? 'bg-green-50' : 'bg-yellow-50'} p-2 rounded-lg`}>
-                            <Icon name="location-outline" size={20} color={hasLocationPermission && currentLocation ? "#10b981" : "#eab308"} />
-                            <Text className={`ml-2 text-sm ${hasLocationPermission && currentLocation ? 'text-green-700' : 'text-yellow-700'}`}>
-                                {isGettingLocation ? 'Fetching location...' : hasLocationPermission && currentLocation ? 'Location ready' : 'Location permission required'}
-                            </Text>
-                        </View>
-                    </View>
-                )}
+
                 {!isComplete && (
                     <>
                         {!showVerifiedContent && showOtp && (
@@ -796,32 +843,55 @@ const ComplaintDetail = () => {
                 </View>
                 {!isComplete && (
                     <>
-                        {timerRemainingSeconds > 0 && !showVerifiedContent && (
+                        {timerRemainingSeconds > 0 && (
                             <View className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
                                 <View className="flex-row items-center justify-between">
-                                    <View className="flex-row items-center"><Icon name="time-outline" size={20} color="#2563eb" /><Text className="text-blue-700 font-semibold ml-2">Reverse karne ka time bacha:</Text></View>
+                                    <View className="flex-row items-center">
+                                        <Icon name="time-outline" size={20} color="#2563eb" />
+                                        <Text className="text-blue-700 font-semibold ml-2">Reverse karne ka time bacha:</Text>
+                                    </View>
                                     <Text className="text-blue-800 font-bold text-lg">{formatTimer(timerRemainingSeconds)}</Text>
                                 </View>
-                                <Text className="text-blue-600 text-xs mt-1">10 minute ke andar reverse karein, nahi toh ₹100 fine lagega.</Text>
+                                <Text className="text-blue-600 text-xs mt-1">{TIMER_DURATION_MINUTES} minute ke andar reverse karein, nahi toh ₹100 fine lagega.</Text>
                             </View>
                         )}
-                        {timerExpired && !showVerifiedContent && (
+                        {timerExpired && (
                             <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
-                                <View className="flex-row items-center"><Icon name="alert-circle-outline" size={20} color="#dc2626" /><Text className="text-red-700 font-semibold ml-2">Time Ho Gaya!</Text></View>
-                                <Text className="text-red-600 text-sm mt-1">10 minute complete ho gaye. Ab reverse karne par ₹100 ka fine lagega.</Text>
+                                <View className="flex-row items-center">
+                                    <Icon name="alert-circle-outline" size={20} color="#dc2626" />
+                                    <Text className="text-red-700 font-semibold ml-2">Time Ho Gaya!</Text>
+                                </View>
+                                <Text className="text-red-600 text-sm mt-1">{TIMER_DURATION_MINUTES} minute complete ho gaye. Ab reverse karne par ₹100 ka fine lagega.</Text>
                             </View>
                         )}
                         {showReasonInput && (
                             <View className="mb-4">
-                                <TextInput ref={el => (inputRefs.current['reason'] = el)} className="border border-ui-border rounded-xl p-3 bg-background-secondary text-text-primary" placeholder="Enter reason for reversal" placeholderTextColor="#999" value={reasonText} onChangeText={setReasonText} multiline numberOfLines={3} />
+                                <TextInput
+                                    ref={el => (inputRefs.current['reason'] = el)}
+                                    className="border border-ui-border rounded-xl p-3 bg-background-secondary text-text-primary"
+                                    placeholder="Enter reason for reversal"
+                                    placeholderTextColor="#999"
+                                    value={reasonText}
+                                    onChangeText={setReasonText}
+                                    multiline
+                                    numberOfLines={3}
+                                />
                             </View>
                         )}
                         <View className="flex-row justify-between mt-2 mb-6">
-                            <TouchableOpacity onPress={handleReverse} disabled={submittingReverse} className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${submittingReverse ? 'bg-ui-disabled' : (showReasonInput && reasonText.trim() ? 'bg-ui-success' : 'bg-ui-secondary/20')}`}>
+                            <TouchableOpacity
+                                onPress={handleReverse}
+                                disabled={submittingReverse}
+                                className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${submittingReverse ? 'bg-ui-disabled' : (showReasonInput && reasonText.trim() ? 'bg-ui-success' : 'bg-ui-secondary/20')}`}
+                            >
                                 {submittingReverse ? <ActivityIndicator color="#fff" /> : <Text className={`font-semibold ${showReasonInput && reasonText.trim() ? 'text-text-inverse' : 'text-text-secondary'}`}>Reverse</Text>}
                             </TouchableOpacity>
                             {!showVerifiedContent && !jobStarted && (
-                                <TouchableOpacity onPress={() => handleStartJob(complaintData)} disabled={verifying || sendingOTP || isGettingLocation} className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${verifying || sendingOTP || isGettingLocation ? 'bg-ui-disabled' : 'bg-primary-sage600'}`}>
+                                <TouchableOpacity
+                                    onPress={() => handleStartJob(complaintData)}
+                                    disabled={verifying || sendingOTP || isGettingLocation}
+                                    className={`px-6 py-3 rounded-xl flex-1 ml-2 items-center ${verifying || sendingOTP || isGettingLocation ? 'bg-ui-disabled' : 'bg-primary-sage600'}`}
+                                >
                                     {sendingOTP || isGettingLocation ? <ActivityIndicator color="#fff" /> : <Text className="font-semibold text-text-inverse">Start Job</Text>}
                                 </TouchableOpacity>
                             )}
@@ -835,10 +905,17 @@ const ComplaintDetail = () => {
     if (isInitializingLocation && !isComplete && !isOtpAlreadyVerified && !verified) {
         return (
             <SafeAreaView className="flex-1 bg-background-primary">
-                <Header title={`Complaint #${complaintData.csn}`} titlePosition="left" titleStyle="font-bold text-2xl ml-5 text-text-primary" showBackButton backButtonColor="#333333" containerStyle="bg-background-primary flex-row items-center justify-between px-4 py-4 border-gray-200" />
+                <CustomHeader
+                    title={`CSN #${complaintData.csn}`}
+                    titlePosition="left"
+                    titleStyle="font-bold text-2xl ml-5 text-text-primary"
+                    showBackButton={true}
+                    backButtonColor="#333333"
+                    containerStyle="bg-background-primary flex-row items-center justify-between px-4 py-4 border-gray-200"
+                />
                 <View className="flex-1 justify-center items-center">
                     <ActivityIndicator size="large" color="#58A890" />
-                    <Text className="mt-4 text-text-secondary">Fetching location...</Text>
+                    <Text className="mt-4 text-text-secondary">Fetching data...</Text>
                 </View>
             </SafeAreaView>
         );
@@ -847,7 +924,22 @@ const ComplaintDetail = () => {
     return (
         <SafeAreaView className="flex-1 bg-background-primary">
             <View className="absolute inset-0 z-50 pointer-events-none"><Toaster /></View>
-            <Header title={`Complaint #${complaintData.csn}`} titlePosition="left" titleStyle="font-bold text-2xl ml-5 text-text-primary" showBackButton backButtonColor="#333333" containerStyle="bg-background-primary flex-row items-center justify-between px-4 py-4 border-gray-200" />
+            <CustomHeader
+                title={`CSN #${complaintData.csn}`}
+                titlePosition="left"
+                titleStyle="font-bold text-2xl ml-5 text-text-primary"
+                showBackButton={true}
+                backButtonColor="#333333"
+                containerStyle="bg-background-primary flex-row items-center justify-between px-4 py-4 border-gray-200"
+                showRightIcon={true}
+                customRightIconComponent={
+                    <View className={`self-start px-4 py-2 rounded-full ${getStatusColorClass()}`}>
+                        <Text className={`text-sm font-medium ${getStatusTextColorClass()}`}>
+                            {getStatusDisplay()}
+                        </Text>
+                    </View>
+                }
+            />
             {isAndroid15OrHigher() ? (
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
                     <ScrollView ref={scrollViewRef} className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: keyboardVisible ? 250 : 30 }} showsVerticalScrollIndicator keyboardShouldPersistTaps="handled">
@@ -859,7 +951,6 @@ const ComplaintDetail = () => {
                     {renderContent()}
                 </ScrollView>
             )}
-            {/* Custom Camera Modal */}
             <CustomCameraModal visible={showCamera} onClose={() => setShowCamera(false)} onCapture={handleCameraCapture} />
         </SafeAreaView>
     );

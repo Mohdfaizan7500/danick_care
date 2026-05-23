@@ -49,7 +49,7 @@ const AllNotification = ({ route }) => {
   // Get title from message
   const getTitleFromMessage = (message) => {
     if (!message) return 'Notification';
-    
+
     if (message.includes('assigned')) return 'New Complaint Assigned';
     if (message.includes('completed')) return 'Complaint Completed';
     if (message.includes('payment')) return 'Payment Update';
@@ -59,7 +59,7 @@ const AllNotification = ({ route }) => {
     if (message.includes('reopened')) return 'Complaint Reopened';
     if (message.includes('AMC')) return 'AMC Complaint';
     if (message.includes('CSN')) return 'New Complaint Request';
-    
+
     return 'Notification';
   };
 
@@ -100,24 +100,24 @@ const AllNotification = ({ route }) => {
   // Mark notification as read
   const markAsRead = async (notificationId) => {
     if (!notificationId) return;
-    
+
     // Check if already marked as read
     const notification = notifications.find(n => n.id === notificationId);
     if (notification?.readStatus === 'Read') {
       return; // Already read, no need to call API
     }
-    
+
     setReadNotificationId(notificationId);
-    
+
     try {
       const payload = {
         id: notificationId.toString()
       };
-      
+
       console.log('Marking notification as read with payload:', payload);
       const response = await ReadNotification(payload);
       console.log('ReadNotification response:', response);
-      
+
       if (response?.data?.success) {
         // Update local state to mark as read
         setNotifications(prevNotifications =>
@@ -127,23 +127,23 @@ const AllNotification = ({ route }) => {
               : notif
           )
         );
-        
+
         // Update counts if refreshCounts is available
         if (refreshCounts) {
-          const updatedUnreadCount = notifications.filter(n => 
+          const updatedUnreadCount = notifications.filter(n =>
             n.id !== notificationId && n.readStatus !== 'Read'
           ).length;
-          const updatedReadCount = notifications.filter(n => 
+          const updatedReadCount = notifications.filter(n =>
             (n.id === notificationId && 'Read') || (n.id !== notificationId && n.readStatus === 'Read')
           ).length;
-          
+
           refreshCounts({
             all: notifications.length,
             unread: updatedUnreadCount,
             read: updatedReadCount,
           });
         }
-        
+
         console.log('Notification marked as read successfully');
       }
     } catch (error) {
@@ -156,7 +156,7 @@ const AllNotification = ({ route }) => {
   // Navigate based on notification status
   const handleNavigation = (notificationStatus) => {
     console.log('Notification status:', notificationStatus);
-    
+
     // Reset all routes and navigate to the target screen
     if (notificationStatus === 'pending') {
       // Navigate to Home screen and reset all routes
@@ -164,7 +164,8 @@ const AllNotification = ({ route }) => {
         CommonActions.reset({
           index: 0,
           routes: [
-            { name: 'BottomTabs',
+            {
+              name: 'BottomTabs',
               params: {
                 screen: "Orders"
               }
@@ -178,7 +179,8 @@ const AllNotification = ({ route }) => {
         CommonActions.reset({
           index: 0,
           routes: [
-            { name: 'ComplaintsTopNavigation',
+            {
+              name: 'ComplaintsTopNavigation',
               params: {
                 status: "Assign"
               }
@@ -193,12 +195,12 @@ const AllNotification = ({ route }) => {
   const handleNotificationPress = async (item) => {
     console.log('Notification pressed:', item.id);
     console.log('Notification status:', item.notificationStatus);
-    
+
     // First mark as read (if unread)
     if (item.readStatus !== 'Read') {
       await markAsRead(item.id);
     }
-    
+
     // Then navigate based on notification status
     handleNavigation(item.notificationStatus);
   };
@@ -206,19 +208,19 @@ const AllNotification = ({ route }) => {
   // Fetch notifications from API
   const fetchNotifications = async (isRefresh = false) => {
     if (!isMounted.current) return;
-    
+
     try {
       setError(null);
-      
+
       if (!isRefresh) {
         setLoading(true);
       }
-      
+
       const payload = {
         technician_id: user?.id?.toString() || "1",
         read_status: "" // Empty string for all notifications
       };
-      
+
       console.log('Fetching all notifications with payload:', payload);
       const response = await FetchNotification(payload);
       console.log('FetchNotification response:', response);
@@ -240,9 +242,9 @@ const AllNotification = ({ route }) => {
           notificationStatus: item.notification_status,
           rawData: item
         }));
-        
+
         setNotifications(transformedData);
-        
+
         if (refreshCounts && !isRefresh && isMounted.current) {
           const unreadCount = transformedData.filter(n => n.readStatus !== "Read").length;
           const readCount = transformedData.filter(n => n.readStatus === "Read").length;
@@ -282,7 +284,7 @@ const AllNotification = ({ route }) => {
   useEffect(() => {
     isMounted.current = true;
     fetchNotifications();
-    
+
     return () => {
       isMounted.current = false;
     };
@@ -292,7 +294,7 @@ const AllNotification = ({ route }) => {
   useFocusEffect(
     useCallback(() => {
       fetchNotifications(true);
-      return () => {};
+      return () => { };
     }, [])
   );
 
@@ -325,8 +327,8 @@ const AllNotification = ({ route }) => {
   }
 
   return (
-    <ScrollView 
-      className="flex-1 bg-gray-50 pt-5" 
+    <ScrollView
+      className="flex-1 bg-gray-50 pt-5"
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl
@@ -347,7 +349,7 @@ const AllNotification = ({ route }) => {
           const isUnread = item.readStatus !== "Read";
           const notificationStatusInfo = getNotificationStatus(item.status, item.notificationStatus);
           const isMarkingRead = readNotificationId === item.id;
-          
+
           return (
             <TouchableOpacity
               key={item.id}
@@ -379,31 +381,11 @@ const AllNotification = ({ route }) => {
                   </Text>
                 </View>
 
-                <Text className={`text-sm mb-2 ${isUnread ? 'text-gray-700 font-medium' : 'text-gray-500'}`} numberOfLines={2}>
+                <Text className={`text-sm mb-2 ${isUnread ? 'text-gray-700 font-medium' : 'text-gray-500'}`} numberOfLines={3}>
                   {item.message}
                 </Text>
 
-                {/* Complaint ID and CSN Section */}
-                {(item.complaint_id || item.csn) && (
-                  <View className="mb-2">
-                    {item.complaint_id && (
-                      <View className="flex-row items-center mb-1">
-                        <Icon name="assignment" size={14} color="#6B7280" />
-                        <Text className="text-xs text-gray-600 ml-1">
-                          Complaint ID: <Text className="font-medium">{item.complaint_id}</Text>
-                        </Text>
-                      </View>
-                    )}
-                    {item.csn && (
-                      <View className="flex-row items-center">
-                        <Icon name="receipt" size={14} color="#6B7280" />
-                        <Text className="text-xs text-gray-600 ml-1">
-                          CSN: <Text className="font-medium">{item.csn}</Text>
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                )}
+
 
                 {/* Date/Time and Status Row */}
                 <View className="flex-row items-center justify-between mt-1">
@@ -413,7 +395,7 @@ const AllNotification = ({ route }) => {
                       {item.dateTime}
                     </Text>
                   </View>
-                  
+
                   <View className="flex-row items-center gap-2">
                     {/* Read Status Badge */}
                     <View className={`px-2 py-0.5 rounded-full ${isUnread ? 'bg-purple-100' : 'bg-blue-100'}`}>
@@ -421,7 +403,7 @@ const AllNotification = ({ route }) => {
                         {isUnread ? 'Unread' : 'Read'}
                       </Text>
                     </View>
-                    
+
                     {/* Notification Status Badge */}
                     <View className={`px-2 py-0.5 rounded-full ${notificationStatusInfo.color.split(' ')[0]}`}>
                       <Text className={`text-xs font-medium ${notificationStatusInfo.color.split(' ')[1]}`}>
