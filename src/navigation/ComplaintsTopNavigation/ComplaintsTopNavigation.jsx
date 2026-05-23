@@ -8,6 +8,7 @@ import {
   ScrollView,
   useWindowDimensions,
   ActivityIndicator,
+  Vibration,               // ✅ Added import
 } from 'react-native';
 import React, { useRef, useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,7 +26,7 @@ import { useDashboard } from '../../context/DashboardContext';
 
 const Tab = createMaterialTopTabNavigator();
 
-// Custom Tab Bar Component
+// Custom Tab Bar Component (with vibration)
 const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
   const scrollViewRef = useRef(null);
   const tabRefs = useRef({});
@@ -91,6 +92,9 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
           const count = getTabCount(route.name);
 
           const onPress = () => {
+            // 🎯 Trigger vibration on tab press
+            Vibration.vibrate(10); // 10ms short buzz
+
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,

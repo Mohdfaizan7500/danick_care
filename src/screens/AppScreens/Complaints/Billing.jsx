@@ -15,6 +15,7 @@ import {
   Keyboard,
   RefreshControl,
   Animated,
+  ToastAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -234,7 +235,8 @@ const Billing = () => {
       setParts(formattedParts);
       if (typeof updateImportedPart === 'function') updateImportedPart(formattedParts);
       if (isRefresh) {
-        toast.custom(<StatusMessage type='success' title="Parts refreshed successfully" />, { duration: 1500 });
+        ToastAndroid.show("refreshed...",ToastAndroid.SHORT,ToastAndroid.TOP);
+
       }
     } catch (err) {
       console.error('Error fetching parts:', err);

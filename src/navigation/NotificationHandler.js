@@ -1,9 +1,10 @@
 // src/navigation/NotificationHandler.js
 import React, { useEffect, useRef } from 'react';
-import { Linking, Platform } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import { buildDeepLinkFromNotificationData } from './utils/deepLinkBuilder';
+import { useAuth } from '../context/AuthContext';
 
 // Define NAVIGATION_IDS based on notification titles
 const NAVIGATION_IDS = ['home', 'spare', 'orders', 'complaints', 'amc', 'bucket', 'notifications', 'assign'];
@@ -60,7 +61,7 @@ async function displayNotification(remoteMessage) {
       smallIcon: 'ic_launcher',
       sound: 'notification',
       autoCancel: true,
-      progress:{max:100,current:45}
+      progress: { max: 100, current: 45 }
     },
     ios: {
       sound: 'notification',
@@ -76,6 +77,7 @@ async function displayNotification(remoteMessage) {
 
 const NotificationHandler = () => {
   const isListenerSetup = useRef(false);
+  const { setIsOnline } = useAuth();
 
   useEffect(() => {
     if (isListenerSetup.current) {
@@ -95,7 +97,17 @@ const NotificationHandler = () => {
 
         // Handle foreground messages
         unsubscribeForeground = messaging().onMessage(async remoteMessage => {
-          console.log('📱 Foreground message received:', remoteMessage);
+          console.log('📱 Foreground message received hh:', remoteMessage);
+          const title = remoteMessage.notification.title
+          if (title === 'offline') {
+            console.log('📴 Setting IsOnline = false');
+            setIsOnline(false);
+          }
+          // Optional: handle 'online' notification to set status back to true
+          else if (title === 'online') {
+            console.log('📶 Setting IsOnline = true');
+            setIsOnline(true);
+          }
           await displayNotification(remoteMessage);
         });
 

@@ -57,7 +57,7 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts, loadin
       const screenWidth = width;
       const activeTabWidth = tabWidths.current[state.index] || 100;
       const scrollTo = offset - (screenWidth / 2) + (activeTabWidth / 2);
-      
+
       scrollViewRef.current.scrollTo({
         x: Math.max(0, scrollTo),
         animated: true,
@@ -140,31 +140,28 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts, loadin
               >
                 {displayLabel}
               </Animated.Text>
-              {loading ? (
-                <ActivityIndicator size="small" color={isFocused ? '#059669' : '#999'} />
-              ) : count > 0 ? (
-                <View
+
+              <View
+                style={{
+                  backgroundColor: isFocused ? '#07c78c' : '#d0d0d0',
+                  borderRadius: 12,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  minWidth: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
                   style={{
-                    backgroundColor: isFocused ? '#07c78c' : '#d0d0d0',
-                    borderRadius: 12,
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
-                    minWidth: 20,
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: 10,
+                    fontWeight: '600',
                   }}
                 >
-                  <Text
-                    style={{
-                      color: 'white',
-                      fontSize: 10,
-                      fontWeight: '600',
-                    }}
-                  >
-                    {count}
-                  </Text>
-                </View>
-              ) : null}
+                  {loading ? 0 : count}
+                </Text>
+              </View>
             </Pressable>
           );
         })}
@@ -183,12 +180,8 @@ const BucketNavigation = () => {
     fetchBucketCounts();
   }, []);
 
-  // Refresh counts function to pass to child components
-  const handleRefreshCounts = useCallback(async () => {
-    await refreshCounts();
-  }, [refreshCounts]);
-
-  if (loading && !bucketCounts.all && !bucketCounts.all !== 0) {
+  // ✅ Fixed loading condition – show loader only when loading AND no data yet
+  if (loading && bucketCounts.all === 0 && bucketCounts.market === 0 && bucketCounts.technician === 0 && bucketCounts.admin === 0 && bucketCounts.transfered === 0 && bucketCounts.received === 0) {
     return (
       <SafeAreaView className='bg-white flex-1' edges={['top']}>
         <Header title={'Bucket'} />
@@ -207,7 +200,7 @@ const BucketNavigation = () => {
         <View className='flex-1 justify-center items-center bg-gray-50 px-4'>
           <Text className="text-red-500 text-base text-center mb-4">{error}</Text>
           <TouchableOpacity
-            onPress={fetchBucketCounts}
+            onPress={() => fetchBucketCounts()}
             className="bg-teal-600 px-6 py-2 rounded-lg"
           >
             <Text className="text-white font-semibold">Retry</Text>
@@ -230,35 +223,36 @@ const BucketNavigation = () => {
             lazy: true,
           }}
         >
-          <Tab.Screen 
-            name='AllBucket' 
+          {/* ✅ No longer passing refreshCounts function – AllBucket will use global context */}
+          <Tab.Screen
+            name='AllBucket'
             component={AllBucket}
-            initialParams={{ refreshCounts: handleRefreshCounts, type: 'all' }}
+            initialParams={{ type: 'all' }}
           />
-          <Tab.Screen 
-            name='market' 
+          <Tab.Screen
+            name='market'
             component={AllBucket}
-            initialParams={{ refreshCounts: handleRefreshCounts, type: 'market' }}
+            initialParams={{ type: 'market' }}
           />
-          <Tab.Screen 
-            name='technician' 
+          <Tab.Screen
+            name='technician'
             component={AllBucket}
-            initialParams={{ refreshCounts: handleRefreshCounts, type: 'technician' }}
+            initialParams={{ type: 'technician' }}
           />
-          <Tab.Screen 
-            name='admin' 
+          <Tab.Screen
+            name='admin'
             component={AllBucket}
-            initialParams={{ refreshCounts: handleRefreshCounts, type: 'admin' }}
+            initialParams={{ type: 'admin' }}
           />
-          <Tab.Screen 
-            name='transfer' 
+          <Tab.Screen
+            name='transfer'
             component={AllBucket}
-            initialParams={{ refreshCounts: handleRefreshCounts, type: 'transfered' }}
+            initialParams={{ type: 'transfered' }}
           />
-          <Tab.Screen 
-            name='resive' 
+          <Tab.Screen
+            name='resive'
             component={AllBucket}
-            initialParams={{ refreshCounts: handleRefreshCounts, type: 'received' }}
+            initialParams={{ type: 'received' }}
           />
         </Tab.Navigator>
       </View>

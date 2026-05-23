@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ScrollView, Image, ActivityIndicator, TouchableOpacity, Linking, StatusBar, Platform, PermissionsAndroid, Modal } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Image, ActivityIndicator, TouchableOpacity, Linking, StatusBar, Platform, PermissionsAndroid, Modal, RefreshControl } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,7 +15,6 @@ import DialogBox from '../../../components/DilaogBox';
 const QRCodeDetails = () => {
   const route = useRoute();
   const status = route.params?.status || 'complaint';
-  // Per-part image error tracking
   const [imageErrors, setImageErrors] = useState({});
 
   console.log('Status in QRCodeDetails:', status);
@@ -24,6 +23,7 @@ const QRCodeDetails = () => {
   const { imagUrl } = useAuth();
 
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);  // ✅ Pull-to-refresh state
   const [complaintDetails, setComplaintDetails] = useState(null);
   const [expandedParts, setExpandedParts] = useState(false);
   const [expandedCommission, setExpandedCommission] = useState(false);
@@ -60,7 +60,6 @@ const QRCodeDetails = () => {
         let granted = false;
 
         if (isAndroid13OrAbove()) {
-          // For Android 13+, request granular media permissions
           const permissions = [
             PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
             PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
@@ -68,7 +67,6 @@ const QRCodeDetails = () => {
           ];
 
           const results = await PermissionsAndroid.requestMultiple(permissions);
-
           granted = Object.values(results).every(
             result => result === PermissionsAndroid.RESULTS.GRANTED
           );
@@ -79,7 +77,6 @@ const QRCodeDetails = () => {
             console.log('Some media permissions denied');
           }
         } else {
-          // For Android 12 and below, request storage permissions
           granted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
             {
@@ -109,28 +106,23 @@ const QRCodeDetails = () => {
         setHasStoragePermission(false);
       }
     } else {
-      // iOS doesn't require explicit storage permission
       setHasStoragePermission(true);
     }
   };
 
-  // Request storage permission for download (if not already granted)
   const requestStoragePermissionForDownload = async () => {
     if (Platform.OS === 'android') {
       try {
         if (isAndroid13OrAbove()) {
-          // For Android 13+, check if we have media permissions
           const hasImagePermission = await PermissionsAndroid.check(
             PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
           );
-
           if (!hasImagePermission) {
             const permissions = [
               PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
               PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
               PermissionsAndroid.PERMISSIONS.READ_MEDIA_AUDIO,
             ];
-
             const results = await PermissionsAndroid.requestMultiple(permissions);
             return Object.values(results).every(
               result => result === PermissionsAndroid.RESULTS.GRANTED
@@ -138,7 +130,6 @@ const QRCodeDetails = () => {
           }
           return true;
         } else {
-          // For Android 12 and below
           const granted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
             {
@@ -159,7 +150,6 @@ const QRCodeDetails = () => {
     return true;
   };
 
-  // Show dialog helper
   const showDialog = (title, message, fileName = '', filePath = '', onConfirm = null) => {
     setDialogConfig({
       title,
@@ -171,7 +161,6 @@ const QRCodeDetails = () => {
     setDialogVisible(true);
   };
 
-  // Close dialog
   const closeDialog = () => {
     setDialogVisible(false);
     setDialogConfig({
@@ -183,7 +172,6 @@ const QRCodeDetails = () => {
     });
   };
 
-  // Handle dialog action (Open PDF)
   const handleDialogAction = async () => {
     if (dialogConfig.onConfirm) {
       await dialogConfig.onConfirm();
@@ -191,24 +179,12 @@ const QRCodeDetails = () => {
     closeDialog();
   };
 
-  // Fetch complaint details on mount
-  useEffect(() => {
-    if (complaint_id !== 'N/A') {
-      fetchComplaintDetails();
-    }
-  }, [complaint_id]);
-
-  // Request storage permission when component mounts
-  useEffect(() => {
-    requestStoragePermissionOnMount();
-  }, []);
-
-  const fetchComplaintDetails = async () => {
+  // Modified fetchComplaintDetails with optional skipLoading param
+  const fetchComplaintDetails = async (skipLoading = false) => {
+    if (complaint_id === 'N/A') return;
     try {
-      setLoading(true);
-      const payload = {
-        complaint_id: complaint_id.toString()
-      };
+      if (!skipLoading) setLoading(true);
+      const payload = { complaint_id: complaint_id.toString() };
       console.log('Fetch complaint details payload:', payload);
       const response = await GetComplaintsDetails(payload);
       console.log('Complaint Details Response:', response?.data);
@@ -226,9 +202,26 @@ const QRCodeDetails = () => {
         <StatusMessage type='error' title='Error' description={error.message} />
       );
     } finally {
-      setLoading(false);
+      if (!skipLoading) setLoading(false);
     }
   };
+
+  // ✅ Pull-to-refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchComplaintDetails(true); // skip full‑screen loader
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    if (complaint_id !== 'N/A') {
+      fetchComplaintDetails();
+    }
+  }, [complaint_id]);
+
+  useEffect(() => {
+    requestStoragePermissionOnMount();
+  }, []);
 
   const handleCallPress = (phoneNumber) => {
     if (phoneNumber) {
@@ -236,7 +229,6 @@ const QRCodeDetails = () => {
     }
   };
 
-  // Open PDF file
   const openPDF = async (filePath) => {
     try {
       if (Platform.OS === 'android') {
@@ -252,24 +244,20 @@ const QRCodeDetails = () => {
     }
   };
 
-  // Download using DownloadManager on Android
   const downloadWithDownloadManager = async (downloadUrl, fileName, destinationPath) => {
     try {
       const { DownloadManager } = ReactNativeBlobUtil;
-
-      // For Android 10+, use MediaStore for better compatibility
       const isAndroidQOrAbove = Platform.Version >= 29;
 
       const downloadOptions = {
         path: destinationPath,
         description: `Downloading invoice ${fileName}`,
         title: fileName,
-        useDownloadManager: true, // Use Android's DownloadManager
-        mediaScannable: true, // Make file visible in gallery/file managers
-        notification: true, // Show download notification
+        useDownloadManager: true,
+        mediaScannable: true,
+        notification: true,
       };
 
-      // For Android 10+, add mime type for better handling
       if (isAndroidQOrAbove) {
         downloadOptions.mime = 'application/pdf';
       }
@@ -292,25 +280,20 @@ const QRCodeDetails = () => {
     }
   };
 
-  // Fallback download method (direct download)
   const downloadDirectly = async (downloadUrl, filePath) => {
-    const { config, fs } = ReactNativeBlobUtil;
-
+    const { config } = ReactNativeBlobUtil;
     const response = await config({
       fileCache: false,
       path: filePath,
       overwrite: true,
     }).fetch('GET', downloadUrl);
-
     return response.path();
   };
 
-  // Modified handleDownloadPDF function to save to /storage/emulated/0/Downloads/
   const handleDownloadPDF = async () => {
     const invoiceUrl = complaintDetails?.invoice;
-    const invoiceData = complaintDetails?.invoice; // Could be URL, file path, or other data
+    const invoiceData = complaintDetails?.invoice;
 
-    // Check if invoice exists at all
     if (!invoiceUrl) {
       toast.custom(
         <StatusMessage
@@ -322,18 +305,12 @@ const QRCodeDetails = () => {
       return;
     }
 
-    // Check if invoice is a valid URL/link
     const isValidUrl = (url) => {
       if (!url) return false;
       const urlPattern = /^(https?:\/\/|ftp:\/\/|file:\/\/)/i;
       return urlPattern.test(url);
     };
 
-    const isHttpUrl = (url) => {
-      return url && (url.startsWith('http://') || url.startsWith('https://'));
-    };
-
-    // If not a valid link, display what's available
     if (!isValidUrl(invoiceUrl)) {
       const dataType = typeof invoiceData;
       let availableInfo = '';
@@ -353,18 +330,14 @@ const QRCodeDetails = () => {
           message={`The invoice data is not a valid download link.\n\nAvailable data:\n${availableInfo}`}
         />
       );
-
-      // Log for debugging
       console.log('Invalid invoice URL/data:', {
         originalData: complaintDetails?.invoice,
         dataType: typeof complaintDetails?.invoice,
         fullComplaintDetails: complaintDetails
       });
-
       return;
     }
 
-    // Check if already downloading
     if (downloading) {
       toast.custom(
         <StatusMessage type='info' title='Download in progress' message='Please wait...' />
@@ -375,7 +348,6 @@ const QRCodeDetails = () => {
     try {
       setDownloading(true);
 
-      // Request permission for Android if not already granted
       let permissionGranted = hasStoragePermission;
       if (!permissionGranted && Platform.OS === 'android') {
         permissionGranted = await requestStoragePermissionForDownload();
@@ -392,43 +364,34 @@ const QRCodeDetails = () => {
         return;
       }
 
-      // Show downloading toast
       toast.custom(
         <StatusMessage type='info' title='Downloading' message='Downloading PDF...' />
       );
 
-      // Generate unique filename
       const timestamp = new Date().getTime();
       const fileName = `Invoice_${complaintDetails.id || complaintDetails.csn || 'complaint'}_${timestamp}.pdf`;
 
       let finalPath = '';
 
       if (Platform.OS === 'android') {
-        // Use Downloads directory
         const { fs } = ReactNativeBlobUtil;
         const downloadPath = `${fs.dirs.DownloadDir}/${fileName}`;
-
         console.log('Download path:', downloadPath);
-        console.log('Saving to Downloads folder:', fs.dirs.DownloadDir);
         console.log('Download URL:', invoiceUrl);
 
-        // Try using DownloadManager first
         try {
           finalPath = await downloadWithDownloadManager(invoiceUrl, fileName, downloadPath);
           console.log('DownloadManager completed, file at:', finalPath);
         } catch (dmError) {
           console.log('DownloadManager failed, falling back to direct download:', dmError);
-          // Fallback to direct download if DownloadManager fails
           finalPath = await downloadDirectly(invoiceUrl, downloadPath);
           console.log('Direct download completed, file at:', finalPath);
         }
 
-        // Verify file exists
         const exists = await fs.exists(finalPath);
         if (exists) {
           const fileInfo = await fs.stat(finalPath);
           console.log('File size:', fileInfo.size, 'bytes');
-
           toast.custom(
             <StatusMessage
               type='success'
@@ -436,8 +399,6 @@ const QRCodeDetails = () => {
               message={`PDF saved to Downloads folder`}
             />
           );
-
-          // Show DialogBox with option to open PDF
           showDialog(
             'Download Complete',
             `PDF "${fileName}" has been downloaded successfully!\n\nSaved to: Downloads folder`,
@@ -449,19 +410,14 @@ const QRCodeDetails = () => {
           throw new Error('File not found after download');
         }
       } else {
-        // iOS: Save to documents directory
         const { config, fs } = ReactNativeBlobUtil;
         const documentsDir = fs.dirs.DocumentDir;
         const downloadPath = `${documentsDir}/${fileName}`;
-
         finalPath = await downloadDirectly(invoiceUrl, downloadPath);
         console.log('Download completed on iOS:', finalPath);
-
         toast.custom(
           <StatusMessage type='success' title='Download Complete' message='PDF downloaded successfully!' />
         );
-
-        // Show DialogBox for iOS
         showDialog(
           'Download Complete',
           `PDF "${fileName}" has been downloaded successfully!`,
@@ -470,7 +426,6 @@ const QRCodeDetails = () => {
           () => openPDF(finalPath)
         );
       }
-
     } catch (error) {
       console.error('PDF Download Error:', error);
       toast.custom(
@@ -501,7 +456,6 @@ const QRCodeDetails = () => {
     return 'text-red-600';
   };
 
-  // Get header title based on status
   const getHeaderTitle = () => {
     if (status === 'complaint') {
       return 'Complaint Details';
@@ -509,7 +463,6 @@ const QRCodeDetails = () => {
     return 'QR Code Details';
   };
 
-  // Format rating to show as X/5
   const formatRating = (rating) => {
     if (!rating) return 'N/A';
     const parts = rating.split('/');
@@ -519,14 +472,11 @@ const QRCodeDetails = () => {
     return rating;
   };
 
-  // Render commission in 3-column row format
   const renderCommissionRow = () => {
     if (!complaintDetails?.commission || complaintDetails.commission.length === 0) {
       return null;
     }
-
     const commission = complaintDetails.commission[0];
-
     return (
       <View className="mt-2">
         <View className="flex-row bg-gray-100 rounded-t-lg p-3 border-b border-gray-200">
@@ -540,7 +490,6 @@ const QRCodeDetails = () => {
             <Text className="font-bold text-text-primary text-sm">Admin Fund</Text>
           </View>
         </View>
-
         <View className="flex-row bg-white rounded-b-lg p-3">
           <View className="flex-1 items-center">
             <Text className="text-text-primary font-semibold">₹{parseFloat(commission.fund).toFixed(2)}</Text>
@@ -556,12 +505,10 @@ const QRCodeDetails = () => {
     );
   };
 
-  // Render multiple commission entries
   const renderMultipleCommissionRows = () => {
     if (!complaintDetails?.commission || complaintDetails.commission.length === 0) {
       return null;
     }
-
     return (
       <View className="mt-2">
         <View className="flex-row bg-gray-100 rounded-t-lg p-3 border-b border-gray-200">
@@ -575,12 +522,10 @@ const QRCodeDetails = () => {
             <Text className="font-bold text-text-primary text-sm">Admin Fund</Text>
           </View>
         </View>
-
         {complaintDetails.commission.map((commission, index) => (
           <View
             key={index}
-            className={`flex-row p-3 ${index === complaintDetails.commission.length - 1 ? 'rounded-b-lg' : 'border-b border-gray-100'} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-              }`}
+            className={`flex-row p-3 ${index === complaintDetails.commission.length - 1 ? 'rounded-b-lg' : 'border-b border-gray-100'} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
           >
             <View className="flex-1 items-center">
               <Text className="text-text-primary font-semibold">₹{parseFloat(commission.fund).toFixed(2)}</Text>
@@ -597,7 +542,6 @@ const QRCodeDetails = () => {
     );
   };
 
-  // Handle image click to open modal
   const handleImageClick = (imageUrl) => {
     if (imageUrl) {
       setSelectedImageUrl(imageUrl);
@@ -669,6 +613,16 @@ const QRCodeDetails = () => {
         className="flex-1 px-4 bg-gray-50"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 30 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#58A890']}
+            tintColor="#58A890"
+            title="Pull to refresh"
+            titleColor="#58A890"
+          />
+        }
       >
         {/* QR Code Information Card */}
         {status === 'qrcode' && (
@@ -906,7 +860,7 @@ const QRCodeDetails = () => {
         </View>
       </ScrollView>
 
-      {/* Image Modal - White background box with cross icon */}
+      {/* Image Modal */}
       <Modal
         visible={imageModalVisible}
         transparent={true}
@@ -915,22 +869,13 @@ const QRCodeDetails = () => {
       >
         <View className="flex-1 bg-black/50 justify-center items-center p-4">
           <View className="bg-white rounded-2xl w-full max-w-[90%] max-h-[80%] overflow-hidden">
-            {/* Header with close icon */}
             <View className="flex-row justify-end p-2">
-              <TouchableOpacity
-                onPress={() => setImageModalVisible(false)}
-                className="p-2"
-              >
+              <TouchableOpacity onPress={() => setImageModalVisible(false)} className="p-2">
                 <Icon name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
-            {/* Image */}
             <View className="p-4 pt-0">
-              <Image
-                source={{ uri: selectedImageUrl }}
-                className="w-full h-80"
-                resizeMode="contain"
-              />
+              <Image source={{ uri: selectedImageUrl }} className="w-full h-80" resizeMode="contain" />
             </View>
           </View>
         </View>
@@ -949,20 +894,12 @@ const QRCodeDetails = () => {
           <Text className="text-gray-700 text-base leading-6 mb-4">
             {dialogConfig.message}
           </Text>
-
           <View className="flex-row gap-5 mt-2">
-            <TouchableOpacity
-              onPress={closeDialog}
-              className="flex-1 bg-gray-200 py-3 rounded-lg"
-            >
+            <TouchableOpacity onPress={closeDialog} className="flex-1 bg-gray-200 py-3 rounded-lg">
               <Text className="text-gray-700 font-semibold text-center">Close</Text>
             </TouchableOpacity>
-
             {dialogConfig.onConfirm && (
-              <TouchableOpacity
-                onPress={handleDialogAction}
-                className="flex-1 bg-primary-sage600 py-3 rounded-lg"
-              >
+              <TouchableOpacity onPress={handleDialogAction} className="flex-1 bg-primary-sage600 py-3 rounded-lg">
                 <Text className="text-white font-semibold text-center">Open PDF</Text>
               </TouchableOpacity>
             )}

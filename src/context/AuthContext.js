@@ -2,6 +2,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
+import { getFCMToken } from '../service/getToken';
 
 const AuthContext = createContext({});
 
@@ -16,7 +17,8 @@ export const AuthProvider = ({ children }) => {
   const [IsOnline, setIsOnline] = useState(true);
   const [importedPart, setImportedPart] = useState(null);
   const [imagUrl, setImageUrl] = useState('https://dainikcare.com/dainik_care_admin/');
-
+      console.log("FCm token",getFCMToken());
+  
   // Initialize from stored tokens
   useEffect(() => {
     checkStoredTokens();

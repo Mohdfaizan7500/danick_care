@@ -413,7 +413,7 @@ const Home = () => {
   }, [user?.id, isInitialLoad]);
 
   useEffect(() => {
-    console.log(getFCMToken())
+    console.log("FCm token",getFCMToken())
   }, [])
 
   // ---------- Network listener ----------

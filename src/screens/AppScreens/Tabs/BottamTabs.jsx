@@ -181,7 +181,9 @@ const BottomTabs = () => {
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
-          paddingVertical: 0,
+          paddingVertical:0 ,
+          paddingTop:20
+
         },
         headerStyle: {
           backgroundColor: Colors.brand.primary,
