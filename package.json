@@ -34,6 +34,7 @@
     "react-native-axios": "^0.17.1",
     "react-native-blob-util": "^0.24.7",
     "react-native-calendars": "^1.1314.0",
+    "react-native-contacts": "^8.0.10",
     "react-native-file-viewer": "^2.1.5",
     "react-native-fs": "^2.20.0",
     "react-native-geolocation-service": "^5.3.1",

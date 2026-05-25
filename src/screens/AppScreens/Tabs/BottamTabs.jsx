@@ -9,19 +9,16 @@ import Scan from '../Scan/Scan';
 import { HomeIcon, OrderIcon, PartIcon, ProfileIcon, ScanIcon } from '../../../assets/svgIcons/SVGIcons';
 import { Colors } from '../../../constants/Color';
 import { useAuth } from '../../../context/AuthContext';
-import { toast } from 'sonner-native';
-import StatusMessage from '../../../components/StatusMessage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOrder } from '../../../context/OrderContext';
 import { useRoute } from '@react-navigation/native';
-import NoInternet from '../../NoInternet';
+import Toast from 'react-native-toast-message';
 
 const Tab = createBottomTabNavigator();
 
 // Helper function to get Android version
 const getAndroidVersion = () => {
   if (Platform.OS === 'android') {
-    // Get the Android version number (e.g., 13, 14, etc.)
     const androidVersion = Platform.constants?.Release || '';
     const versionNumber = parseInt(androidVersion, 10);
     return isNaN(versionNumber) ? 0 : versionNumber;
@@ -32,7 +29,6 @@ const getAndroidVersion = () => {
 // Helper function to get Android API level
 const getAndroidApiLevel = () => {
   if (Platform.OS === 'android') {
-    // Check API level (Android 13 = API level 33)
     const apiLevel = Platform.constants?.ApiLevel || 0;
     return apiLevel;
   }
@@ -43,7 +39,15 @@ const getAndroidApiLevel = () => {
 const CustomTabBarButton = ({ children, onPress, isOnline, style, ...props }) => {
   const handlePress = () => {
     if (!isOnline) {
-      toast.custom(<StatusMessage type='error' title={'You are offline, Connect to service center.'} />, { duration: 1000 });
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'You are offline, Connect to service center.',
+        position: 'top',
+        visibilityTime: 2000,
+        autoHide: true,
+        topOffset: 30,
+      });
       return;
     }
     onPress();
@@ -96,7 +100,7 @@ const BottomTabs = () => {
   
   const { IsOnline } = useAuth();
   const insets = useSafeAreaInsets();
-  const { orderCount } = useOrder(); // Get count from context, don't manage local state
+  const { orderCount } = useOrder();
 
   // Calculate dynamic tab bar height based on Android version
   const getTabBarHeight = () => {
@@ -104,17 +108,12 @@ const BottomTabs = () => {
     const apiLevel = getAndroidApiLevel();
     
     if (Platform.OS === 'android') {
-      // For Android 13 (API 33) and above - decrease height
       if (androidVersion >= 13 || apiLevel >= 33) {
-        return 50 + insets.bottom;
-      } 
-      // For Android below 13 - increase height
-      else {
-        return 70 + insets.bottom;
+        return 60 + insets.bottom;
+      } else {
+        return 60 + insets.bottom;
       }
-    } 
-    // For iOS or other platforms
-    else {
+    } else {
       return 80 + insets.bottom;
     }
   };
@@ -126,9 +125,9 @@ const BottomTabs = () => {
     
     if (Platform.OS === 'android') {
       if (androidVersion >= 13 || apiLevel >= 33) {
-        return 12; // Reduced padding for Android 13+
+        return 12;
       } else {
-        return 20; // Original padding for older versions
+        return 20;
       }
     }
     return 20;
@@ -141,7 +140,7 @@ const BottomTabs = () => {
     
     if (Platform.OS === 'android') {
       if (androidVersion >= 13 || apiLevel >= 33) {
-        return defaultSize * 0.9; // Slightly smaller icons for Android 13+
+        return defaultSize * 0.9;
       }
     }
     return defaultSize;
@@ -154,7 +153,7 @@ const BottomTabs = () => {
     
     if (Platform.OS === 'android') {
       if (androidVersion >= 13 || apiLevel >= 33) {
-        return 11; // Smaller font for Android 13+
+        return 11;
       }
     }
     return 12;
@@ -181,9 +180,8 @@ const BottomTabs = () => {
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
-          paddingVertical:0 ,
-          paddingTop:20
-
+          paddingVertical: 0,
+          paddingTop: 10,
         },
         headerStyle: {
           backgroundColor: Colors.brand.primary,

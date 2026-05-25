@@ -1,5 +1,5 @@
 // src/navigation/AppNavigation.js
-import React, { forwardRef, useRef } from 'react';
+import React, { forwardRef, useEffect, useRef } from 'react';
 import {
   View,
   Image,
@@ -14,8 +14,9 @@ import AppStack from './AppStack/AppStack';
 import AuthStack from './AuthStack/AuthStack';
 import NotificationHandler from './NotificationHandler';
 import { buildDeepLinkFromNotificationData } from './utils/deepLinkBuilder';
+import { navigationRef } from './RootNavigation'; // global navigation ref
 
-// Linking configuration
+// Linking configuration (unchanged)
 const linkingConfig = {
   screens: {
     Login: 'login',
@@ -79,8 +80,8 @@ const LoadingScreen = () => {
 
 const AppNavigation = forwardRef((props, ref) => {
   const { accessToken, isLoading } = useAuth();
-  const navigationRef = useRef();
 
+  // Expose the global navigation ref to parent components if needed
   React.useImperativeHandle(ref, () => navigationRef.current);
 
   const linking = {
@@ -172,6 +173,7 @@ const AppNavigation = forwardRef((props, ref) => {
 
   return (
     <>
+      {/* NotificationHandler uses the same global navigationRef to navigate to Home on "offline" */}
       <NotificationHandler />
       <NavigationContainer ref={navigationRef} linking={linking}>
         {accessToken ? <AppStack /> : <AuthStack />}

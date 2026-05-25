@@ -12,6 +12,21 @@ import { DownloadIcon, ImageIcon, NoImage } from '../../../assets/svgIcons/SVGIc
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import DialogBox from '../../../components/DilaogBox';
 
+// Helper function to get warranty status
+const getWarrantyStatus = (complaintType, days) => {
+  if (!complaintType || days === undefined || days === null) return null;
+  
+  if (complaintType.toLowerCase() === 'service') {
+    if (days <= 30) return { text: 'In Warranty', isWarranty: true };
+    else return { text: 'Out of Warranty', isWarranty: false };
+  } 
+  else if (complaintType.toLowerCase() === 'amc') {
+    if (days <= 365) return { text: 'Under Warranty', isWarranty: true };
+    else return { text: 'Out of Warranty', isWarranty: false };
+  }
+  return null;
+};
+
 const QRCodeDetails = () => {
   const route = useRoute();
   const status = route.params?.status || 'complaint';
@@ -23,7 +38,7 @@ const QRCodeDetails = () => {
   const { imagUrl } = useAuth();
 
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);  // ✅ Pull-to-refresh state
+  const [refreshing, setRefreshing] = useState(false);
   const [complaintDetails, setComplaintDetails] = useState(null);
   const [expandedParts, setExpandedParts] = useState(false);
   const [expandedCommission, setExpandedCommission] = useState(false);
@@ -53,7 +68,7 @@ const QRCodeDetails = () => {
     return Platform.OS === 'android' && Platform.Version >= 33;
   };
 
-  // Request storage permission based on Android version
+  // Request storage permission on mount
   const requestStoragePermissionOnMount = async () => {
     if (Platform.OS === 'android') {
       try {
@@ -179,7 +194,6 @@ const QRCodeDetails = () => {
     closeDialog();
   };
 
-  // Modified fetchComplaintDetails with optional skipLoading param
   const fetchComplaintDetails = async (skipLoading = false) => {
     if (complaint_id === 'N/A') return;
     try {
@@ -206,10 +220,9 @@ const QRCodeDetails = () => {
     }
   };
 
-  // ✅ Pull-to-refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchComplaintDetails(true); // skip full‑screen loader
+    await fetchComplaintDetails(true);
     setRefreshing(false);
   };
 
@@ -655,7 +668,23 @@ const QRCodeDetails = () => {
 
         {/* Complaint Details Card */}
         <View className="bg-white rounded-2xl p-4 mb-4 mt-4 shadow-sm border border-gray-200">
-          <Text className="text-lg font-bold text-text-primary mb-3">Complaint Details</Text>
+          {/* Header row with warranty badge at top-right */}
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-lg font-bold text-text-primary">Complaint Details</Text>
+            {(() => {
+              const warranty = getWarrantyStatus(complaintDetails.complaint_type, complaintDetails.days);
+              if (warranty) {
+                return (
+                  <View className={`px-3 py-1 rounded-full ${warranty.isWarranty ? 'bg-green-100' : 'bg-red-100'}`}>
+                    <Text className={`text-xs font-bold ${warranty.isWarranty ? 'text-green-700' : 'text-red-700'}`}>
+                      {warranty.text}
+                    </Text>
+                  </View>
+                );
+              }
+              return null;
+            })()}
+          </View>
 
           <View className="flex-row justify-between mb-3">
             <View className="flex-1 mr-2">

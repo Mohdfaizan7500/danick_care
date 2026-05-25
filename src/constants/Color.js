@@ -102,7 +102,7 @@ export const Colors = {
     sage80: 'rgba(136, 216, 192, 0.8)',
     sage90: 'rgba(136, 216, 192, 0.9)',
     sage100: 'rgba(136, 216, 192, 1)',
-    
+
     gray10: 'rgba(187, 187, 187, 0.1)',
     gray20: 'rgba(187, 187, 187, 0.2)',
     gray30: 'rgba(187, 187, 187, 0.3)',
@@ -159,7 +159,7 @@ export const FlatColors = {
   sageDark: '#58A890',
   sageDarker: '#409078',
   sageDarkest: '#287860',
-  
+
   // Gray
   gray: '#BBBBBB',
   grayLight: '#DDDDDD',
@@ -168,25 +168,56 @@ export const FlatColors = {
   grayDark: '#777777',
   grayDarker: '#555555',
   grayDarkest: '#333333',
-  
+
   // UI
   success: '#58A890',
   warning: '#F0B27A',
   error: '#E86F6F',
   info: '#70C0A8',
-  
+
   // Text
   textPrimary: '#333333',
   textSecondary: '#666666',
   textTertiary: '#999999',
   textDisabled: '#BBBBBB',
   textInverse: '#FFFFFF',
-  
+
   // Background
   bgPrimary: '#FFFFFF',
   bgSecondary: '#F8F8F8',
   bgTertiary: '#F0F0F0',
   bgDark: '#333333',
+};
+
+export const toastColors = {
+  success: {
+    borderColor: '#a3e635',
+    backgroundColor: '#dcfce7',
+    text1Color: '#659C16',
+    text2Color: '#333333',
+    icon: '✅',
+  },
+  error: {
+    borderColor: '#DC2626',
+    backgroundColor: '#FEE2E2',
+    text1Color: '#DC2626',
+    text2Color: '#333333',
+    icon: '❌',
+  },
+  info: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#DBEAFE',
+    text1Color: '#3B82F6',
+    text2Color: '#333333',
+    icon: 'ℹ️',
+  },
+  warning: {
+    borderColor: '#FBBF24',
+    backgroundColor: '#FEF3C7',
+    text1Color: '#FBBF24',
+    text2Color: '#333333',
+    icon: '⚠️',
+  },
 };
 
 // Usage examples remain the same

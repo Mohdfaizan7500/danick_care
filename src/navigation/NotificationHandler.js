@@ -3,11 +3,9 @@ import React, { useEffect, useRef } from 'react';
 import { Alert, Linking, Platform } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
-import { buildDeepLinkFromNotificationData } from './utils/deepLinkBuilder';
+import { buildDeepLinkFromNotificationData } from './utils/deepLinkBuilder'; // adjust path
 import { useAuth } from '../context/AuthContext';
-
-// Define NAVIGATION_IDS based on notification titles
-const NAVIGATION_IDS = ['home', 'spare', 'orders', 'complaints', 'amc', 'bucket', 'notifications', 'assign'];
+import { navigate } from './RootNavigation';
 
 async function createNotificationChannels() {
   if (Platform.OS === 'android') {
@@ -17,7 +15,6 @@ async function createNotificationChannels() {
       { id: 'complaints', name: 'Complaints Channel' },
       { id: 'amc', name: 'AMC Channel' },
     ];
-
     for (const channel of channels) {
       await notifee.createChannel({
         id: channel.id,
@@ -46,8 +43,6 @@ async function displayNotification(remoteMessage) {
   const notificationData = remoteMessage.data || {};
   const notificationScreen = notificationData?.screen || notificationTitle;
 
-  console.log('screen to navigate:', notificationScreen);
-
   const channelId = getChannelId(notificationTitle);
 
   await notifee.displayNotification({
@@ -55,13 +50,12 @@ async function displayNotification(remoteMessage) {
     body: notificationBody || 'You have a new notification',
     data: { ...notificationData, title: notificationTitle, screen: notificationScreen },
     android: {
-      channelId: channelId,
+      channelId,
       importance: AndroidImportance.HIGH,
       pressAction: { id: 'default' },
       smallIcon: 'ic_launcher',
       sound: 'notification',
       autoCancel: true,
-      progress: { max: 100, current: 45 }
     },
     ios: {
       sound: 'notification',
@@ -80,13 +74,9 @@ const NotificationHandler = () => {
   const { setIsOnline } = useAuth();
 
   useEffect(() => {
-    if (isListenerSetup.current) {
-      console.log('⚠️ Notification listeners already setup, skipping...');
-      return;
-    }
-
+    if (isListenerSetup.current) return;
     isListenerSetup.current = true;
-    console.log('🔧 Setting up notification listeners (once)...');
+    console.log('🔧 Setting up notification listeners...');
 
     let unsubscribeForeground = null;
     let unsubscribeNotifeeEvent = null;
@@ -95,36 +85,32 @@ const NotificationHandler = () => {
       try {
         await createNotificationChannels();
 
-        // Handle foreground messages
-        unsubscribeForeground = messaging().onMessage(async remoteMessage => {
-          console.log('📱 Foreground message received hh:', remoteMessage);
-          const title = remoteMessage.notification.title
-          if (title === 'offline') {
+        // Foreground messages
+        unsubscribeForeground = messaging().onMessage(async (remoteMessage) => {
+          console.log('📱 Foreground message:', remoteMessage);
+          const title = remoteMessage.notification?.title || '';
+          const status = remoteMessage.data?.status ;  
+
+          if (title === 'offline' || status === 'Offline' || status === 'offline' ) {
             console.log('📴 Setting IsOnline = false');
             setIsOnline(false);
-          }
-          // Optional: handle 'online' notification to set status back to true
-          else if (title === 'online') {
+            // Navigate to Home screen
+            navigate('BottomTabs',{screen:'Home'});
+          } else if (title === 'online'  ||  status === 'Online' ||  status === 'online') {
             console.log('📶 Setting IsOnline = true');
             setIsOnline(true);
           }
+
           await displayNotification(remoteMessage);
         });
 
-        // Handle notification click
+        // Notification click (when app is in foreground)
         unsubscribeNotifeeEvent = notifee.onForegroundEvent(({ type, detail }) => {
           if (type === EventType.PRESS && detail.notification) {
-            const notificationTitle = detail.notification.data?.screen || detail.notification.title;
-            console.log('📱 Notification clicked in foreground, title:', notificationTitle);
-
-            const url = buildDeepLinkFromNotificationData(notificationTitle);
-            console.log('🔗 Built URL from title:', url);
-
+            const screen = detail.notification.data?.screen || detail.notification.title;
+            const url = buildDeepLinkFromNotificationData(screen);
             if (url) {
-              console.log('🚀 Opening URL via Linking:', url);
-              Linking.openURL(url).catch(err => {
-                console.error('❌ Error opening URL:', err);
-              });
+              Linking.openURL(url).catch(console.error);
             }
           }
         });
@@ -136,14 +122,13 @@ const NotificationHandler = () => {
     setupNotifications();
 
     return () => {
-      console.log('🧹 Cleaning up notification listeners...');
       if (unsubscribeForeground) unsubscribeForeground();
       if (unsubscribeNotifeeEvent) unsubscribeNotifeeEvent();
       isListenerSetup.current = false;
     };
-  }, []);
+  }, [setIsOnline]);
 
-  return null; // This component doesn't render anything
+  return null;
 };
 
 export default NotificationHandler;

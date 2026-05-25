@@ -36,6 +36,9 @@ const ConetToAMCScreen = () => {
     const buttonShake = useRef(new Animated.Value(0)).current;
     const [buttonColorOverride, setButtonColorOverride] = useState(null);
 
+    // Check for invalid CSN (exactly "00000")
+    const isInvalidCSN = complaintData?.csn === '00000';
+
     const animateButton = () => {
         setButtonColorOverride('bg-green-600');
         Animated.sequence([
@@ -56,10 +59,16 @@ const ConetToAMCScreen = () => {
 
     const isReadyForNext = () => {
         if (refreshing || checkingAMC || submitting) return false;
-        return true; // No other requirements – just proceed
+        if (isInvalidCSN) return false; // Disable Next if CSN is 00000
+        return true;
     };
 
     const checkAMCStatus = async () => {
+        // Skip API call if CSN is invalid
+        if (isInvalidCSN) {
+            setCheckingAMC(false);
+            return;
+        }
         setCheckingAMC(true);
         try {
             const payload = {
@@ -121,8 +130,8 @@ const ConetToAMCScreen = () => {
     useFocusEffect(
         useCallback(() => {
             checkAMCStatus();
-            return () => {};
-        }, [complaintData?.id])
+            return () => { };
+        }, [complaintData?.id, isInvalidCSN]) // Re-run if CSN validity changes
     );
 
     const handleTryTotoggle = () => {
@@ -162,12 +171,10 @@ const ConetToAMCScreen = () => {
             }
         } else {
             // Regular service – navigate to Billing screen (without AMC)
-            // Pass default/empty values for fields that were removed from this screen
-            // The Billing screen should be able to handle missing optional params
             navigation.navigate('Billing', {
                 complaintData,
-                selectedCustomerType: '',  // no customer type from this screen
-                remark: '',                // no remark
+                selectedCustomerType: '',
+                remark: '',
                 image1Id: null,
                 image2Id: null,
                 image1Uri: null,
@@ -223,7 +230,7 @@ const ConetToAMCScreen = () => {
                         />
                     }
                 >
-                    {checkingAMC && !refreshing && (
+                    {checkingAMC && !refreshing && !isInvalidCSN && (
                         <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center">
                             <ActivityIndicator size="large" color="#000" />
                             <Text className="text-text-primary mt-2">Checking AMC status...</Text>
@@ -261,13 +268,22 @@ const ConetToAMCScreen = () => {
                         <TouchableOpacity
                             onPress={handleNext}
                             disabled={!isReadyForNext()}
-                            className={`py-4 rounded-xl items-center mb-8 ${getButtonBgColor()}`}
+                            className={`py-4 rounded-xl items-center mb-2 ${getButtonBgColor()}`}
                         >
                             <Text className="text-white font-semibold text-base">
                                 {getButtonText()}
                             </Text>
                         </TouchableOpacity>
                     </Animated.View>
+
+                    {/* Error message when CSN is invalid */}
+                    {isInvalidCSN && (
+                        <View className="bg-red-100 border border-red-400 rounded-xl p-3 mt-2">
+                            <Text className="text-red-700 text-center font-semibold">
+                                CSN is not correct. Contact to admin.
+                            </Text>
+                        </View>
+                    )}
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>

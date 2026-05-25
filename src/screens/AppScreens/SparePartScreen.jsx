@@ -111,7 +111,7 @@ const SparePartScreen = () => {
         </Pressable>
     );
 
-    // Skeleton loader using FlatList
+    // Skeleton loader using FlatList with unique keys
     const renderSkeletonLoader = () => {
         // Create skeleton data array with 12 items (4 rows of 3 cards)
         const skeletonData = Array(9).fill().map((_, index) => ({ id: `skeleton-${index}` }));
@@ -122,7 +122,7 @@ const SparePartScreen = () => {
                 renderItem={({ item }) => (
                     <SkeletonCard width={itemWidth} margin={margin} />
                 )}
-                keyExtractor={item => item.id}
+                keyExtractor={(item) => item.id} // unique key
                 numColumns={numColumns}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ padding: containerPadding }}
@@ -183,7 +183,11 @@ const SparePartScreen = () => {
                 <FlatList
                     data={filteredParts}
                     renderItem={renderItem}
-                    keyExtractor={item => item.id?.toString() || Math.random().toString()}
+                    keyExtractor={(item, index) => {
+                        // Use a combination of id (if exists) and index to guarantee uniqueness
+                        const baseKey = item.id ? String(item.id) : `part-${index}`;
+                        return `${baseKey}-${index}`;
+                    }}
                     numColumns={numColumns}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ padding: containerPadding, flexGrow: 1 }}

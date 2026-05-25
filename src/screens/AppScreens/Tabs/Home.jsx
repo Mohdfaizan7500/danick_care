@@ -45,6 +45,7 @@ import { Platform } from 'react-native';
 import { openSettings } from 'react-native-permissions';
 import { getFCMToken } from '../../../service/getToken';
 const { width: screenWidth } = Dimensions.get('window');
+import Toast from 'react-native-toast-message';
 
 const Home = () => {
   const insets = useSafeAreaInsets();
@@ -413,7 +414,7 @@ const Home = () => {
   }, [user?.id, isInitialLoad]);
 
   useEffect(() => {
-    console.log("FCm token",getFCMToken())
+    console.log("FCm token", getFCMToken());
   }, [])
 
   // ---------- Network listener ----------
@@ -454,7 +455,8 @@ const Home = () => {
     else if (cardName === 'Bucket') navigation.navigate('BucketNavigation');
     else if (cardName === 'AMC') navigation.navigate('AMC');
     else if (cardName === 'Pre-Booking') navigation.navigate('PreBooking');
-    else if (cardName === 'Payout') navigation.navigate('PayOut');
+    // else if (cardName === 'Payout') navigation.navigate('PayOut');
+    else if (cardName === 'Payout') navigation.navigate('Contects');
     else if (cardName === 'AllQRCodes') navigation.navigate('QRCodeNavigation', { status: "AllQRCodes" });
     else if (cardName === 'Used') navigation.navigate('QRCodeNavigation', { status: "UsedQRCodes" });
     else if (cardName === 'Fresh') navigation.navigate('QRCodeNavigation', { status: "FreshQRCodes" });
@@ -493,15 +495,22 @@ const Home = () => {
             onPress={() => handleProfilePress()}
             className="flex-row items-center  flex-1">
             <View className="relative">
-              <Image
-                source={userProfile.profileImage}
-                className="w-12 h-12 rounded-full border-2 border-white"
-              />
-              <View
-                className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${IsOnline ? 'bg-green-500' : 'bg-gray-400'
-                  }`}
-              />
+              {
+                userProfile.profileImage ?
+                  <Image
+                    source={userProfile.profileImage}
+                    className="w-12 h-12 rounded-full border-2 border-white"
+                    onError={(error) => {
+                      console.log('Profile image loading error:', error.nativeEvent.error);
+                    }}
+                  />
+                  :
+                  <View className=' items-center justify-center w-14 h-14 bg-gray-200 rounded-full '>
+                    <UserIcon width={28} height={28} stroke={'gray'} />
+                  </View>
+              }
             </View>
+           
             <View className="ml-3 ">
               <Text className="text-gray-700 text-sm">Welcome Back</Text>
               <View className="flex-row items-center">
@@ -519,16 +528,7 @@ const Home = () => {
           </Pressable>
 
           <View className="flex-row items-center">
-            <TouchableOpacity
-              onPress={handleWalletPress}
-              className="mr-3 flex-row items-center bg-white/20 px-3 py-1.5 rounded-full"
-              disabled={true}
-            >
-              <Wallet size={18} color="#999" />
-              <Text className="ml-1 text-gray-400 font-semibold">
-                {userProfile.walletBalance}
-              </Text>
-            </TouchableOpacity>
+
 
             <TouchableOpacity onPress={handleNotificationPress} className="relative" disabled={true}>
               <View className="w-10 h-10 bg-white/20 rounded-full items-center justify-center">

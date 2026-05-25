@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { getProfile, TermsSupport } from '../../lib/api';
+import { getProfile, TermsSupport, logoutApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import DialogBox from '../../components/DilaogBox';
+import { LogOut } from 'lucide-react-native';
+import NetInfo from '@react-native-community/netinfo';
+import { toast, Toaster } from 'sonner-native';
+import StatusMessage from '../../components/StatusMessage';
 
 const OffLineScreen = ({ navigation }) => {
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -12,8 +16,21 @@ const OffLineScreen = ({ navigation }) => {
     const [dialogType, setDialogType] = useState('info');
     const [serviceNumber, setServiceNumber] = useState('1800-123-4567'); // Default fallback number
     const [loadingNumber, setLoadingNumber] = useState(true);
+    
+    // Logout states
+    const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [isConnected, setIsConnected] = useState(true);
 
-    const { user, setIsOnline, setAuthData, updateProfileData } = useAuth();
+    const { user, logout, setIsOnline, setAuthData, updateProfileData } = useAuth();
+
+    // Monitor internet connection
+    useEffect(() => {
+        const unsubscribe = NetInfo.addEventListener(state => {
+            setIsConnected(state.isConnected ?? false);
+        });
+        return () => unsubscribe();
+    }, []);
 
     // Fetch support details when component mounts
     useEffect(() => {
@@ -29,7 +46,6 @@ const OffLineScreen = ({ navigation }) => {
             
             if (response?.data?.success && response?.data?.data?.[0]) {
                 const supportData = response.data.data[0];
-                // Format the mobile number if needed
                 const mobile = supportData.mobile || supportData.mobile2 || '1800-123-4567';
                 setServiceNumber(mobile);
                 console.log('Service number set to:', mobile);
@@ -59,7 +75,6 @@ const OffLineScreen = ({ navigation }) => {
     const handleRefresh = async () => {
         setIsRefreshing(true);
         try {
-            // Use technician_id from the user object (from decoded token)
             const technicianId = user?.id;
 
             console.log('User object:', user);
@@ -73,27 +88,21 @@ const OffLineScreen = ({ navigation }) => {
             const response = await getProfile(technicianId);
             console.log('Profile refresh response:', response);
 
-            // Extract data from the response structure
             const responseData = response?.data?.data?.[0] || response?.data?.data || response?.data;
             console.log('Extracted response data:', responseData);
 
-            // Check if response indicates failure
             if (response?.data?.success === false) {
                 showDialog('error', responseData?.msg || 'Failed to refresh status');
                 return;
             }
 
-            // Check if we got valid technician data
             if (responseData && responseData.login_status) {
                 const isOnline = responseData.login_status === 'Online';
 
                 if (isOnline) {
                     await setIsOnline(true);
-
-                    // Update profile data with complete technician info
                     await updateProfileData(responseData);
 
-                    // Update user data if needed (keep the existing user structure)
                     const updatedUser = {
                         ...user,
                         technician_name: responseData.technician_name,
@@ -111,7 +120,6 @@ const OffLineScreen = ({ navigation }) => {
 
                     showDialog('success', 'You are now online! Redirecting...');
                     
-                    // Navigate back to Home after successful refresh
                     setTimeout(() => {
                         setDialogVisible(false);
                         navigation?.replace('Home');
@@ -119,7 +127,6 @@ const OffLineScreen = ({ navigation }) => {
 
                 } else {
                     showDialog('info', 'You are still offline. Please contact service center.');
-                    // Refresh the support number in case it was updated
                     await fetchSupportDetails();
                 }
             } else {
@@ -134,12 +141,72 @@ const OffLineScreen = ({ navigation }) => {
         }
     };
 
+    // Logout handlers
+    const handleLogoutPress = () => {
+        if (!isConnected) {
+            toast.custom(
+                <StatusMessage type="error" title="You are offline. Cannot logout." />,
+                { duration: 3000 }
+            );
+            return;
+        }
+        setLogoutDialogVisible(true);
+    };
+
+    const handleLogout = async () => {
+        if (!isConnected) {
+            toast.custom(
+                <StatusMessage type="error" title="No internet connection. Please try again." />,
+                { duration: 3000 }
+            );
+            setLogoutDialogVisible(false);
+            return;
+        }
+
+        setIsLoggingOut(true);
+        try {
+            const technicianId = user?.id;
+            if (!technicianId) {
+                throw new Error('User ID not found');
+            }
+
+            const response = await logoutApi({ technician_id: technicianId });
+            console.log('Logout response:', response);
+
+            if (response?.data?.success) {
+                await logout();
+                if (setIsOnline) await setIsOnline(false);
+                
+                toast.custom(
+                    <StatusMessage type="success" title="Logged out successfully" />,
+                    { duration: 2000 }
+                );
+                
+                setLogoutDialogVisible(false);
+                // Navigate to Login screen (adjust route name as needed)
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Login' }],
+                });
+            } else {
+                throw new Error(response?.data?.msg || 'Logout failed');
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+            toast.custom(
+                <StatusMessage type="error" title={error.message || 'Logout failed. Please try again.'} />,
+                { duration: 3000 }
+            );
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
+
     const dialogFooter = (
         <TouchableOpacity
             className={`py-3 rounded-lg ${dialogType === 'error' ? 'bg-red-500' : dialogType === 'success' ? 'bg-green-500' : 'bg-teal-500'}`}
             onPress={() => {
                 setDialogVisible(false);
-                // If success, navigate to Home after dialog closes
                 if (dialogType === 'success') {
                     navigation?.replace('Home');
                 }
@@ -149,12 +216,36 @@ const OffLineScreen = ({ navigation }) => {
         </TouchableOpacity>
     );
 
-    // Format phone number for display (add hyphens)
+    const logoutDialogFooter = (
+        <View className="flex-row gap-3">
+            <TouchableOpacity
+                className={`flex-1 py-3 rounded-lg ${isLoggingOut ? 'bg-gray-200' : 'bg-gray-100'}`}
+                onPress={() => setLogoutDialogVisible(false)}
+                disabled={isLoggingOut}
+            >
+                <Text className={`text-center font-medium ${isLoggingOut ? 'text-gray-400' : 'text-gray-700'}`}>
+                    Cancel
+                </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                className={`flex-1 py-3 rounded-lg flex-row items-center justify-center ${isLoggingOut ? 'bg-red-400' : 'bg-red-500'}`}
+                onPress={handleLogout}
+                disabled={isLoggingOut}
+            >
+                {isLoggingOut ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                    <Text className="text-white text-center font-medium">Logout</Text>
+                )}
+            </TouchableOpacity>
+        </View>
+    );
+
+    // Format phone number for display
     const formatPhoneNumber = (number) => {
         if (!number) return '1800-123-4567';
-        // Remove all non-digits
         const cleaned = number.replace(/\D/g, '');
-        // Format based on length
         if (cleaned.length === 10) {
             return `${cleaned.slice(0, 4)}-${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
         } else if (cleaned.length === 11) {
@@ -169,6 +260,9 @@ const OffLineScreen = ({ navigation }) => {
 
     return (
         <>
+            <View className="absolute inset-0 z-50 pointer-events-none">
+                <Toaster />
+            </View>
             <View className="flex-1 bg-background-primary items-center justify-center px-6">
                 <View className="w-24 h-24 rounded-full bg-status-inactive items-center justify-center mb-6">
                     <Icon name="app-blocking" size={50} color="#999999" />
@@ -192,7 +286,7 @@ const OffLineScreen = ({ navigation }) => {
                     </Text>
                 )}
 
-                <View className='flex-row gap-4'>
+                <View className='flex-row gap-4 mb-6'>
                     <TouchableOpacity
                         onPress={handleCallPress}
                         className="bg-primary-sage500 py-3 px-8 rounded-xl flex-row items-center"
@@ -217,8 +311,19 @@ const OffLineScreen = ({ navigation }) => {
                         )}
                     </TouchableOpacity>
                 </View>
+
+                {/* Logout Button */}
+                <TouchableOpacity
+                    onPress={handleLogoutPress}
+                    disabled={isLoggingOut}
+                    className="bg-red-50 py-3 px-8 rounded-xl flex-row items-center border border-red-200"
+                >
+                    <LogOut size={20} color="#ef4444" />
+                    <Text className="text-red-600 font-semibold ml-2">Logout</Text>
+                </TouchableOpacity>
             </View>
 
+            {/* Info/Error Dialog */}
             <DialogBox
                 visible={dialogVisible}
                 onClose={() => setDialogVisible(false)}
@@ -235,6 +340,44 @@ const OffLineScreen = ({ navigation }) => {
                         color={dialogType === 'error' ? '#F44336' : dialogType === 'success' ? '#4CAF50' : '#2196F3'}
                     />
                     <Text className="text-gray-600 text-center mt-4 text-base">{dialogMessage}</Text>
+                </View>
+            </DialogBox>
+
+            {/* Logout Confirmation Dialog */}
+            <DialogBox
+                visible={logoutDialogVisible}
+                onClose={() => {
+                    if (!isLoggingOut) setLogoutDialogVisible(false);
+                }}
+                title={isLoggingOut ? "Logging out..." : "Confirm Logout"}
+                size="sm"
+                titleStyle="text-black text-lg font-bold"
+                showCloseButton={!isLoggingOut}
+                closeIconColor="#000"
+                closeOnBackdropPress={!isLoggingOut}
+                footer={logoutDialogFooter}
+                footerStyle="border-t border-red-100"
+                headerStyle="border-0"
+            >
+                <View className="py-6 items-center">
+                    {isLoggingOut ? (
+                        <>
+                            <Icon name="logout" size={60} color="#EF4444" />
+                            <Text className="text-gray-600 text-center mt-4 text-base">
+                                Please wait while we log you out...
+                            </Text>
+                        </>
+                    ) : (
+                        <>
+                            <Icon name="logout" size={60} color="#EF4444" />
+                            <Text className="text-gray-600 text-center mt-4 text-base">
+                                Are you sure you want to logout?
+                            </Text>
+                            <Text className="text-gray-500 text-center mt-1 text-sm">
+                                You'll need to login again to access your account.
+                            </Text>
+                        </>
+                    )}
                 </View>
             </DialogBox>
         </>

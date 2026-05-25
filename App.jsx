@@ -6,7 +6,8 @@ import { Toaster } from 'sonner-native';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { OrderProvider } from './src/context/OrderContext';
-
+import Toast from 'react-native-toast-message';
+import { toastConfig } from './src/components/CustomToast';
 
 export default function App() {
   
@@ -20,6 +21,7 @@ export default function App() {
                 <Toaster />
               </View>
               <AppNavigation/>
+               <Toast config={toastConfig} />
           </SafeAreaProvider>
         </GestureHandlerRootView>
     

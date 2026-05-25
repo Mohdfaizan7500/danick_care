@@ -50,6 +50,7 @@ const Complaintscard = ({ item, onPress }) => {
     const rawStatus = item?.status;
     const displayStatus = mapStatusToDisplay(rawStatus);
     const serviceType = safeToString(item?.service || item?.service_name, 'Service');
+    const complaintType = safeToString(item?.complaint_type, 'service').toUpperCase();
     const recomplaint = isRecomplaint(item);
 
     const csnValue = safeToString(item?.csn, 'N/A');
@@ -83,6 +84,20 @@ const Complaintscard = ({ item, onPress }) => {
 
     const isCancel = displayStatus === 'Cancel';
 
+    // Color for complaint type badge
+    const getComplaintTypeStyle = () => {
+        switch (complaintType) {
+            case 'AMC':
+                return { backgroundColor: '#E3F2FD', textColor: '#1565C0' };
+            case 'SERVICE':
+                return { backgroundColor: '#E8F5E9', textColor: '#2E7D32' };
+            default:
+                return { backgroundColor: '#F5F5F5', textColor: '#757575' };
+        }
+    };
+
+    const typeStyle = getComplaintTypeStyle();
+
     return (
         <>
             <TouchableOpacity
@@ -106,10 +121,19 @@ const Complaintscard = ({ item, onPress }) => {
                         </Text>
                        
                     </View>
-                    <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: '#E8F5E9' }}>
-                        <Text style={{ fontSize: 12, fontWeight: '500', color: '#2E7D32' }}>
-                            {serviceType}
-                        </Text>
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                        {/* Complaint Type Badge */}
+                        <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: typeStyle.backgroundColor }}>
+                            <Text style={{ fontSize: 12, fontWeight: '500', color: typeStyle.textColor }}>
+                                {complaintType}
+                            </Text>
+                        </View>
+                        {/* Service Type Badge */}
+                        <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: '#E8F5E9' }}>
+                            <Text style={{ fontSize: 12, fontWeight: '500', color: '#2E7D32' }}>
+                                {serviceType}
+                            </Text>
+                        </View>
                     </View>
                 </View>
 
