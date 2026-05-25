@@ -18,6 +18,8 @@ export const AuthProvider = ({ children }) => {
   const [importedPart, setImportedPart] = useState(null);
   const [imagUrl, setImageUrl] = useState('https://dainikcare.com/dainik_care_admin/');
       console.log("FCm token",getFCMToken());
+
+  const VibrationCount = 50;
   
   // Initialize from stored tokens
   useEffect(() => {
@@ -178,7 +180,8 @@ export const AuthProvider = ({ children }) => {
     setIsOnline,
     isAuthenticated: !!accessToken,
     imagUrl,
-    setImageUrl
+    setImageUrl,
+    VibrationCount
   };
 
   return (

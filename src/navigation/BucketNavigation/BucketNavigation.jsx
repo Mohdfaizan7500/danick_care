@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Pressable, Animated, ScrollView, useWindowDimensions, ActivityIndicator, TouchableOpacity } from 'react-native'
+import { StyleSheet, Text, View, Pressable, Animated, ScrollView, useWindowDimensions, ActivityIndicator, TouchableOpacity, Vibration } from 'react-native'
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Header from '../../components/Header'
@@ -6,6 +6,7 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import AllBucket from '../../screens/AppScreens/Bucket/AllBucket';
 import { useBucket } from '../../context/BucketContext';
 import { useRoute } from '@react-navigation/native'
+import { useAuth } from '../../context/AuthContext'
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -14,6 +15,7 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts, loadin
   const { width } = useWindowDimensions();
   const scrollViewRef = useRef(null);
   const tabWidths = useRef({});
+  const {VibrationCount} = useAuth();
 
   const getDisplayLabel = (routeName) => {
     return {
@@ -87,6 +89,9 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts, loadin
           const count = getTabCount(route.name);
 
           const onPress = () => {
+            // Add small vibration feedback (10ms)
+            Vibration.vibrate(VibrationCount);
+
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
@@ -117,8 +122,8 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts, loadin
               onLongPress={onLongPress}
               onLayout={(event) => onTabLayout(index, event)}
               style={{
-                paddingHorizontal: 20,
-                paddingVertical: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 4,
                 borderRadius: 100,
                 marginRight: 12,
                 borderWidth: 1,
@@ -180,7 +185,7 @@ const BucketNavigation = () => {
     fetchBucketCounts();
   }, []);
 
-  // ✅ Fixed loading condition – show loader only when loading AND no data yet
+  // Loading condition – show loader only when loading AND no data yet
   if (loading && bucketCounts.all === 0 && bucketCounts.market === 0 && bucketCounts.technician === 0 && bucketCounts.admin === 0 && bucketCounts.transfered === 0 && bucketCounts.received === 0) {
     return (
       <SafeAreaView className='bg-white flex-1' edges={['top']}>
@@ -212,7 +217,7 @@ const BucketNavigation = () => {
 
   return (
     <SafeAreaView className='bg-white flex-1' edges={['top']}>
-      <Header title={'Bucket'} />
+      <Header title={'Bucket '} />
       <View className='flex-1 bg-gray-50'>
         <Tab.Navigator
           initialRouteName={initialTab || 'AllBucket'}
@@ -223,7 +228,6 @@ const BucketNavigation = () => {
             lazy: true,
           }}
         >
-          {/* ✅ No longer passing refreshCounts function – AllBucket will use global context */}
           <Tab.Screen
             name='AllBucket'
             component={AllBucket}

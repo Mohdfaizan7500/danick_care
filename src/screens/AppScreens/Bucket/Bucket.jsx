@@ -807,7 +807,7 @@ const Bucket = () => {
     return (
       <SafeAreaView className="flex-1 bg-background-primary">
         <Header
-          title="Bucket"
+          title="Bucket "
           titlePosition="left"
           titleStyle="font-bold text-2xl ml-5"
           showRightIcon={true}
@@ -914,7 +914,7 @@ const Bucket = () => {
   return (
     <SafeAreaView className="flex-1 bg-background-primary">
       <Header
-        title="Bucket"
+        title="Bucket    s"
         titlePosition="left"
         titleStyle="font-bold text-2xl ml-5"
         

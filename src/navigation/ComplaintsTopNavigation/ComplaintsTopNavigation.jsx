@@ -93,7 +93,7 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
 
           const onPress = () => {
             // 🎯 Trigger vibration on tab press
-            Vibration.vibrate(10); // 10ms short buzz
+            Vibration.vibrate(50); // 10ms short buzz
 
             const event = navigation.emit({
               type: 'tabPress',
