@@ -37,6 +37,7 @@ const Scan = () => {
   const [isConnected, setIsConnected] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false); // NEW: image loading state
   const { imagUrl } = useAuth();
   const navigation = useNavigation();
 
@@ -119,6 +120,7 @@ const Scan = () => {
   // Function to fetch part details from API
   const fetchPartDetails = async (qrCode) => {
     setLoading(true);
+    setImageLoading(false); // reset image loading state
     try {
       const payload = {
         QRCode: qrCode
@@ -128,10 +130,13 @@ const Scan = () => {
 
       if (response?.data?.success && response?.data?.data?.length > 0) {
         const productData = response.data.data[0];
-        console.log('Product Image:', `${imagUrl}${productData.part_image}`);
+        const fullImageUrl = productData.part_image
+          ? `${imagUrl}${productData.part_image.startsWith('/') ? productData.part_image.slice(1) : productData.part_image}`
+          : null;
+        console.log('Product Image Full URL:', fullImageUrl);
         setSearchedProduct({
           id: productData.id,
-          imageUrl: productData.part_image,
+          imageUrl: fullImageUrl, // store full URL
           name: productData.part_name,
           partNumber: productData.id?.toString() || '',
           price: productData.part_price,
@@ -206,6 +211,7 @@ const Scan = () => {
   const handleClear = () => {
     setSearchText('');
     setSearchedProduct(null);
+    setImageLoading(false);
   };
 
   // Retry connection
@@ -334,19 +340,30 @@ const Scan = () => {
             )}
 
             <View className="flex-row">
-              {searchedProduct.imageUrl ? (
-                <Image
-                  source={{ uri: searchedProduct.imageUrl }}
-                  className="w-20 h-20 rounded-lg bg-gray-50"
-                  resizeMode="contain"
-                  onError={() => console.log('Image load error')}
-                  
-                />
-              ) : (
-                <View className="w-20 h-20 rounded-xl bg-teal-100 items-center justify-center">
-                  <Icon name="cube-outline" size={36} color="teal" />
-                </View>
-              )}
+              {/* Image with loading indicator */}
+              <View className="w-20 h-20 rounded-lg bg-gray-50 items-center justify-center overflow-hidden">
+                {imageLoading && (
+                  <ActivityIndicator size="small" color="#3FD298" style={{ position: 'absolute', zIndex: 1 }} />
+                )}
+                {searchedProduct.imageUrl ? (
+                  <Image
+                    source={{ uri: searchedProduct.imageUrl }}
+                    className="w-full h-full"
+                    resizeMode="contain"
+                    onLoadStart={() => setImageLoading(true)}
+                    onLoadEnd={() => setImageLoading(false)}
+                    onError={(e) => {
+                      console.log('Image load error:', e.nativeEvent.error);
+                      setImageLoading(false);
+                    }}
+                  />
+                ) : (
+                  <View className="w-full h-full rounded-xl bg-teal-100 items-center justify-center">
+                    <Icon name="cube-outline" size={36} color="teal" />
+                  </View>
+                )}
+              </View>
+
               <View className="flex-1 ml-4">
                 <Text className="text-base font-semibold text-gray-900">
                   {searchedProduct.name}
@@ -492,4 +509,4 @@ const Scan = () => {
 
 export default Scan;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({}); 

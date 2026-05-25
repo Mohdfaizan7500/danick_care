@@ -544,42 +544,42 @@ export const OrderIcon = (props) => (
   </Svg>
 );
 
-export const CheckCircleIcon = (props) => (
-  <Svg
-    width={20}
-    height={20}
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
-    <G clipPath="url(#clip0_984_46445)">
-      <Path
-        d="M18.159 8.32843C18.5394 10.1953 18.2683 12.1361 17.3909 13.8273C16.5135 15.5185 15.0828 16.8577 13.3375 17.6217C11.5922 18.3858 9.63772 18.5284 7.8 18.0258C5.96227 17.5232 4.35239 16.4057 3.23883 14.8598C2.12527 13.3139 1.57533 11.433 1.68073 9.53067C1.78613 7.62837 2.5405 5.8197 3.81803 4.40628C5.09556 2.99286 6.81904 2.06012 8.70104 1.76361C10.583 1.46711 12.5098 1.82475 14.16 2.77692"
-        stroke="#00A63E"
-        strokeWidth={1.66587}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        {...props}
+// export const CheckCircleIcon = (props) => (
+//   <Svg
+//     width={20}
+//     height={20}
+//     viewBox="0 0 20 20"
+//     fill="none"
+//     xmlns="http://www.w3.org/2000/svg"
+//     {...props}
+//   >
+//     <G clipPath="url(#clip0_984_46445)">
+//       <Path
+//         d="M18.159 8.32843C18.5394 10.1953 18.2683 12.1361 17.3909 13.8273C16.5135 15.5185 15.0828 16.8577 13.3375 17.6217C11.5922 18.3858 9.63772 18.5284 7.8 18.0258C5.96227 17.5232 4.35239 16.4057 3.23883 14.8598C2.12527 13.3139 1.57533 11.433 1.68073 9.53067C1.78613 7.62837 2.5405 5.8197 3.81803 4.40628C5.09556 2.99286 6.81904 2.06012 8.70104 1.76361C10.583 1.46711 12.5098 1.82475 14.16 2.77692"
+//         stroke="#00A63E"
+//         strokeWidth={1.66587}
+//         strokeLinecap="round"
+//         strokeLinejoin="round"
+//         {...props}
 
-      />
-      <Path
-        d="M7.49658 9.16257L9.99539 11.6614L18.3247 3.33203"
-        stroke="#00A63E"
-        strokeWidth={1.66587}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        {...props}
+//       />
+//       <Path
+//         d="M7.49658 9.16257L9.99539 11.6614L18.3247 3.33203"
+//         stroke="#00A63E"
+//         strokeWidth={1.66587}
+//         strokeLinecap="round"
+//         strokeLinejoin="round"
+//         {...props}
 
-      />
-    </G>
-    <Defs>
-      <ClipPath id="clip0_984_46445">
-        <Rect width={19.9904} height={19.9904} fill="white" />
-      </ClipPath>
-    </Defs>
-  </Svg>
-);
+//       />
+//     </G>
+//     <Defs>
+//       <ClipPath id="clip0_984_46445">
+//         <Rect width={19.9904} height={19.9904} fill="white" />
+//       </ClipPath>
+//     </Defs>
+//   </Svg>
+// );
 
 export const CrossCircleIcon = (props) => (
   <Svg
@@ -669,7 +669,7 @@ export const NodocumentIcon = (props) => (
   </Svg>
 );
 
-export const CheckCircleIcon2 = (props) => (
+export const CheckCircleIcon = (props) => (
   <Svg
     xmlns="http://www.w3.org/2000/svg"
     height="24px"

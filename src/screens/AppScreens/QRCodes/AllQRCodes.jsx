@@ -101,7 +101,7 @@ const AllQRCodes = ({ route }) => {
                 });
 
                 setQrCodes(uniqueQRCodes);
-            } 
+            }
             else if (response?.data?.success === false) {
                 // Check for "No Assign QR Code Found" message - treat as empty data, not an error
                 if (response?.data?.msg === "No Assign QR Code Found") {
@@ -118,7 +118,7 @@ const AllQRCodes = ({ route }) => {
                     );
                     setQrCodes([]);
                 }
-            } 
+            }
             else {
                 setQrCodes([]);
             }
@@ -254,7 +254,7 @@ const AllQRCodes = ({ route }) => {
             if (!loading && !refreshing) {
                 fetchQRCodes(true);
             }
-            return () => {};
+            return () => { };
         }, [loading, refreshing])
     );
 

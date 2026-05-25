@@ -8,6 +8,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Modal,
+  Vibration,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -77,7 +78,7 @@ const CustomDay = memo(({ date, state, marking, onPress, loadingDates }) => {
 });
 
 const PreBooking = () => {
-  const { user } = useAuth();
+  const { user, VibrationCount } = useAuth();
   const [selectedDates, setSelectedDates] = useState([]);
   const [loadingDates, setLoadingDates] = useState(new Set()); // individual day spinners
   const [loading, setLoading] = useState(true); // overall modal loading
@@ -290,6 +291,7 @@ const PreBooking = () => {
   }, [selectedDates, displayMonth, displayYear, lockedDates, getDatesInMonth]);
 
   const handleDayPress = useCallback(async (day) => {
+    Vibration.vibrate(VibrationCount)
     const dateString = day.dateString;
     const selectedDate = new Date(dateString);
     const today = new Date();
