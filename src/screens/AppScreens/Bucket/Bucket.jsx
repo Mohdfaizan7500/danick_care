@@ -816,7 +816,6 @@ const Bucket = () => {
             <Icon name="bag-add-outline" size={24} color="#999" />
           }
           onRightIconPress={() => {
-            if (isConnected) navigation.navigate('AddPart');
           }}
         />
         {/* Search Bar */}

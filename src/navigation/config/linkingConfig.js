@@ -24,7 +24,6 @@ export const linkingConfig = {
     MyComplaints: 'mycomplaints',
     Bucket: 'bucket',
     BucketpartDetails: 'bucketpart/:partId',
-    AddPart: 'addpart',
     AMC: 'amc',
     AMCDetails: 'amcdetails/:amcId',
     AMCList: 'amclist',

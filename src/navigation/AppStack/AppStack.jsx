@@ -13,7 +13,6 @@ import ReplaceParts from '../../screens/AppScreens/ReplaceParts';
 import TermsConditions from '../../screens/AppScreens/TermsConditions';
 import Support from '../../screens/AppScreens/Support';
 import MyComplaints from '../../screens/AppScreens/MyComplaints';
-import AddPart from '../../screens/AppScreens/Bucket/AddPart';
 import ComplaintDetail from '../../screens/AppScreens/Complaints/ComplaintDetail';
 import BuckePartDetails from '../../screens/AppScreens/Bucket/BucketpartDetails';
 import Billing from '../../screens/AppScreens/Complaints/Billing';
@@ -72,7 +71,6 @@ const AppStack = () => {
               <Stack.Screen name="TermsConditions" component={TermsConditions} />
               <Stack.Screen name="Support" component={Support} />
               <Stack.Screen name="MyComplaints" component={MyComplaints} />
-              <Stack.Screen name="AddPart" component={AddPart} />
               <Stack.Screen name="ComplaintDetail" component={ComplaintDetail} />
               <Stack.Screen name="Billing" component={Billing} />
               <Stack.Screen name="AddPartBilling" component={AddPartBilling} />
