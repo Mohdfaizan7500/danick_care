@@ -1,4 +1,4 @@
-// Remarkscreen.js - with upload blocking overlay
+// Remarkscreen.js - with AMC billing support and upload blocking overlay
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
@@ -28,6 +28,7 @@ import {
     getComplaintImage,
     UpdateRemark,
     ComplaintBilling,
+    AMCBilling as AMCBillingAPI,
 } from '../../../lib/api';
 
 // Camera Modal Component (unchanged)
@@ -37,9 +38,7 @@ const CustomCameraModal = ({ visible, onClose, onCapture }) => {
     const cameraRef = useRef(null);
 
     useEffect(() => {
-        if (visible && !hasPermission) {
-            requestPermission();
-        }
+        if (visible && !hasPermission) requestPermission();
     }, [visible, hasPermission, requestPermission]);
 
     const takePhoto = async () => {
@@ -123,12 +122,19 @@ const Remarkscreen = () => {
         returnToBilling = false,
         totalPayable = 0,
         discount = 0,
+        billingType = 'complaint',      // 'amc' when coming from AMCBilling
+        amcData,
+        billingId,
+        location,
+        technicianId,
+        platformFee = 0,
     } = route.params || {};
 
     console.log('Complaint Data in Remarkscreen:', complaintData);
     console.log('Should submit on return:', shouldSubmitOnReturn);
     console.log('Total Payable:', totalPayable);
     console.log('Discount:', discount);
+    console.log('Billing Type:', billingType);
 
     // State for images
     const [image1Uri, setImage1Uri] = useState(null);
@@ -173,7 +179,7 @@ const Remarkscreen = () => {
         return isFormComplete && !deletingImage1 && !deletingImage2;
     };
 
-    // Fetch existing images (unchanged)
+    // Fetch existing images
     const fetchExistingImages = async () => {
         setLoadingImages(true);
         try {
@@ -341,7 +347,7 @@ const Remarkscreen = () => {
         setImageToDelete(null);
     };
 
-    // Update remark on server
+    // Update remark only (API)
     const updateRemarkOnly = async () => {
         try {
             const payload = {
@@ -361,7 +367,7 @@ const Remarkscreen = () => {
         }
     };
 
-    // Submit billing with review and remark
+    // Submit billing – handles both normal complaint and AMC
     const submitBilling = async () => {
         if (!selectedCustomerType || !remark.trim() || !image1Id || !image2Id) {
             toast.custom(<StatusMessage type="error" title="Please complete all required fields" className="mx-4 mb-6" />, { duration: 3000 });
@@ -370,39 +376,66 @@ const Remarkscreen = () => {
 
         setSubmitting(true);
         try {
+            // 1. Always update remark & review on the complaint
             const remarkUpdated = await updateRemarkOnly();
             if (!remarkUpdated) {
                 setSubmitting(false);
                 return;
             }
 
-            const billingPayload = {
-                id: complaintData?.id?.toString(),
-                final_amount: totalPayable.toString(),
-                discount: discount.toString(),
-                review: selectedCustomerType,
-                remark: remark,
-            };
-            console.log('Submitting billing with payload:', billingPayload);
-            const response = await ComplaintBilling(billingPayload);
-            if (response?.data?.success) {
-                toast.custom(<StatusMessage type="success" title="Bill submitted successfully!" className="mx-4 mb-6" />, { duration: 2000 });
-                navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'ComplaintsTopNavigation', params: { status: "Assign" } }],
-                });
+            // 2. Submit billing based on type
+            if (billingType === 'amc') {
+                // AMC Billing
+                const amcPayload = {
+                    amc_complaint_id: complaintData?.id?.toString(),
+                    technician_id: technicianId || '',
+                    final_amount: totalPayable.toString(),
+                    discount: discount.toString(),
+                    latitude: location?.latitude || '',
+                    longitude: location?.longitude || '',
+                };
+                console.log('AMC Billing Payload:', amcPayload);
+                const amcResponse = await AMCBillingAPI(amcPayload);
+                if (amcResponse?.data?.success) {
+                    toast.custom(<StatusMessage type="success" title="AMC purchased successfully!" className="mx-4 mb-6" />, { duration: 2000 });
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'BottomTabs' }],
+                    });
+                } else {
+                    throw new Error(amcResponse?.data?.msg || 'Failed to purchase AMC');
+                }
             } else {
-                throw new Error(response?.data?.message || 'Failed to submit bill');
+                // Normal Complaint Billing
+                const billingPayload = {
+                    id: complaintData?.id?.toString(),
+                    final_amount: totalPayable.toString(),
+                    discount: discount.toString(),
+                    review: selectedCustomerType,
+                    remark: remark,
+                };
+                console.log('Complaint Billing Payload:', billingPayload);
+                const response = await ComplaintBilling(billingPayload);
+                if (response?.data?.success) {
+                    toast.custom(<StatusMessage type="success" title="Bill submitted successfully!" className="mx-4 mb-6" />, { duration: 2000 });
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'ComplaintsTopNavigation', params: { status: "Assign" } }],
+                    });
+                } else {
+                    throw new Error(response?.data?.message || 'Failed to submit bill');
+                }
             }
         } catch (error) {
             console.error('Error submitting billing:', error);
-            toast.custom(<StatusMessage type="error" title={error.message || 'Failed to submit bill'} className="mx-4 mb-6" />, { duration: 3000 });
+            toast.custom(<StatusMessage type="error" title={error.message || 'Failed to submit billing'} className="mx-4 mb-6" />, { duration: 3000 });
         } finally {
             setSubmitting(false);
             setSubmitConfirmationVisible(false);
         }
     };
 
+    // Main button press handler
     const handleMainButtonPress = () => {
         if (!selectedCustomerType) {
             toast.custom(<StatusMessage type="error" title="Please select review" className="mx-4 mb-6" />, { duration: 3000 });
@@ -424,6 +457,7 @@ const Remarkscreen = () => {
         }
     };
 
+    // Original Next (for non-billing flow)
     const handleNextOriginal = async () => {
         try {
             setSubmitting(true);
@@ -472,7 +506,7 @@ const Remarkscreen = () => {
         return shouldSubmitOnReturn && returnToBilling ? 'bg-green-600' : 'bg-blue-600';
     };
 
-    // Confirmation modal footer
+    // Dialog footers
     const confirmationFooter = (
         <View className="flex-row justify-end gap-2">
             <TouchableOpacity onPress={() => setSubmitConfirmationVisible(false)} className="px-4 py-2 rounded-lg bg-gray-200">
@@ -528,7 +562,6 @@ const Remarkscreen = () => {
                         />
                     }
                 >
-                    {/* ... (rest of the UI remains the same) ... */}
                     {loadingImages && !refreshing && (
                         <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center">
                             <ActivityIndicator size="large" color="#000" />
@@ -550,7 +583,15 @@ const Remarkscreen = () => {
 
                     <View className="mb-4">
                         <Text className="text-text-primary font-semibold text-base mb-1">Remark <Text className="text-red-500">*</Text></Text>
-                        <TextInput className="border border-ui-border rounded-xl px-4 py-3 text-text-primary bg-background-secondary" placeholder="Add any remarks" multiline numberOfLines={4} textAlignVertical="top" value={remark} onChangeText={setRemark} />
+                        <TextInput
+                            className="border border-ui-border rounded-xl px-4 py-3 text-text-primary bg-background-secondary"
+                            placeholder="Add any remarks"
+                            multiline
+                            numberOfLines={4}
+                            textAlignVertical="top"
+                            value={remark}
+                            onChangeText={setRemark}
+                        />
                     </View>
 
                     <Text className="text-text-primary font-semibold text-base mb-2">Capture Images <Text className="text-red-500">*</Text></Text>
@@ -619,7 +660,7 @@ const Remarkscreen = () => {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* Dialogs and modals (unchanged) */}
+            {/* Dialogs */}
             <DialogBox visible={customerTypeDropdownVisible} onClose={() => setCustomerTypeDropdownVisible(false)} title="Select Review" size="sm" footer={customerTypeFooter} closeOnBackdropPress={true}>
                 <View className="py-2">
                     {customerTypeOptions.map((option) => (
@@ -648,7 +689,7 @@ const Remarkscreen = () => {
 
             <CustomCameraModal visible={cameraVisible} onClose={() => { setCameraVisible(false); setPendingImageNumber(null); }} onCapture={handleCapture} />
 
-            {/* 🚫 FULL-SCREEN BLOCKING OVERLAY DURING IMAGE UPLOAD */}
+            {/* FULL-SCREEN BLOCKING OVERLAY DURING IMAGE UPLOAD */}
             {isAnyUploading && (
                 <View style={styles.blockingOverlay}>
                     <ActivityIndicator size="large" color="#ffffff" />
@@ -661,8 +702,6 @@ const Remarkscreen = () => {
 };
 
 const styles = StyleSheet.create({
-    // ... existing camera modal styles ...
-
     modalContainer: {
         flex: 1,
         backgroundColor: 'black',
@@ -718,8 +757,6 @@ const styles = StyleSheet.create({
     closePermissionText: { marginTop: 15, color: 'red' },
     errorText: { color: 'white', fontSize: 18, marginBottom: 20 },
     closeText: { color: 'white', fontSize: 16 },
-
-    // Blocking overlay styles
     blockingOverlay: {
         position: 'absolute',
         top: 0,

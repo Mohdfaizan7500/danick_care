@@ -1,5 +1,5 @@
 // components/QRCodeCard.js
-import { StyleSheet, Text, View, TouchableOpacity, Image, Alert } from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, Image, Alert, ToastAndroid } from 'react-native'
 import React, { useState } from 'react'
 import Icon from 'react-native-vector-icons/Ionicons'
 import Clipboard from '@react-native-clipboard/clipboard'
@@ -11,14 +11,8 @@ const QRCodeCard = ({ item, index, onPress, onImagePress, onCopy, getImageUrl, g
     const [imageError, setImageError] = useState(false);
     const handleCopyQRCode = (qrCodeNumber) => {
         Clipboard.setString(qrCodeNumber);
-        toast.custom(
-            <StatusMessage
-                type='info'
-                title='QR Code Copied!'
-                message={`QR Code: ${qrCodeNumber}`}
-            />,
-            { duration: 1000 }
-        );
+        ToastAndroid.show('Copy',ToastAndroid.SHORT)
+        
         if (onCopy) onCopy(qrCodeNumber);
     };
 

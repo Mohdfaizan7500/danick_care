@@ -782,17 +782,31 @@ const AMCDetails = () => {
   };
 
   const handleNext = () => {
-    navigation.replace('AMCBilling', {
-      linkedParts: linkedItems.map(id => ({
-        id,
-        part_name: spareParts.find(part => part.id === id)?.part_name,
-        qr_code: qrCodeNumbers[id],
-        replaced_with: replacedParts[id] || null
-      })),
-      amc: fetchedAmcDetails || amc,
-      complaintData: fetchedComplaint || complaintData,
-      billingId
-    });
+    if (allPartsLinked) {
+      navigation.replace('AMCBilling', {
+        linkedParts: linkedItems.map(id => ({
+          id,
+          part_name: spareParts.find(part => part.id === id)?.part_name,
+          qr_code: qrCodeNumbers[id],
+          replaced_with: replacedParts[id] || null
+        })),
+        amc: fetchedAmcDetails || amc,
+        complaintData: fetchedComplaint || complaintData,
+        billingId
+      });
+
+    }
+    else {
+      toast.custom(
+        <StatusMessage
+          type='error'
+          title='Error '
+          message={'Link all QR code First.'}
+        />,
+        { duration: 3000 }
+      );
+    }
+
   };
 
   const handleHeaderBack = () => {
@@ -1162,7 +1176,7 @@ const AMCDetails = () => {
       {!isKeyboardVisible && spareParts.length > 0 && (
         <View className='bg-white w-full absolute bottom-0 py-3 border-t border-t-gray-200 left-0 right-0'>
           <TouchableOpacity
-            disabled={!allPartsLinked}
+            // disabled={!allPartsLinked}
             className={`py-3.5 mx-5 rounded-xl items-center ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'}`}
             onPress={handleNext}
           >

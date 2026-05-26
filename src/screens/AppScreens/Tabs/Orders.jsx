@@ -16,6 +16,7 @@ const Orders = ({ route }) => {
     const technician_id = user?.id;
 
     const { refreshOrderCount } = useOrder();
+    const { orderCount } = useOrder();
 
     const [complaints, setComplaints] = useState([])
     const [filteredComplaints, setFilteredComplaints] = useState([])
@@ -358,7 +359,7 @@ const Orders = ({ route }) => {
     return (
         <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
             <Header
-                title={`Pending Complaints (${pendingCount})`}
+                title={`Pending Complaints (${orderCount})`}
                 titlePosition="left"
                 titleStyle="font-bold text-2xl ml-5"
                 showBackButton={true}

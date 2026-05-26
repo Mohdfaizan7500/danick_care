@@ -9,6 +9,7 @@ import {
     ActivityIndicator,
     RefreshControl,
     Animated,
+    ToastAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -113,10 +114,8 @@ const ConetToAMCScreen = () => {
             setIsAMCLocked(false);
             setAmcComplaintId(null);
             await checkAMCStatus();
-            toast.custom(
-                <StatusMessage type="success" title="Refreshed" className="mx-4 mb-6" />,
-                { duration: 2000 }
-            );
+            ToastAndroid.show("Refreshed",ToastAndroid.SHORT);
+            
         } catch (error) {
             toast.custom(
                 <StatusMessage type="error" title="Refresh Failed" description={error.message} className="mx-4 mb-6" />,

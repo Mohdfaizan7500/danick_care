@@ -1,4 +1,4 @@
-import { View, Text, ActivityIndicator, FlatList, Image, TouchableOpacity, RefreshControl, TextInput } from 'react-native'
+import { View, Text, ActivityIndicator, FlatList, Image, TouchableOpacity, RefreshControl, TextInput, ToastAndroid } from 'react-native'
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Clipboard } from 'react-native'
 import Icon from 'react-native-vector-icons/Ionicons'
@@ -347,9 +347,11 @@ const AllBucket = ({ route }) => {
     const disabled = isItemDisabled(item);
 
     const handleQrCodePress = () => {
+
       if (item.qr_code) {
         Clipboard.setString(item.qr_code);
-        showDialog('info', 'QR Code Copied!', `QR Code: ${item.qr_code}`);
+        ToastAndroid.show('Copy',ToastAndroid.SHORT);
+
       } else {
         showDialog('warning', 'Information', 'No QR code available');
       }

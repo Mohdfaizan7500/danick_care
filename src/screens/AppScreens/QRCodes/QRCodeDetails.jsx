@@ -675,10 +675,15 @@ const QRCodeDetails = () => {
               const warranty = getWarrantyStatus(complaintDetails.complaint_type, complaintDetails.days);
               if (warranty) {
                 return (
+                  <View className='flex-row items-center gap-2'>
+                    <View className={`bg-green-100 px-4 rounded-full py-0.5`}>
+                    <Text className='text-green-600'>{complaintDetails.complaint_type}</Text>
+                    </View>
                   <View className={`px-3 py-1 rounded-full ${warranty.isWarranty ? 'bg-green-100' : 'bg-red-100'}`}>
                     <Text className={`text-xs font-bold ${warranty.isWarranty ? 'text-green-700' : 'text-red-700'}`}>
                       {warranty.text}
                     </Text>
+                  </View>
                   </View>
                 );
               }
