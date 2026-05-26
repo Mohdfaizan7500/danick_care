@@ -100,7 +100,7 @@ const AMCDetails = () => {
         if (part.qr_code && part.qr_code !== null && part.qr_code.trim() !== '') {
           preFilledQrCodes[partId] = part.qr_code;
           preLinkedItems.push(partId);
-          
+
           // Check if this is a replaced part
           if (part.replaced_with) {
             preReplacedParts[partId] = part.replaced_with;
@@ -122,7 +122,7 @@ const AMCDetails = () => {
       if (!fetchedAmcDetails) {
         fetchAMCComplaintDetails();
       }
-      return () => {};
+      return () => { };
     }, [])
   );
 
@@ -890,7 +890,7 @@ const AMCDetails = () => {
         containerStyle="bg-white flex-row items-center justify-between px-4 py-4 border-b border-gray-200"
       />
 
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
@@ -898,8 +898,8 @@ const AMCDetails = () => {
         <ScrollView
           className="flex-1 px-4 bg-gray-100"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ 
-            paddingBottom: isKeyboardVisible && Platform.OS === 'android' ? keyboardHeight + 80 : 100 
+          contentContainerStyle={{
+            paddingBottom: isKeyboardVisible && Platform.OS === 'android' ? keyboardHeight + 80 : 100
           }}
           keyboardShouldPersistTaps="handled"
           refreshControl={
@@ -1162,6 +1162,7 @@ const AMCDetails = () => {
       {!isKeyboardVisible && spareParts.length > 0 && (
         <View className='bg-white w-full absolute bottom-0 py-3 border-t border-t-gray-200 left-0 right-0'>
           <TouchableOpacity
+            disabled={!allPartsLinked}
             className={`py-3.5 mx-5 rounded-xl items-center ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'}`}
             onPress={handleNext}
           >
