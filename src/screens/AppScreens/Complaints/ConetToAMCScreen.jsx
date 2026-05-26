@@ -25,6 +25,9 @@ const ConetToAMCScreen = () => {
     const { complaintData } = route.params || {};
     console.log('Complaint Data received:', complaintData);
 
+    // Check if this is already an AMC complaint
+    const isAMCComplaint = complaintData?.complaint_type === 'AMC';
+
     // State for Convert to AMC toggle
     const [convertToAMC, setConvertToAMC] = useState(false);
     const [isAMCLocked, setIsAMCLocked] = useState(false);
@@ -60,13 +63,13 @@ const ConetToAMCScreen = () => {
 
     const isReadyForNext = () => {
         if (refreshing || checkingAMC || submitting) return false;
-        if (isInvalidCSN) return false; // Disable Next if CSN is 00000
+        if (isInvalidCSN) return false;
         return true;
     };
 
     const checkAMCStatus = async () => {
-        // Skip API call if CSN is invalid
-        if (isInvalidCSN) {
+        // Skip API call if CSN is invalid or complaint is already AMC
+        if (isInvalidCSN || isAMCComplaint) {
             setCheckingAMC(false);
             return;
         }
@@ -115,7 +118,6 @@ const ConetToAMCScreen = () => {
             setAmcComplaintId(null);
             await checkAMCStatus();
             ToastAndroid.show("Refreshed", ToastAndroid.SHORT);
-
         } catch (error) {
             toast.custom(
                 <StatusMessage type="error" title="Refresh Failed" description={error.message} className="mx-4 mb-6" />,
@@ -128,18 +130,23 @@ const ConetToAMCScreen = () => {
 
     useFocusEffect(
         useCallback(() => {
+            // Force convertToAMC false if already an AMC complaint
+            if (isAMCComplaint) {
+                setConvertToAMC(false);
+                setCheckingAMC(false);
+                return;
+            }
             checkAMCStatus();
             return () => { };
-        }, [complaintData?.id, isInvalidCSN]) // Re-run if CSN validity changes
+        }, [complaintData?.id, isInvalidCSN, isAMCComplaint])
     );
 
-    const handleTryTotoggle = () => {
-        
+    const handleToggleAttempt = (message) => {
         toast.custom(
             <StatusMessage
                 type="error"
                 title="Cannot change AMC status"
-                message="Please delete the existing AMC complaint first before changing this option"
+                message={message}
                 className="mx-4 mb-6"
             />,
             { duration: 3000 }
@@ -147,7 +154,30 @@ const ConetToAMCScreen = () => {
         animateButton(); // Shake the Next button
     };
 
+    const handleTryTotoggle = () => {
+        handleToggleAttempt("Please delete the existing AMC complaint first before changing this option");
+    };
+
+    const handleAMCComplaintToggle = () => {
+        handleToggleAttempt("This is already an AMC complaint. Cannot convert to AMC.");
+    };
+
     const handleNext = () => {
+        // If it's already an AMC complaint, go to Billing as regular service
+        if (isAMCComplaint) {
+            navigation.navigate('Billing', {
+                complaintData,
+                selectedCustomerType: '',
+                remark: '',
+                image1Id: null,
+                image2Id: null,
+                image1Uri: null,
+                image2Uri: null,
+                convertToAMC: false,
+            });
+            return;
+        }
+
         if (convertToAMC) {
             // Convert to AMC flow
             if (isAMCLocked) {
@@ -188,6 +218,7 @@ const ConetToAMCScreen = () => {
         if (refreshing) return 'Refreshing...';
         if (checkingAMC) return 'Checking AMC Status...';
         if (submitting) return 'Submitting...';
+        if (isAMCComplaint) return 'Next';
         if (convertToAMC) {
             if (isAMCLocked) return 'View AMC Details';
             return 'Proceed to AMC';
@@ -230,7 +261,7 @@ const ConetToAMCScreen = () => {
                         />
                     }
                 >
-                    {checkingAMC && !refreshing && !isInvalidCSN && (
+                    {checkingAMC && !refreshing && !isInvalidCSN && !isAMCComplaint && (
                         <View className="mb-4 p-4 bg-gray-100 rounded-xl items-center">
                             <ActivityIndicator size="large" color="#000" />
                             <Text className="text-text-primary mt-2">Checking AMC status...</Text>
@@ -249,17 +280,29 @@ const ConetToAMCScreen = () => {
                                 Convert to AMC
                             </Text>
                             <Text className="text-text-tertiary text-xs mt-1">
-                                {convertToAMC ? 'Yes, convert to AMC' : 'No, regular service'}
-                                {isAMCLocked && ' (AMC already processed)'}
+                                {isAMCComplaint
+                                    ? 'Already an AMC complaint'
+                                    : convertToAMC
+                                        ? 'Yes, convert to AMC'
+                                        : 'No, regular service'}
+                                {isAMCLocked && !isAMCComplaint && ' (AMC already processed)'}
                             </Text>
                         </View>
                         <ToggleSwitch
                             isOn={convertToAMC}
-                            onToggle={isAMCLocked ? handleTryTotoggle : setConvertToAMC}
+                            onToggle={
+                                isAMCComplaint
+                                    ? handleAMCComplaintToggle
+                                    : isAMCLocked
+                                        ? handleTryTotoggle
+                                        : setConvertToAMC
+                            }
                             onColor="#14B8A6"
                             offColor="#D1D5DB"
                             size="medium"
                             animationSpeed={200}
+                            // Disable visual interaction when already AMC complaint
+                            disabled={isAMCComplaint}
                         />
                     </View>
 
@@ -281,6 +324,15 @@ const ConetToAMCScreen = () => {
                         <View className="bg-red-100 border border-red-400 rounded-xl p-3 mt-2">
                             <Text className="text-red-700 text-center font-semibold">
                                 CSN is not correct. Contact to admin.
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Message when complaint is already AMC */}
+                    {isAMCComplaint && (
+                        <View className="bg-orange-100 border border-orange-400 rounded-xl p-3 mt-2">
+                            <Text className="text-orange-700 text-center font-semibold">
+                                This is already an AMC complaint. Cannot convert to AMC.
                             </Text>
                         </View>
                     )}

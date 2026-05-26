@@ -475,7 +475,7 @@ const Home = () => {
               <Text className="text-gray-700 text-sm">Welcome Back</Text>
               <View className="flex-row items-center">
                 <Text className="text-gray-900 font-bold text-lg">
-                  {loadingProfile ? 'Loading...' : userProfile.name}
+                  {userProfile.name}
                 </Text>
               </View>
               <Text className={`text-xs font-medium ${IsOnline ? 'text-green-600' : 'text-gray-500'}`}>
@@ -545,7 +545,7 @@ const Home = () => {
               <Text className="text-gray-700 text-sm">Welcome Back</Text>
               <View className="flex-row items-center">
                 <Text className="text-gray-900 font-bold text-lg">
-                  {loadingProfile ? 'Loading...' : userProfile.name}
+                  {userProfile.name}
                 </Text>
               </View>
               <View className='flex-row gap-2 items-center'>
