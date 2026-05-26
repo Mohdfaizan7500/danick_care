@@ -300,7 +300,7 @@ const Login = ({ navigation }) => {
                         )}
                     </TouchableOpacity>
 
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                         className="bg-[#FFEDD4] mt-5 px-4 py-2 rounded-xl border border-[#FFB86A]"
                         onPress={fillDemoAccount}
                         disabled={isLoading}
@@ -308,7 +308,7 @@ const Login = ({ navigation }) => {
                         <Text className="font-bold text-sm text-gray-800 mb-2">Demo Account (Click to fill)</Text>
                         <Text className="font-normal text-xs text-gray-500">Username: 46757</Text>
                         <Text className="font-normal text-xs text-gray-500">Password: 123</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                 </View>
 
                 <DialogBox

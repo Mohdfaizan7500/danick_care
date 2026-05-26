@@ -8,6 +8,7 @@ import {
   StatusBar,
   ActivityIndicator,
   RefreshControl,
+  ToastAndroid,
 } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -17,6 +18,7 @@ import Header from '../../../components/Header';
 import StatusMessage from '../../../components/StatusMessage';
 import { toast, Toaster } from 'sonner-native';
 import { GetComplaintsDetails } from '../../../lib/api';
+import Toast from 'react-native-toast-message';
 
 const ProductDetails = () => {
   const route = useRoute();
@@ -46,10 +48,8 @@ const ProductDetails = () => {
 
       if (response?.data?.success && response?.data?.result) {
         setComplaintDetails(response.data.result);
-        toast.custom(
-          <StatusMessage type="success" title="Complaint details loaded" />,
-          { duration: 1500 }
-        );
+        ToastAndroid.show("Refreshed",ToastAndroid.SHORT,ToastAndroid.CENTER)
+       
       } else {
         toast.custom(
           <StatusMessage type="error" title="Failed to load complaint details" />,
@@ -502,36 +502,7 @@ const ProductDetails = () => {
           </View>
         </View>
 
-        {/* Action Buttons */}
-        <View className="px-4 py-6 mb-6">
-          <TouchableOpacity
-            onPress={() => {
-              toast.custom(
-                <StatusMessage type="success" title="Product details saved" />,
-                { duration: 1500 }
-              );
-              navigation.goBack();
-            }}
-            className="bg-primary-sage600 rounded-xl py-4 items-center mb-3"
-          >
-            <Text className="text-white font-semibold text-base">Close</Text>
-          </TouchableOpacity>
-
-          {!product.partAccept && (
-            <TouchableOpacity
-              onPress={() => {
-                toast.custom(
-                  <StatusMessage type="info" title="Request sent to accept product" />,
-                  { duration: 2000 }
-                );
-                // Add accept product logic here
-              }}
-              className="bg-green-600 rounded-xl py-4 items-center"
-            >
-              <Text className="text-white font-semibold text-base">Accept Product</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        
       </ScrollView>
     </SafeAreaView>
   );

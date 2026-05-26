@@ -64,7 +64,7 @@ const Parts = () => {
       const cityId = user?.city_id || '1';
       const response = await getAllSparePartcategories(cityId);
       console.log('Fetched spare part categories:', response);
-      
+
       const fetchedData = response?.data?.data;
       if (Array.isArray(fetchedData) && fetchedData.length > 0) {
         const mappedCategories = fetchedData.map(item => ({
@@ -146,13 +146,26 @@ const Parts = () => {
     >
       <View className="bg-white rounded-2xl px-2 py-2 items-center border border-gray-200 shadow-sm">
         <View className="w-full h-[120px] bg-white overflow-hidden mb-2">
-          <Image
-            source={{ uri: item.imageUrl }}
-            className="w-full h-full rounded-lg"
-            resizeMode="cover"
-            onError={(e) => console.log('Image load error for', item.name, e.nativeEvent.error)}
-            defaultSource={require('../../../assets/images/profileImage.jpg')}
-          />
+          {
+            item?.imageUrl ? (
+              <Image
+                source={{ uri: item?.imageUrl }}
+                className="w-full h-full rounded-lg"
+                resizeMode="cover"
+                onError={(e) => console.log('Image load error for', item.name, e.nativeEvent.error)}
+                defaultSource={require('../../../assets/images/imageplaceholder.png')}
+              />
+            ) : (
+              <Image
+                source={require('../../../assets/images/imageplaceholder.png')}
+                className="w-full h-full rounded-lg bg-zinc-100"
+                resizeMode="cover"
+                onError={(e) => console.log('Image load error for', item.name, e.nativeEvent.error)}
+                defaultSource={require('../../../assets/images/imageplaceholder.png')}
+              />
+            )
+          }
+
         </View>
         <Text className="text-sm font-semibold text-gray-800 text-center" numberOfLines={1}>
           {item.name}

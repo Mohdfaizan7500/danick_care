@@ -99,7 +99,7 @@ const SparePartScreen = () => {
                     className="w-full h-full"
                     resizeMode="contain"
                     onError={(e) => console.log('Image load error for', item.name, e.nativeEvent.error)}
-                    defaultSource={require('../../assets/images/profileImage.jpg')}
+                    defaultSource={require('../../assets/images/imageplaceholder.png')}
                 />
             </View>
             <View className='px-4 py-3'>

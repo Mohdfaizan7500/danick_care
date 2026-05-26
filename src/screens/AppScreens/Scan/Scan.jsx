@@ -14,7 +14,7 @@ import {
   Pressable,
   Linking,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { toast, Toaster } from 'sonner-native';
 import NetInfo from '@react-native-community/netinfo';
@@ -37,7 +37,7 @@ const Scan = () => {
   const [isConnected, setIsConnected] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [imageLoading, setImageLoading] = useState(false); // NEW: image loading state
+  const [imageLoading, setImageLoading] = useState(false);
   const { imagUrl } = useAuth();
   const navigation = useNavigation();
 
@@ -110,55 +110,101 @@ const Scan = () => {
 
   const openAppSettings = () => {
     openSettings().catch(() => {
-      // Fallback for older Android versions
       if (Platform.OS === 'android') {
         Linking.openSettings();
       }
     });
   };
 
-  // Function to fetch part details from API
+  // Function to fetch part details from API (handles both regular parts and blank QR codes)
   const fetchPartDetails = async (qrCode) => {
     setLoading(true);
-    setImageLoading(false); // reset image loading state
+    setImageLoading(false);
     try {
-      const payload = {
-        QRCode: qrCode
-      };
+      const payload = { QRCode: qrCode };
       const response = await GetPartDetailQRCode(payload);
       console.log('API Response:', response);
 
-      if (response?.data?.success && response?.data?.data?.length > 0) {
-        const productData = response.data.data[0];
-        const fullImageUrl = productData.part_image
-          ? `${imagUrl}${productData.part_image.startsWith('/') ? productData.part_image.slice(1) : productData.part_image}`
-          : null;
-        console.log('Product Image Full URL:', fullImageUrl);
-        setSearchedProduct({
-          id: productData.id,
-          imageUrl: fullImageUrl, // store full URL
-          name: productData.part_name,
-          partNumber: productData.id?.toString() || '',
-          price: productData.part_price,
-          description: productData.description,
-          transferBy: productData.transfer_by,
-          partAccept: productData.part_accept,
-          transTech: productData.trans_tech,
-          technicianName: productData.technician_name,
-          type: productData.type,
-          complaintId: productData.complaint_id,
-        });
-        console.log('Fetched Product Type:', productData.type);
-        console.log('Complaint ID:', productData.complaint_id);
+      if (response?.data?.success) {
+        // Extract the actual data - could be array or object
+        let productData = response.data.data;
 
-        toast.custom(
-          <StatusMessage type='success' title={`Found item for code: ${qrCode}`} />,
-          { duration: 1000 }
-        );
+        // If it's an object (and not an array), wrap it
+        if (productData && !Array.isArray(productData)) {
+          productData = [productData];
+        }
+
+        if (productData && productData.length > 0) {
+          const item = productData[0];
+          const qrType = response.data.type || item.type || 'unknown';
+
+          let fullImageUrl = null;
+          let productName = '';
+          let productPartNumber = '';
+          let productPrice = '0';
+          let productDescription = '';
+          let transferBy = '';
+          let partAccept = '';
+          let transTech = '';
+          let technicianName = '';
+          let complaintId = '';
+          let csn = '';
+
+          // Handle "amc_blank_qr" type (blank QR codes)
+          if (qrType === 'amc_blank_qr') {
+            fullImageUrl = item.qr_img ? `${imagUrl}${item.qr_img.replace(/^\//, '')}` : null;
+            productName = `QR Code: ${item.qr_id || qrCode}`;
+            productPartNumber = item.qr_id || '';
+            productDescription = `Assigned to technician: ${item.technician_name || 'Unassigned'}`;
+            technicianName = item.technician_name || '';
+            transferBy = item.assign_to || '';
+          }
+          // Handle regular part details
+          else {
+            fullImageUrl = item.part_image ? `${imagUrl}${item.part_image.replace(/^\//, '')}` : null;
+            productName = item.part_name || '';
+            productPartNumber = item.id?.toString() || '';
+            productPrice = item.part_price || '0';
+            productDescription = item.description || '';
+            transferBy = item.transfer_by || '';
+            partAccept = item.part_accept || '';
+            transTech = item.trans_tech || '';
+            technicianName = item.technician_name || '';
+            complaintId = item.complaint_id || '';
+            csn = item.csn || '';
+          }
+
+          setSearchedProduct({
+            id: item.id,
+            imageUrl: fullImageUrl,
+            name: productName,
+            partNumber: productPartNumber,
+            price: productPrice,
+            description: productDescription,
+            transferBy: transferBy,
+            partAccept: partAccept,
+            transTech: transTech,
+            technicianName: technicianName,
+            type: qrType,
+            complaintId: complaintId,
+            csn: csn,
+          });
+
+          toast.custom(
+            <StatusMessage type='success' title={`Found item for code: ${qrCode}`} />,
+            { duration: 1000 }
+          );
+        } else {
+          toast.custom(
+            <StatusMessage type='error' title='No product found for this QR code' />,
+            { duration: 1000 }
+          );
+          setSearchedProduct(null);
+        }
       } else {
         toast.custom(
-          <StatusMessage type='error' title={`${response?.data?.msg || 'No product found for this QR code'}`} />,
-          { duration: 1000 }
+          <StatusMessage type='error' title={response?.data?.msg || 'Failed to fetch product details'} />,
+          { duration: 2000 }
         );
         setSearchedProduct(null);
       }
@@ -214,15 +260,28 @@ const Scan = () => {
     setImageLoading(false);
   };
 
-  // Retry connection
   const handleRetry = () => {
     NetInfo.fetch().then(state => setIsConnected(state.isConnected ?? false));
+  };
+
+  const handleProductPress = (product) => {
+    console.log(product);
+    // Block navigation for blank QR codes
+    if (product.type === "amc_blank_qr") {
+      toast.custom(
+        <StatusMessage type='error' title='This QR Code is not attached to any complaint yet.' />,
+        { duration: 1500 }
+      );
+      return;
+    }
+    // Navigate to complaint details for regular parts
+    navigation.navigate('QRCodeDetails', { complaint: product, status: "complaint" });
   };
 
   // If offline, show NoInternet screen
   if (!isConnected) {
     return (
-      <View className="flex-1 bg-white" style={{paddingTop:insets.top}}>
+      <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
         <Header
           title="Scan QR Code"
           titlePosition="left"
@@ -235,15 +294,9 @@ const Scan = () => {
     );
   }
 
-  const handleProductPress = (product) => {
-    if (product.type === "Yes") {
-      navigation.navigate('ProductDetails', { product: product });
-    }
-  };
-
   // Main UI when online
   return (
-    <View className="flex-1 bg-white" style={{paddingTop:insets.top}}>
+    <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
       <View className="absolute inset-0 z-50 pointer-events-none">
         <Toaster />
       </View>
@@ -317,9 +370,14 @@ const Scan = () => {
           <Pressable
             onPress={() => handleProductPress(searchedProduct)}
             className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-            <Text className="text-lg font-bold text-gray-900 mb-3">Item Found</Text>
+            <View className='flex-row items-center justify-between'>
+              <Text className="text-lg font-bold text-gray-900 ">Item Found</Text>
+              <View className={`  px-4 py-0.5 rounded-full ${searchedProduct.type === "amc_blank_qr" ? 'bg-green-200' : 'bg-red-200'}`}>
+                <Text className={`${searchedProduct.type === "amc_blank_qr" ? 'text-green-700' : 'text-red-700'}`}>{searchedProduct.type === "amc_blank_qr" ? 'Fresh' : 'Used'}</Text>
+              </View>
+            </View>
 
-            {/* Check if type is "Yes" and show warning message */}
+            {/* Warning for type "Yes" (part already in use) */}
             {searchedProduct.type === "Yes" && (
               <View className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <View className="flex-row items-center mb-2">
@@ -329,7 +387,7 @@ const Scan = () => {
                   </Text>
                 </View>
                 <Text className="text-yellow-700 text-sm">
-                  This part is currently being used in Complaint #{searchedProduct.complaintId}
+                  This part is currently being used in CSN #{searchedProduct.csn}
                 </Text>
                 {searchedProduct.technicianName && (
                   <Text className="text-yellow-700 text-sm mt-1">
@@ -364,27 +422,46 @@ const Scan = () => {
                 )}
               </View>
 
+              {/* Conditional details based on type */}
               <View className="flex-1 ml-4">
-                <Text className="text-base font-semibold text-gray-900">
-                  {searchedProduct.name}
-                </Text>
-                <Text className="text-sm text-gray-600 mt-1">
-                  Part #: {searchedProduct.partNumber}
-                </Text>
-                <Text className="text-lg font-bold text-primary-sage600 mt-1">
-                  ₹{parseFloat(searchedProduct.price).toFixed(2)}
-                </Text>
-                {searchedProduct.description && (
-                  <Text className="text-sm text-gray-600 mt-2">
-                    {searchedProduct.description}
-                  </Text>
-                )}
-                {searchedProduct.transferBy && (
-                  <View className="mt-2 pt-2 border-t border-gray-100">
-                    <Text className="text-xs text-gray-500">
-                      Transfer By: {searchedProduct.transferBy}
+                {searchedProduct.type === 'amc_blank_qr' ? (
+                  // ---- Blank QR display ----
+                  <>
+                    <Text className="text-base font-semibold text-gray-900">
+                      QR Code: {searchedProduct.partNumber}
                     </Text>
-                  </View>
+
+                    {searchedProduct.description && (
+                      <Text className="text-sm text-gray-500 mt-2">
+                        {searchedProduct.description}
+                      </Text>
+                    )}
+                  </>
+                ) : (
+                  // ---- Regular part display ----
+                  <>
+                    <Text className="text-base font-semibold text-gray-900">
+                      {searchedProduct.name}
+                    </Text>
+                    <Text className="text-sm text-gray-600 mt-1">
+                      Part #: {searchedProduct.partNumber}
+                    </Text>
+                    <Text className="text-lg font-bold text-primary-sage600 mt-1">
+                      ₹{parseFloat(searchedProduct.price).toFixed(2)}
+                    </Text>
+                    {searchedProduct.description && (
+                      <Text className="text-sm text-gray-600 mt-2">
+                        {searchedProduct.description}
+                      </Text>
+                    )}
+                    {searchedProduct.transferBy && (
+                      <View className="mt-2 pt-2 border-t border-gray-100">
+                        <Text className="text-xs text-gray-500">
+                          Transfer By: {searchedProduct.transferBy}
+                        </Text>
+                      </View>
+                    )}
+                  </>
                 )}
               </View>
             </View>
@@ -509,4 +586,4 @@ const Scan = () => {
 
 export default Scan;
 
-const styles = StyleSheet.create({}); 
+const styles = StyleSheet.create({});

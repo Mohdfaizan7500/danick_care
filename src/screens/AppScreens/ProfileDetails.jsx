@@ -16,21 +16,16 @@ import {
   Truck,
   BadgeCheck,
   CircleDot,
-  LogOut,
-  Settings,
-  Share2,
   Star,
   ServerIcon,
-  IdCard,
   FileQuestion,
   Eye,
   EyeOff,
-  Download,
-  UserCircle,
   FileIcon,
   EyeIcon,
-  CrossIcon,
-  X
+  X,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
@@ -48,6 +43,9 @@ const ProfileDetails = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState('');
   const [modalDocTitle, setModalDocTitle] = useState('');
+
+  // State for expanding/collapsing documents section
+  const [documentsExpanded, setDocumentsExpanded] = useState(false);
 
   const id = user?.id || 'N/A';
   console.log("user :", user, id);
@@ -99,72 +97,6 @@ const ProfileDetails = () => {
       <Icon size={22} color="#000" />
       <Text className="text-lg font-bold text-gray-800 ml-2">{title}</Text>
     </View>
-  );
-
-  const StatCard = ({ label, value, icon: Icon, color }) => (
-    <View className="bg-white rounded-xl p-4 shadow-sm mx-1" style={{ flex: 1 }}>
-      <View className={`w-10 h-10 rounded-full ${color} items-center justify-center mb-2`}>
-        <Icon size={20} color="white" />
-      </View>
-      <Text className="text-gray-500 text-xs">{label}</Text>
-      <Text className="text-gray-800 font-bold text-lg">{value}</Text>
-    </View>
-  );
-
-  const DocumentItem = ({ title, fileName, icon: Icon, bgColor, iconColor, isImage = true, isLast = false, onToggleVisibility, showValue, isAadhar = false, docImageError, setDocImageError }) => (
-    <TouchableOpacity
-      className={`flex-row items-start py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}
-      onPress={onToggleVisibility}
-    >
-      <View className={`w-10 h-10 ${bgColor} rounded-lg items-center justify-center mr-3`}>
-        <Icon size={20} color={iconColor} />
-      </View>
-      <View className="flex-1">
-        <Text className="text-gray-600 font-medium">{title}</Text>
-        {fileName ? (
-          <>
-            {isAadhar ? (
-              <View className="flex-row items-center justify-between mt-1">
-                <Text className="text-gray-800 font-semibold">
-                  {showValue ? fileName : 'XXXX XXXX XXXX'}
-                </Text>
-                <TouchableOpacity onPress={onToggleVisibility} className="ml-2">
-                  {showValue ? <EyeOff size={16} color="#6b7280" /> : <Eye size={16} color="#6b7280" />}
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                <Text className="text-gray-400 text-xs mt-1" numberOfLines={1}>
-                  {fileName}
-                </Text>
-                {isImage && (
-                  <>
-                    {docImageError ? (
-                      <View className="w-full h-32 rounded-lg mt-2 bg-gray-100 items-center justify-center">
-                        <FileQuestion size={48} color="#9ca3af" />
-                        <Text className="text-gray-400 text-xs mt-2">Image not available</Text>
-                      </View>
-                    ) : (
-                      <Image
-                        source={{ uri: `${imagUrl}${fileName}` }}
-                        className="w-full h-32 rounded-lg mt-2"
-                        resizeMode="cover"
-                        onError={() => setDocImageError && setDocImageError(true)}
-                      />
-                    )}
-                  </>
-                )}
-              </>
-            )}
-          </>
-        ) : (
-          <View className="flex-col items-center justify-center wifull h-32 mt-2">
-            <FileIcon size={56} color="#9ca3af" />
-            <Text className="text-gray-400 text-xs mt-3">Not uploaded yet</Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
   );
 
   // Enhanced Document2 component with availability text, modal handling and alert
@@ -248,24 +180,6 @@ const ProfileDetails = () => {
       </SafeAreaView>
     );
   }
-
-  // Format Aadhar number for display
-  const formatAadharForDisplay = (aadhar) => {
-    if (!aadhar) return null;
-    const str = aadhar.toString();
-    if (str.length === 12) {
-      return `${str.slice(0, 4)} ${str.slice(4, 8)} ${str.slice(8, 12)}`;
-    }
-    return aadhar;
-  };
-
-  // Get initials for profile icon
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    const names = name.split(' ');
-    if (names.length === 1) return names[0].charAt(0).toUpperCase();
-    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
-  };
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
@@ -374,59 +288,94 @@ const ProfileDetails = () => {
           />
         </View>
 
-        {/* Documents Section */}
+        {/* Documents Section - Collapsible */}
         <View className="bg-white rounded-2xl mx-4 mt-4 p-5 shadow-sm mb-6">
-          <SectionHeader icon={FileText} title="Documents" />
-          <Document2
-            title="Aadhar Card"
-            isAvailable={!!profileData.aadhar}
-            fileUrl={profileData.aadhar ? `${imagUrl}${profileData.aadhar}` : null}
-            onPressIcon={(url, docTitle) => {
-              setModalImageUrl(url);
-              setModalDocTitle(docTitle);
-              setModalVisible(true);
-            }}
-          />
-          <Document2
-            title="Driving License"
-            isAvailable={!!profileData.dl}
-            fileUrl={profileData.dl ? `${imagUrl}${profileData.dl}` : null}
-            onPressIcon={(url, docTitle) => {
-              setModalImageUrl(url);
-              setModalDocTitle(docTitle);
-              setModalVisible(true);
-            }}
-          />
-          <Document2
-            title="Cheque Copy"
-            isAvailable={!!profileData.cheque}
-            fileUrl={profileData.cheque ? `${imagUrl}${profileData.cheque}` : null}
-            onPressIcon={(url, docTitle) => {
-              setModalImageUrl(url);
-              setModalDocTitle(docTitle);
-              setModalVisible(true);
-            }}
-          />
-          <Document2
-            title="Stamp Copy"
-            isAvailable={!!profileData.stamp}
-            fileUrl={profileData.stamp ? `${imagUrl}${profileData.stamp}` : null}
-            onPressIcon={(url, docTitle) => {
-              setModalImageUrl(url);
-              setModalDocTitle(docTitle);
-              setModalVisible(true);
-            }}
-          />
-           <Document2
-            title="Resume"
-            isAvailable={!!profileData.resume}
-            fileUrl={profileData.stamp ? `${imagUrl}${profileData.resume}` : null}
-            onPressIcon={(url, docTitle) => {
-              setModalImageUrl(url);
-              setModalDocTitle(docTitle);
-              setModalVisible(true);
-            }}
-          />
+          {/* Header with title and chevron icon */}
+          <TouchableOpacity 
+            onPress={() => setDocumentsExpanded(!documentsExpanded)}
+            className="flex-row items-center justify-between mb-3"
+            activeOpacity={0.7}
+          >
+            <View className="flex-row items-center">
+              <FileText size={22} color="#000" />
+              <Text className="text-lg font-bold text-gray-800 ml-2">Documents</Text>
+            </View>
+            {documentsExpanded ? (
+              <ChevronUp size={24} color="#000" />
+            ) : (
+              <ChevronDown size={24} color="#000" />
+            )}
+          </TouchableOpacity>
+
+          {/* When collapsed: show only Aadhar Card */}
+          {!documentsExpanded && (
+            <Document2
+              title="Aadhar Card"
+              isAvailable={!!profileData.aadhar}
+              fileUrl={profileData.aadhar ? `${imagUrl}${profileData.aadhar}` : null}
+              onPressIcon={(url, docTitle) => {
+                setModalImageUrl(url);
+                setModalDocTitle(docTitle);
+                setModalVisible(true);
+              }}
+            />
+          )}
+
+          {/* When expanded: show all documents */}
+          {documentsExpanded && (
+            <>
+              <Document2
+                title="Aadhar Card"
+                isAvailable={!!profileData.aadhar}
+                fileUrl={profileData.aadhar ? `${imagUrl}${profileData.aadhar}` : null}
+                onPressIcon={(url, docTitle) => {
+                  setModalImageUrl(url);
+                  setModalDocTitle(docTitle);
+                  setModalVisible(true);
+                }}
+              />
+              <Document2
+                title="Driving License"
+                isAvailable={!!profileData.dl}
+                fileUrl={profileData.dl ? `${imagUrl}${profileData.dl}` : null}
+                onPressIcon={(url, docTitle) => {
+                  setModalImageUrl(url);
+                  setModalDocTitle(docTitle);
+                  setModalVisible(true);
+                }}
+              />
+              <Document2
+                title="Cheque Copy"
+                isAvailable={!!profileData.cheque}
+                fileUrl={profileData.cheque ? `${imagUrl}${profileData.cheque}` : null}
+                onPressIcon={(url, docTitle) => {
+                  setModalImageUrl(url);
+                  setModalDocTitle(docTitle);
+                  setModalVisible(true);
+                }}
+              />
+              <Document2
+                title="Stamp Copy"
+                isAvailable={!!profileData.stamp}
+                fileUrl={profileData.stamp ? `${imagUrl}${profileData.stamp}` : null}
+                onPressIcon={(url, docTitle) => {
+                  setModalImageUrl(url);
+                  setModalDocTitle(docTitle);
+                  setModalVisible(true);
+                }}
+              />
+              <Document2
+                title="Resume"
+                isAvailable={!!profileData.resume}
+                fileUrl={profileData.resume ? `${imagUrl}${profileData.resume}` : null}
+                onPressIcon={(url, docTitle) => {
+                  setModalImageUrl(url);
+                  setModalDocTitle(docTitle);
+                  setModalVisible(true);
+                }}
+              />
+            </>
+          )}
         </View>
       </ScrollView>
 
