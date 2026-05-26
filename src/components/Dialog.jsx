@@ -19,7 +19,7 @@ const Dialog = ({
   iconName,
   iconColor,
   iconSize = 40,
-  confirmText = 'Confirm',
+  confirmText = 'ok',
   cancelText = 'Cancel',
   onConfirm,
   onCancel,

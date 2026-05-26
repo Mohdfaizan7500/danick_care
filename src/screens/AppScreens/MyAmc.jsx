@@ -7,6 +7,7 @@ import { TechnicianAMC } from '../../lib/api'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useNavigation } from '@react-navigation/native'
+import { UserIcon } from '../../assets/svgIcons/SVGIcons' // adjust path if needed
 
 const { width, height } = Dimensions.get('window')
 
@@ -172,18 +173,16 @@ const MyAmc = () => {
                         </View>
                     </View>
 
-                    {/* Customer Info */}
+                    {/* Customer Info - MASKED name and phone */}
                     <View className="flex-row items-center mb-3 pb-3 border-b border-gray-100">
                         <View className="w-12 h-12 rounded-full bg-teal-600 justify-center items-center mr-3">
-                            <Text className="text-xl font-bold text-white">
-                                {(item.customer_name || 'U')[0].toUpperCase()}
-                            </Text>
+                            <UserIcon width={30} height={30} stroke={'#fff'} /> 
                         </View>
                         <View className="flex-1">
-                            <Text className="text-base font-semibold text-gray-800 mb-1">{item.customer_name || 'N/A'}</Text>
+                            <Text className="text-base font-semibold text-gray-800 mb-1">********</Text>
                             <View className="flex-row items-center gap-1">
                                 <Icon name="phone" size={14} color="#9CA3AF" />
-                                <Text className="text-xs text-gray-500">{item.customer_mobile || 'N/A'}</Text>
+                                <Text className="text-xs text-gray-500">********</Text>
                             </View>
                         </View>
                     </View>
@@ -351,7 +350,6 @@ const MyAmc = () => {
                     keyExtractor={(item, index) => `${item.id}-${index}`}
                     contentContainerStyle={{ paddingBottom: 20 }}
                     showsVerticalScrollIndicator={false}
-
                     ListEmptyComponent={EmptyComponent}
                     ListFooterComponent={renderFooter}
                     onEndReached={loadMore}
@@ -369,7 +367,6 @@ const MyAmc = () => {
                 />
             </View>
 
-            {/* Image Modal */}
             <Modal
                 animationType="fade"
                 transparent={true}
@@ -394,8 +391,6 @@ const MyAmc = () => {
                     )}
                 </View>
             </Modal>
-
-
         </SafeAreaView>
     )
 }

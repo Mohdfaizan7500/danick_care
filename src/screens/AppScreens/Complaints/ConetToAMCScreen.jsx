@@ -114,8 +114,8 @@ const ConetToAMCScreen = () => {
             setIsAMCLocked(false);
             setAmcComplaintId(null);
             await checkAMCStatus();
-            ToastAndroid.show("Refreshed",ToastAndroid.SHORT);
-            
+            ToastAndroid.show("Refreshed", ToastAndroid.SHORT);
+
         } catch (error) {
             toast.custom(
                 <StatusMessage type="error" title="Refresh Failed" description={error.message} className="mx-4 mb-6" />,
@@ -134,6 +134,7 @@ const ConetToAMCScreen = () => {
     );
 
     const handleTryTotoggle = () => {
+        
         toast.custom(
             <StatusMessage
                 type="error"

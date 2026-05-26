@@ -217,7 +217,7 @@ const BucketNavigation = () => {
 
   return (
     <SafeAreaView className='bg-white flex-1' edges={['top']}>
-      <Header title={'Bucket '} />
+      <Header title={'Bucket'} />
       <View className='flex-1 bg-gray-50'>
         <Tab.Navigator
           initialRouteName={initialTab || 'AllBucket'}
