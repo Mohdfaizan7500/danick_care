@@ -321,28 +321,28 @@ const Home = () => {
     setCheckingConnection(false);
   };
 
-  useEffect(() => {
-    const initPermissions = async () => {
-      let locationPermissionStatus = await checkLocationPermission();
-      if (locationPermissionStatus === RESULTS.DENIED) {
-        const requestStatus = await requestLocationPermission();
-        if (requestStatus === RESULTS.GRANTED) getCurrentLocation();
-      } else if (locationPermissionStatus === RESULTS.GRANTED) {
-        getCurrentLocation();
-      } else if (locationPermissionStatus === RESULTS.BLOCKED) {
-        Alert.alert(
-          'Permission Required',
-          'Please enable location permission from settings',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => openSettings() },
-          ]
-        );
-      }
-      await initStoragePermission();
-    };
-    initPermissions();
-  }, []);
+  // useEffect(() => {
+  //   const initPermissions = async () => {
+  //     let locationPermissionStatus = await checkLocationPermission();
+  //     if (locationPermissionStatus === RESULTS.DENIED) {
+  //       const requestStatus = await requestLocationPermission();
+  //       if (requestStatus === RESULTS.GRANTED) getCurrentLocation();
+  //     } else if (locationPermissionStatus === RESULTS.GRANTED) {
+  //       getCurrentLocation();
+  //     } else if (locationPermissionStatus === RESULTS.BLOCKED) {
+  //       Alert.alert(
+  //         'Permission Required',
+  //         'Please enable location permission from settings',
+  //         [
+  //           { text: 'Cancel', style: 'cancel' },
+  //           { text: 'Open Settings', onPress: () => openSettings() },
+  //         ]
+  //       );
+  //     }
+  //     await initStoragePermission();
+  //   };
+  //   initPermissions();
+  // }, []);
 
   useEffect(() => {
     if (user?.id && isInitialLoad) {
