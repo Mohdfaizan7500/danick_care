@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, RefreshControl, ActivityIndicator } from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, RefreshControl, ActivityIndicator, Alert } from 'react-native'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
@@ -159,35 +159,12 @@ const AllNotification = ({ route }) => {
 
     // Reset all routes and navigate to the target screen
     if (notificationStatus === 'pending') {
-      // Navigate to Home screen and reset all routes
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [
-            {
-              name: 'BottomTabs',
-              params: {
-                screen: "Orders"
-              }
-            }
-          ],
-        })
-      );
+
+      navigation.navigate('Orders');;
+      // Alert.alert("guyguy")
     } else {
-      // Navigate to Profile screen and reset all routes
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [
-            {
-              name: 'ComplaintsTopNavigation',
-              params: {
-                status: "Assign"
-              }
-            }
-          ],
-        })
-      );
+     
+      navigation.navigate('ComplaintsTopNavigation', { status: "Assign" });;
     }
   };
 

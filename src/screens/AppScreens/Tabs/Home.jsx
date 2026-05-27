@@ -82,7 +82,7 @@ const Home = () => {
   };
 
   const userProfile = {
-    name: profileData?.technician_name || 'John Doe',
+    name: profileData?.technician_name || 'User Name',
     profileImage: profileData?.profile_photo,
     isActive: profileData?.login_status !== 'Online',
     notificationCount: 3,

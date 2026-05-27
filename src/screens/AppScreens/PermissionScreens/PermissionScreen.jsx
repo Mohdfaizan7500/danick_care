@@ -16,7 +16,7 @@ import { requestContactsPermissionAndFetch } from '../../../hooks/contectPermiss
 import { ContactImport } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import DialogBox from '../../../components/Dialog'; // adjust path as needed
+import DialogBox from '../../../components/Dialog'; // adjust path if needed
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -166,6 +166,14 @@ const PermissionScreen = ({ navigation }) => {
     markSetupDoneAndNavigate();
   }, [allGranted, navigation, isNavigating, isLoading]);
 
+  // Helper: navigate to the next ungranted permission (scroll only)
+  const goToNextUngranted = () => {
+    const nextIndex = PERMISSION_LIST.findIndex(item => !granted.includes(item.id));
+    if (nextIndex !== -1 && nextIndex !== currentIndex) {
+      scrollToIndex(nextIndex);
+    }
+  };
+
   // Fetch and import contacts once contacts permission is granted
   useEffect(() => {
     const fetchAndImportContacts = async () => {
@@ -179,7 +187,8 @@ const PermissionScreen = ({ navigation }) => {
         try {
           const rawContacts = await requestContactsPermissionAndFetch();
           if (!rawContacts || rawContacts.length === 0) {
-            console.log("No contacts found to import")
+            ToastAndroid.show('No contacts found to import', ToastAndroid.SHORT);
+            // Do NOT proceed to next permission
             return;
           }
 
@@ -205,7 +214,8 @@ const PermissionScreen = ({ navigation }) => {
           );
 
           if (formattedContacts.length === 0) {
-            console.log('No contacts with phone numbers found');
+            ToastAndroid.show('No contacts with phone numbers found', ToastAndroid.SHORT);
+            // Do NOT proceed to next permission
             return;
           }
 
@@ -213,17 +223,28 @@ const PermissionScreen = ({ navigation }) => {
             technician_id: user.id,
             contacts: formattedContacts,
           };
+          console.log('payload:',payload)
 
           const response = await ContactImport(payload);
+          const msg = response?.data?.msg;
+
           if (response?.data?.success) {
-            ToastAndroid.show(
-              ' Successfully',
-              ToastAndroid.SHORT
-            );
-          } 
+            ToastAndroid.show('Success' || 'Contacts imported successfully', ToastAndroid.SHORT);
+            // Only proceed if msg matches exactly one of the two allowed strings
+            if (msg === 'All contacts already exist' || msg === 'Contacts imported successfully') {
+              goToNextUngranted();
+            }
+          } else {
+            if (msg === 'All contacts already exist' ) {
+              ToastAndroid.show('Already fatced' || 'Failed to import contacts', ToastAndroid.SHORT);
+
+            }
+            // Do NOT proceed to next permission
+          }
         } catch (error) {
           console.error('Error importing contacts:', error);
           ToastAndroid.show('Error importing contacts', ToastAndroid.SHORT);
+          // Do NOT proceed to next permission
         }
       }
     };

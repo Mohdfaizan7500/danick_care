@@ -1,6 +1,6 @@
 // src/navigation/AppStack/AppStack.js
 import React, { useEffect } from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -45,7 +45,7 @@ import { BucketProvider } from '../../context/BucketContext';
 import ConetToAMCScreen from '../../screens/AppScreens/Complaints/ConetToAMCScreen';
 import Contects from '../../screens/AppScreens/Contects';
 import PermissionScreen from '../../screens/AppScreens/PermissionScreens/PermissionScreen';
-
+import Orders from '../../screens/AppScreens/Tabs/Orders';
 const Stack = createNativeStackNavigator();
 
 // 🟢 Custom loading screen with your AppIcon
@@ -70,11 +70,12 @@ const LoadingScreen = ({ navigation }) => {
 
   return (
     <View style={styles.loadingContainer}>
-      <Image
+      {/* <Image
         source={require('../../assets/images/AppIcon.png')}
         style={{ width: 100, height: 100 }}
         resizeMode="contain"
-      />
+      /> */}
+      <ActivityIndicator className='blue' size={'large'}/>
     </View>
   );
 };
@@ -128,6 +129,7 @@ const AppStack = () => {
               <Stack.Screen name="ConetToAMCScreen" component={ConetToAMCScreen} />
               <Stack.Screen name="CompleteAMCDetails" component={CompleteAMCDetails} />
               <Stack.Screen name="ProfileDetails" component={ProfileDetails} />
+              <Stack.Screen name="Orders" component={Orders} />
               <Stack.Screen name="NotificationTopNavigation" component={NotificationTopNavigation} />
             </Stack.Navigator>
           </OrderProvider>

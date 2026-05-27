@@ -15,6 +15,7 @@ export const requestContactsPermissionAndFetch = async () => {
       granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.READ_CONTACTS,
         {
+
           title: 'Contacts Permission',
           message: 'This app needs access to your contacts to suggest service providers.',
           buttonNeutral: 'Ask Me Later',
