@@ -44,6 +44,8 @@ import { Platform } from 'react-native';
 import { openSettings } from 'react-native-permissions';
 import { getFCMToken } from '../../../service/getToken';
 import Toast from 'react-native-toast-message';
+import { requestContactsPermissionAndFetch } from '../../../hooks/contectPermission';
+
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -68,6 +70,19 @@ const Home = () => {
     const baseUrl = imagUrl?.endsWith('/') ? imagUrl : `${imagUrl}/`;
     return `${baseUrl}${cleanImagePath}`;
   };
+
+  const handleFetchContacts = async () => {
+    const contactsList = await requestContactsPermissionAndFetch();
+    console.log('contactsList:',contactsList)
+
+    Alert.alert('Success', `Fetched ${contactsList.length} contacts`);
+  };
+
+  useEffect(()=>{
+    handleFetchContacts();
+
+  },[])
+
 
   const getProfileImageSource = () => {
     if (profileData?.profile_photo) {
@@ -257,8 +272,8 @@ const Home = () => {
       await Promise.all([fetchProfile(), fetchDashboardCount()]);
       if (showToast) {
 
-        ToastAndroid.show("Refreshed",ToastAndroid.SHORT);
-       
+        ToastAndroid.show("Refreshed", ToastAndroid.SHORT);
+
       }
     } catch (error) {
       if (showToast) {
@@ -277,7 +292,7 @@ const Home = () => {
   useFocusEffect(
     useCallback(() => {
       refreshAllData(false);
-      return () => {};
+      return () => { };
     }, [refreshAllData])
   );
 
