@@ -1,5 +1,10 @@
 // src/navigation/AppStack/AppStack.js
+import React, { useEffect } from 'react';
+import { View, Image, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+// Import screens (same as before)
 import BottomTabs from '../../screens/AppScreens/Tabs/BottamTabs';
 import SparePartScreen from '../../screens/AppScreens/SparePartScreen';
 import PartDetails from '../../screens/AppScreens/PartDetails';
@@ -39,7 +44,40 @@ import BucketNavigation from '../BucketNavigation/BucketNavigation';
 import { BucketProvider } from '../../context/BucketContext';
 import ConetToAMCScreen from '../../screens/AppScreens/Complaints/ConetToAMCScreen';
 import Contects from '../../screens/AppScreens/Contects';
+import PermissionScreen from '../../screens/AppScreens/PermissionScreens/PermissionScreen';
+
 const Stack = createNativeStackNavigator();
+
+// 🟢 Custom loading screen with your AppIcon
+const LoadingScreen = ({ navigation }) => {
+  useEffect(() => {
+    const checkSetupDone = async () => {
+      try {
+        const SETUP_DONE_KEY = '@app_setup_done';
+        const setupDone = await AsyncStorage.getItem(SETUP_DONE_KEY);
+        if (setupDone === 'true') {
+          navigation.replace('BottomTabs');
+        } else {
+          navigation.replace('PermissionScreen');
+        }
+      } catch (error) {
+        console.error('Failed to check setup flag:', error);
+        navigation.replace('PermissionScreen');
+      }
+    };
+    checkSetupDone();
+  }, [navigation]);
+
+  return (
+    <View style={styles.loadingContainer}>
+      <Image
+        source={require('../../assets/images/AppIcon.png')}
+        style={{ width: 100, height: 100 }}
+        resizeMode="contain"
+      />
+    </View>
+  );
+};
 
 const AppStack = () => {
   return (
@@ -48,19 +86,20 @@ const AppStack = () => {
         <NotificationProvider>
           <OrderProvider>
             <Stack.Navigator
-              initialRouteName="BottomTabs"
+              initialRouteName="LoadingScreen"
               screenOptions={{
                 headerShown: false,
-                animation:'slide_from_right'
+                animation: 'slide_from_right',
               }}>
+              <Stack.Screen name="LoadingScreen" component={LoadingScreen} />
+              <Stack.Screen name="PermissionScreen" component={PermissionScreen} />
               <Stack.Screen name="BottomTabs" component={BottomTabs} />
+
+              {/* All other screens (unchanged) */}
               <Stack.Screen name="SparePartScreen" component={SparePartScreen} />
               <Stack.Screen name="PartDetails" component={PartDetails} />
               <Stack.Screen name="Complaints" component={Complaints} />
-              <Stack.Screen
-                name="ComplaintsTopNavigation"
-                component={ComplaintsTopNavigation}
-              />
+              <Stack.Screen name="ComplaintsTopNavigation" component={ComplaintsTopNavigation} />
               <Stack.Screen name="BucketNavigation" component={BucketNavigation} />
               <Stack.Screen name="BuckePartDetails" component={BuckePartDetails} />
               <Stack.Screen name="AMC" component={AMC} />
@@ -80,26 +119,16 @@ const AppStack = () => {
               <Stack.Screen name="QRCodeNavigation" component={QRCodeNavigation} />
               <Stack.Screen name="QRCodeDetails" component={QRCodeDetails} />
               <Stack.Screen name="AMCList" component={AMCList} />
-              <Stack.Screen
-                name="ComplaintAMCDetails"
-                component={ComplaintAMCDetails}
-              />
+              <Stack.Screen name="ComplaintAMCDetails" component={ComplaintAMCDetails} />
               <Stack.Screen name="AMCBilling" component={AMCBilling} />
               <Stack.Screen name="Contects" component={Contects} />
               <Stack.Screen name="Parts" component={Parts} />
               <Stack.Screen name="Services" component={Services} />
               <Stack.Screen name="MyAmc" component={MyAmc} />
               <Stack.Screen name="ConetToAMCScreen" component={ConetToAMCScreen} />
-
-              <Stack.Screen
-                name="CompleteAMCDetails"
-                component={CompleteAMCDetails}
-              />
+              <Stack.Screen name="CompleteAMCDetails" component={CompleteAMCDetails} />
               <Stack.Screen name="ProfileDetails" component={ProfileDetails} />
-              <Stack.Screen
-                name="NotificationTopNavigation"
-                component={NotificationTopNavigation}
-              />
+              <Stack.Screen name="NotificationTopNavigation" component={NotificationTopNavigation} />
             </Stack.Navigator>
           </OrderProvider>
         </NotificationProvider>
@@ -107,5 +136,14 @@ const AppStack = () => {
     </DashboardProvider>
   );
 };
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+});
 
 export default AppStack;

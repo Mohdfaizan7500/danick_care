@@ -140,8 +140,8 @@ const Login = ({ navigation }) => {
     };
 
     const fillDemoAccount = () => {
-        setEmail('46757');
-        setPassword('123');
+        setEmail('25863');
+        setPassword('0000');
         toast.custom(
             <StatusMessage
                 type='info'
@@ -306,8 +306,8 @@ const Login = ({ navigation }) => {
                         disabled={isLoading}
                     >
                         <Text className="font-bold text-sm text-gray-800 mb-2">Demo Account (Click to fill)</Text>
-                        <Text className="font-normal text-xs text-gray-500">Username: 46757</Text>
-                        <Text className="font-normal text-xs text-gray-500">Password: 123</Text>
+                        <Text className="font-normal text-xs text-gray-500">Username: 25863</Text>
+                        <Text className="font-normal text-xs text-gray-500">Password: 0000</Text>
                     </TouchableOpacity> */}
                 </View>
 

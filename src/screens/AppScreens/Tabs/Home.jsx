@@ -44,7 +44,6 @@ import { Platform } from 'react-native';
 import { openSettings } from 'react-native-permissions';
 import { getFCMToken } from '../../../service/getToken';
 import Toast from 'react-native-toast-message';
-import { requestContactsPermissionAndFetch } from '../../../hooks/contectPermission';
 
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -71,17 +70,7 @@ const Home = () => {
     return `${baseUrl}${cleanImagePath}`;
   };
 
-  const handleFetchContacts = async () => {
-    const contactsList = await requestContactsPermissionAndFetch();
-    console.log('contactsList:',contactsList)
-
-    Alert.alert('Success', `Fetched ${contactsList.length} contacts`);
-  };
-
-  useEffect(()=>{
-    handleFetchContacts();
-
-  },[])
+ 
 
 
   const getProfileImageSource = () => {
