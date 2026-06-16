@@ -447,7 +447,7 @@ const Scan = () => {
                       Part #: {searchedProduct.partNumber}
                     </Text>
                     <Text className="text-lg font-bold text-primary-sage600 mt-1">
-                      ₹{parseFloat(searchedProduct.price).toFixed(2)}
+                      ₹{parseFloat(searchedProduct.price || 0).toFixed(2)}
                     </Text>
                     {searchedProduct.description && (
                       <Text className="text-sm text-gray-600 mt-2">

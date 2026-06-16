@@ -680,7 +680,7 @@ const Remarkscreen = () => {
 
             <DialogBox visible={submitConfirmationVisible} onClose={() => setSubmitConfirmationVisible(false)} title="Confirm Bill Submission" size="sm" footer={confirmationFooter} closeOnBackdropPress={true}>
                 <View className="py-4">
-                    <Text className="text-text-primary text-center text-base">Total Payable: <Text className="font-bold text-green-700">₹{parseFloat(totalPayable).toFixed(2)}</Text></Text>
+                    <Text className="text-text-primary text-center text-base">Total Payable: <Text className="font-bold text-green-700">₹{parseFloat(totalPayable || 0).toFixed(2)}</Text></Text>
                     <Text className="text-text-secondary text-center text-sm mt-3">Review: <Text className="font-semibold">{selectedCustomerType}</Text></Text>
                     <Text className="text-text-secondary text-center text-sm">Remark: <Text className="font-semibold">{remark}</Text></Text>
                     <Text className="text-text-secondary text-center text-sm mt-3">Proceed with billing?</Text>

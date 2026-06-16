@@ -44,7 +44,8 @@ import { Platform } from 'react-native';
 import { openSettings } from 'react-native-permissions';
 import { getFCMToken } from '../../../service/getToken';
 import Toast from 'react-native-toast-message';
-
+// Import the notification refresh emitter
+import { notificationRefreshEmitter } from '../../../navigation/NotificationHandler';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -55,6 +56,7 @@ const Home = () => {
   const [count, setCount] = useState(null);
   const [checkingConnection, setCheckingConnection] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isRefreshingFromNotification, setIsRefreshingFromNotification] = useState(false);
 
   const navigation = useNavigation();
   const { IsOnline, user, imagUrl, profileData, updateProfileData, setIsOnline } = useAuth();
@@ -69,9 +71,6 @@ const Home = () => {
     const baseUrl = imagUrl?.endsWith('/') ? imagUrl : `${imagUrl}/`;
     return `${baseUrl}${cleanImagePath}`;
   };
-
- 
-
 
   const getProfileImageSource = () => {
     if (profileData?.profile_photo) {
@@ -255,14 +254,17 @@ const Home = () => {
     }
   };
 
-  const refreshAllData = useCallback(async (showToast = false) => {
+  const refreshAllData = useCallback(async (showToast = false, isFromNotification = false) => {
     if (!user?.id) return;
     try {
+      if (isFromNotification) {
+        setIsRefreshingFromNotification(true);
+      }
+      
       await Promise.all([fetchProfile(), fetchDashboardCount()]);
+      
       if (showToast) {
-
         ToastAndroid.show("Refreshed", ToastAndroid.SHORT);
-
       }
     } catch (error) {
       if (showToast) {
@@ -275,8 +277,28 @@ const Home = () => {
           topOffset: 30,
         });
       }
+    } finally {
+      if (isFromNotification) {
+        setIsRefreshingFromNotification(false);
+      }
     }
   }, [user?.id]);
+
+  // Add notification listener for refresh
+  useEffect(() => {
+    const refreshListener = () => {
+      console.log('🔄 Notification received, refreshing Home data...');
+      refreshAllData(true, true);
+    };
+
+    // Subscribe to refresh events
+    notificationRefreshEmitter.on('refresh', refreshListener);
+
+    // Cleanup listener on unmount
+    return () => {
+      notificationRefreshEmitter.off('refresh', refreshListener);
+    };
+  }, [refreshAllData]);
 
   useFocusEffect(
     useCallback(() => {
@@ -526,6 +548,17 @@ const Home = () => {
         style={{ flex: 1 }}
       >
         <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
+        
+        {/* Show a small indicator when refreshing from notification */}
+        {isRefreshingFromNotification && (
+          <View className="bg-blue-50 border border-blue-200 rounded-lg p-2 mx-4 mt-2">
+            <View className="flex-row items-center justify-center">
+              <ActivityIndicator size="small" color="#3B82F6" />
+              <Text className="text-blue-600 text-center text-sm ml-2">Updating...</Text>
+            </View>
+          </View>
+        )}
+
         <View
           className="w-full bg-transparent flex-row items-center justify-between px-4"
           style={{ paddingTop: insets.top + 4, paddingBottom: 4 }}

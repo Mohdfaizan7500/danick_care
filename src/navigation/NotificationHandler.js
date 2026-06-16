@@ -10,6 +10,47 @@ import { navigate } from './RootNavigation';
 // Sound file name (without extension for Android? Android uses full filename including extension)
 const STATUS_SOUND = 'status_sound.mp3'; // change to your actual sound file name
 
+// Simple Event Emitter implementation for React Native
+class SimpleEventEmitter {
+  constructor() {
+    this.listeners = {};
+  }
+
+  on(event, callback) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(callback);
+  }
+
+  off(event, callback) {
+    if (!this.listeners[event]) return;
+    this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+  }
+
+  emit(event, data) {
+    if (!this.listeners[event]) return;
+    this.listeners[event].forEach(callback => {
+      try {
+        callback(data);
+      } catch (error) {
+        console.error('Error in event listener:', error);
+      }
+    });
+  }
+
+  removeAllListeners(event) {
+    if (event) {
+      delete this.listeners[event];
+    } else {
+      this.listeners = {};
+    }
+  }
+}
+
+// Create and export the event emitter instance
+export const notificationRefreshEmitter = new SimpleEventEmitter();
+
 async function createNotificationChannels() {
   if (Platform.OS === 'android') {
     const channels = [
@@ -122,6 +163,9 @@ const NotificationHandler = () => {
             // navigate('OnlineScreen');
           }
 
+          // Emit refresh event for any notification
+          notificationRefreshEmitter.emit('refresh');
+
           await displayNotification(remoteMessage);
         });
 
@@ -146,6 +190,8 @@ const NotificationHandler = () => {
       if (unsubscribeForeground) unsubscribeForeground();
       if (unsubscribeNotifeeEvent) unsubscribeNotifeeEvent();
       isListenerSetup.current = false;
+      // Clean up all listeners when component unmounts
+      notificationRefreshEmitter.removeAllListeners();
     };
   }, [setIsOnline]);
 

@@ -1,4 +1,4 @@
-// ComplaintDetail.js - Complete with timer (persistent), fine warning, back-only camera, and custom header
+// ComplaintDetail.js - Complete with timer (persistent), fine warning, back-only camera, custom header, Reschedule button, and Related Complaints button
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
@@ -20,7 +20,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-// No external Header import – we define our own below
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { sendOTP, verifyOTP, UploadComplaintImage, ReverseComplaint } from '../../../lib/api';
@@ -29,7 +28,7 @@ import Geolocation from '@react-native-community/geolocation';
 import { useDashboard } from '../../../context/DashboardContext';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 
-// --- Custom Header Component (replaces imported Header) ---
+// --- Custom Header Component ---
 const CustomHeader = ({
     title,
     titleStyle = 'text-base font-semibold text-gray-800',
@@ -58,7 +57,6 @@ const CustomHeader = ({
         }
     };
 
-    // Determine title alignment
     const getTitleContainerStyle = () => {
         switch (titlePosition) {
             case 'left': return 'flex-1 items-start ml-2';
@@ -67,13 +65,11 @@ const CustomHeader = ({
         }
     };
 
-    // Left container width (for back button)
     const leftWidth = showBackButton ? 'w-10' : 'w-10';
     const rightWidth = showRightIcon ? 'flex ' : 'w-10';
 
     return (
         <View className={containerStyle}>
-            {/* Left: Back Button */}
             <View className={`${leftWidth} items-start`}>
                 {showBackButton && (
                     <TouchableOpacity onPress={handleBackPress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -81,14 +77,10 @@ const CustomHeader = ({
                     </TouchableOpacity>
                 )}
             </View>
-
-            {/* Center: Title */}
             <View className={getTitleContainerStyle()}>
                 {title && <Text className={titleStyle}>{title}</Text>}
             </View>
-
-            {/* Right: Custom Icon / Component */}
-            <View className={`${rightWidth} items-end  `}>
+            <View className={`${rightWidth} items-end`}>
                 {showRightIcon && customRightIconComponent}
             </View>
         </View>
@@ -243,18 +235,57 @@ const ComplaintDetail = () => {
     // Check if OTP is already verified (verify_otp is "1")
     const isOtpAlreadyVerified = complaint.verify_otp === "1";
 
-    // --- PERSISTENT TIMER LOGIC (runs regardless of OTP verification) ---
+    // --- PERSISTENT TIMER LOGIC - FIXED for "YYYY-MM-DD HH:mm" format ---
     useEffect(() => {
-        if (!isComplete && complaint.date_time) {
-            const [datePart, timePart] = complaint.date_time.split(' ');
-            const [year, month, day] = datePart.split('-');
-            const [hours, minutes, seconds] = timePart.split(':');
-            const complaintDate = new Date(year, month - 1, day, hours, minutes, seconds);
+        // Clear any existing interval first
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+        }
+
+        // Don't run timer if complaint is complete or no date_time
+        if (isComplete || !complaint.date_time) {
+            setTimerRemainingSeconds(0);
+            setTimerExpired(false);
+            return;
+        }
+
+        try {
+            let dateTimeStr = complaint.date_time;
+            console.log('Complaint date_time:', dateTimeStr);
+
+            // Handle "YYYY-MM-DD HH:mm" format (without seconds)
+            if (dateTimeStr.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)) {
+                dateTimeStr = dateTimeStr + ':00';
+                console.log('Added seconds: ', dateTimeStr);
+            }
+
+            // Parse the date string
+            const [datePart, timePart] = dateTimeStr.split(' ');
+            const [year, month, day] = datePart.split('-').map(Number);
+            const [hours, minutes, seconds] = timePart.split(':').map(Number);
+
+            // Create date object (month is 0-indexed in JS)
+            const complaintDate = new Date(year, month - 1, day, hours, minutes, seconds || 0);
+
+            // Validate the date
+            if (isNaN(complaintDate.getTime())) {
+                console.error('Invalid date created from:', dateTimeStr);
+                setTimerRemainingSeconds(0);
+                setTimerExpired(false);
+                return;
+            }
+
+            // Calculate target time (complaint time + TIMER_DURATION_MINUTES minutes)
             const targetDate = new Date(complaintDate.getTime() + TIMER_DURATION_MINUTES * 60 * 1000);
+            console.log('Complaint date:', complaintDate.toLocaleString());
+            console.log('Target date:', targetDate.toLocaleString());
+            console.log('Current time:', new Date().toLocaleString());
 
             const updateTimer = () => {
                 const now = new Date();
-                const diff = targetDate - now;
+                const diff = targetDate.getTime() - now.getTime();
+
                 if (diff <= 0) {
                     setTimerRemainingSeconds(0);
                     setTimerExpired(true);
@@ -264,24 +295,38 @@ const ComplaintDetail = () => {
                     }
                 } else {
                     setTimerRemainingSeconds(Math.floor(diff / 1000));
+                    setTimerExpired(false);
                 }
             };
 
+            // Initial update
             updateTimer();
+
+            // Start interval
             timerIntervalRef.current = setInterval(updateTimer, 1000);
 
+            // Cleanup
             return () => {
-                if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+                if (timerIntervalRef.current) {
+                    clearInterval(timerIntervalRef.current);
+                    timerIntervalRef.current = null;
+                }
             };
-        } else {
-            if (timerIntervalRef.current) {
-                clearInterval(timerIntervalRef.current);
-                timerIntervalRef.current = null;
-            }
+        } catch (error) {
+            console.error('Error setting up timer:', error);
+            setTimerRemainingSeconds(0);
+            setTimerExpired(false);
+            return () => {
+                if (timerIntervalRef.current) {
+                    clearInterval(timerIntervalRef.current);
+                    timerIntervalRef.current = null;
+                }
+            };
         }
     }, [complaint.date_time, isComplete]);
 
     const formatTimer = (seconds) => {
+        if (isNaN(seconds) || seconds < 0) return '00:00';
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -482,6 +527,34 @@ const ComplaintDetail = () => {
         } else {
             toast.custom(<StatusMessage type="error" title="No address available" className="mx-4 mb-6" />, { duration: 3000 });
         }
+    };
+
+    // Handle Reschedule navigation
+    const handleReschedule = () => {
+        if (isComplete) {
+            toast.custom(
+                <StatusMessage type="warning" title="Cannot Reschedule" message="This complaint is already completed." className="mx-4 mb-6" />,
+                { duration: 3000 }
+            );
+            return;
+        }
+
+        // Navigate to Reschedule screen with complaint data
+        navigation.replace('Reschedule', {
+            complaintData: complaintData,
+        });
+    };
+
+    // Handle Related Complaints navigation
+    const handleRelatedComplaints = () => {
+        // Navigate to Related Complaints screen with customer data
+        navigation.navigate('RelatedComplaints', {
+            customerId: complaintData.customer_id || complaintData.id,
+            customerName: complaintData.customer_name,
+            customerMobile: complaintData.customer_mobile,
+            currentComplaintId: complaintData.id,
+            currentComplaintCsn: complaintData.csn,
+        });
     };
 
     const handleReverse = async () => {
@@ -751,7 +824,16 @@ const ComplaintDetail = () => {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View>
                 <View className="flex-row items-center justify-between">
-                    <Text className="text-text-primary text-2xl font-bold mb-2">{complaintData.service_name}</Text>
+                    <Text className="text-text-primary mb-4 text-2xl font-bold ">{complaintData.service_name}</Text>
+                    {/* Related Complaints Button - positioned next to title */}
+                    <TouchableOpacity
+                        onPress={handleRelatedComplaints}
+                        className="bg-purple-500 px-3 py-2 rounded-lg flex-row items-center"
+                        activeOpacity={0.7}
+                    >
+                        <Icon name="list-outline" size={18} color="white" />
+                        <Text className="text-white text-xs font-medium ml-1">Related</Text>
+                    </TouchableOpacity>
                 </View>
 
                 {!isComplete && (
@@ -878,7 +960,7 @@ const ComplaintDetail = () => {
                                 />
                             </View>
                         )}
-                        <View className="flex-row justify-between mt-2 mb-6">
+                        <View className="flex-row justify-between mt-2 mb-4">
                             <TouchableOpacity
                                 onPress={handleReverse}
                                 disabled={submittingReverse}
@@ -895,6 +977,21 @@ const ComplaintDetail = () => {
                                     {sendingOTP || isGettingLocation ? <ActivityIndicator color="#fff" /> : <Text className="font-semibold text-text-inverse">Start Job</Text>}
                                 </TouchableOpacity>
                             )}
+                        </View>
+                        {/* Reschedule Button */}
+                        <View className="mb-4">
+                            <TouchableOpacity
+                                onPress={handleReschedule}
+                                className="py-4 rounded-xl items-center bg-orange-500"
+                            >
+                                <View className="flex-row items-center">
+                                    <Icon name="calendar-outline" size={20} color="white" />
+                                    <Text className="text-white font-semibold text-base ml-2">Reschedule</Text>
+                                </View>
+                            </TouchableOpacity>
+                            <Text className="text-xs text-gray-500 text-center mt-1">
+                                Tap to reschedule this complaint
+                            </Text>
                         </View>
                     </>
                 )}

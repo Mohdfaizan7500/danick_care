@@ -505,13 +505,13 @@ const QRCodeDetails = () => {
         </View>
         <View className="flex-row bg-white rounded-b-lg p-3">
           <View className="flex-1 items-center">
-            <Text className="text-text-primary font-semibold">₹{parseFloat(commission.fund).toFixed(2)}</Text>
+            <Text className="text-text-primary font-semibold">₹{parseFloat(commission.fund ||0).toFixed(2)}</Text>
           </View>
           <View className="flex-1 items-center">
-            <Text className="text-green-600 font-bold">₹{parseFloat(commission.tech_fund).toFixed(2)}</Text>
+            <Text className="text-green-600 font-bold">₹{parseFloat(commission.tech_fund || 0).toFixed(2)}</Text>
           </View>
           <View className="flex-1 items-center">
-            <Text className="text-orange-600 font-bold">₹{parseFloat(commission.admin_fund).toFixed(2)}</Text>
+            <Text className="text-orange-600 font-bold">₹{parseFloat(commission.admin_fund || 0).toFixed(2)}</Text>
           </View>
         </View>
       </View>
@@ -541,13 +541,13 @@ const QRCodeDetails = () => {
             className={`flex-row p-3 ${index === complaintDetails.commission.length - 1 ? 'rounded-b-lg' : 'border-b border-gray-100'} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
           >
             <View className="flex-1 items-center">
-              <Text className="text-text-primary font-semibold">₹{parseFloat(commission.fund).toFixed(2)}</Text>
+              <Text className="text-text-primary font-semibold">₹{parseFloat(commission.fund || 0).toFixed(2)}</Text>
             </View>
             <View className="flex-1 items-center">
-              <Text className="text-green-600 font-bold">₹{parseFloat(commission.tech_fund).toFixed(2)}</Text>
+              <Text className="text-green-600 font-bold">₹{parseFloat(commission.tech_fund || 0).toFixed(2)}</Text>
             </View>
             <View className="flex-1 items-center">
-              <Text className="text-orange-600 font-bold">₹{parseFloat(commission.admin_fund).toFixed(2)}</Text>
+              <Text className="text-orange-600 font-bold">₹{parseFloat(commission.admin_fund || 0).toFixed(2)}</Text>
             </View>
           </View>
         ))}

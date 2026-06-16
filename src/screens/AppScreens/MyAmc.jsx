@@ -227,19 +227,19 @@ const MyAmc = () => {
                                     {item.tot_amt && item.tot_amt !== "" && (
                                         <View className="flex-row justify-between items-center mb-1.5">
                                             <Text className="text-xs text-gray-500">Total Amount:</Text>
-                                            <Text className="text-sm font-semibold text-gray-800">₹{parseFloat(item.tot_amt).toFixed(2)}</Text>
+                                            <Text className="text-sm font-semibold text-gray-800">₹{parseFloat(item.tot_amt || 0).toFixed(2)}</Text>
                                         </View>
                                     )}
                                     {item.discount && item.discount !== '0' && (
                                         <View className="flex-row justify-between items-center mb-1.5">
                                             <Text className="text-xs text-gray-500">Discount:</Text>
-                                            <Text className="text-sm font-semibold text-emerald-600">-₹{parseFloat(item.discount).toFixed(2)}</Text>
+                                            <Text className="text-sm font-semibold text-emerald-600">-₹{parseFloat(item.discount || 0).toFixed(2)}</Text>
                                         </View>
                                     )}
                                     {item.platform_fee && (
                                         <View className="flex-row justify-between items-center mb-1.5">
                                             <Text className="text-xs text-gray-500">Platform Fee:</Text>
-                                            <Text className="text-sm font-semibold text-gray-800">₹{parseFloat(item.platform_fee).toFixed(2)}</Text>
+                                            <Text className="text-sm font-semibold text-gray-800">₹{parseFloat(item.platform_fee || 0).toFixed(2)}</Text>
                                         </View>
                                     )}
                                 </View>

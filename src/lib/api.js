@@ -795,7 +795,7 @@ export const DeletAMCRecordWithParts = async (payload) => {
 };
 
 export const AMCBilling = async (payload) => {
-    console.log('payload', payload)
+    console.log('AMC billingpayload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AMCBilling', payload);
         console.log('AMCBilling api  response:', response);
@@ -906,6 +906,43 @@ export const ContactImport = async (payload) => {
     }
 };
 
+export const RescheduleComplaint = async (payload) => {
+    console.log('RescheduleComplaint payload:', payload);
+    try {
+        const response = await apiClient.post('TechnicianAPI/RescheduleComplaint', payload);
+        console.log('RescheduleComplaint api response:', response);
+        return response;
+    } catch (error) {
+        console.error('API error in RescheduleComplaint:', error);
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+
+
+// Get CSN Complaints
+// Get CSN Complaints - FIXED with query parameter
+export const CSNComplaints = async (payload) => {
+    console.log('CSNComplaints payload:', payload);
+    try {
+        // Send csn as query parameter, not in body
+        const response = await apiClient.post('/TechnicianAPI/CSNComplaints', null, {
+            params: {
+                csn: payload.csn
+            }
+        });
+        console.log('CSNComplaints response:', response);
+        return response;
+    } catch (error) {
+        console.error('CSNComplaints error:', error);
+        if (error.message === 'Network Error') {
+            throw new Error('Network error: Please check your internet connection and try again.');
+        }
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
 
 
 // You can also export the apiClient for other uses if needed

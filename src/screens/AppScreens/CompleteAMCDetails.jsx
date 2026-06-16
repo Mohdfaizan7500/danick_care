@@ -481,7 +481,7 @@ const CompleteAMCDetails = () => {
                                     <Text className="text-sm font-semibold text-gray-800">{part.part_name}</Text>
                                     <Text className="text-xs text-gray-500 mt-1">QR Code: {part.qr_code}</Text>
                                 </View>
-                                <Text className="text-sm font-bold text-indigo-600">₹{parseFloat(part.part_price).toFixed(2)}</Text>
+                                <Text className="text-sm font-bold text-indigo-600">₹{parseFloat(part.part_price || 0).toFixed(2)}</Text>
                             </View>
                         </View>
                     );
@@ -499,15 +499,15 @@ const CompleteAMCDetails = () => {
                 <View className="bg-indigo-50 rounded-xl p-4">
                     <View className="flex-row justify-between mb-2">
                         <Text className="text-sm text-gray-600">Total Amount:</Text>
-                        <Text className="text-sm font-semibold text-gray-800">₹{parseFloat(commission.fund).toFixed(2)}</Text>
+                        <Text className="text-sm font-semibold text-gray-800">₹{parseFloat(commission.fund || 0).toFixed(2)}</Text>
                     </View>
                     <View className="flex-row justify-between mb-2">
                         <Text className="text-sm text-gray-600">Technician Fund:</Text>
-                        <Text className="text-sm font-semibold text-emerald-600">₹{parseFloat(commission.tech_fund).toFixed(2)}</Text>
+                        <Text className="text-sm font-semibold text-emerald-600">₹{parseFloat(commission.tech_fund || 0).toFixed(2) }</Text>
                     </View>
                     <View className="flex-row justify-between">
                         <Text className="text-sm text-gray-600">Admin Fund:</Text>
-                        <Text className="text-sm font-semibold text-blue-600">₹{parseFloat(commission.admin_fund).toFixed(2)}</Text>
+                        <Text className="text-sm font-semibold text-blue-600">₹{parseFloat(commission.admin_fund || 0).toFixed(2)}</Text>
                     </View>
                 </View>
             </View>
@@ -660,25 +660,25 @@ const CompleteAMCDetails = () => {
                         <View className="bg-gray-50 p-3 rounded-xl">
                             <View className="flex-row justify-between mb-2">
                                 <Text className="text-sm text-gray-600">Total Amount:</Text>
-                                <Text className="text-sm font-semibold text-gray-800">₹{parseFloat(amcDetails.tot_amt).toFixed(2)}</Text>
+                                <Text className="text-sm font-semibold text-gray-800">₹{parseFloat(amcDetails.tot_amt || 0).toFixed(2)}</Text>
                             </View>
                             {amcDetails.discount && amcDetails.discount !== '0' && (
                                 <View className="flex-row justify-between mb-2">
                                     <Text className="text-sm text-gray-600">Discount:</Text>
-                                    <Text className="text-sm font-semibold text-emerald-600">-₹{parseFloat(amcDetails.discount).toFixed(2)}</Text>
+                                    <Text className="text-sm font-semibold text-emerald-600">-₹{parseFloat(amcDetails.discount || 0).toFixed(2)}</Text>
                                 </View>
                             )}
                             {amcDetails.platform_fee && (
                                 <View className="flex-row justify-between pt-2 border-t border-gray-200">
                                     <Text className="text-sm text-gray-600">Platform Fee:</Text>
-                                    <Text className="text-sm font-semibold text-gray-800">₹{parseFloat(amcDetails.platform_fee).toFixed(2)}</Text>
+                                    <Text className="text-sm font-semibold text-gray-800">₹{parseFloat(amcDetails.platform_fee || 0).toFixed(2)}</Text>
                                 </View>
                             )}
                         </View>
                     </View>
 
                     {/* Download Invoice Button */}
-                    {amcDetails.invoice && (
+                    {/* {amcDetails.invoice && (
                         <View className="mb-4">
                             <TouchableOpacity onPress={handleDownloadInvoice} disabled={downloading} className="flex-row items-center justify-center bg-teal-500 py-3 rounded-xl">
                                 {downloading ? <ActivityIndicator size="small" color="#ffffff" /> : (
@@ -689,7 +689,7 @@ const CompleteAMCDetails = () => {
                                 )}
                             </TouchableOpacity>
                         </View>
-                    )}
+                    )} */}
 
                     {/* Parts Information */}
                     {renderParts()}

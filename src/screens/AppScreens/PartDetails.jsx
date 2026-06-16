@@ -879,7 +879,7 @@ const PartDetails = () => {
                     QR Code: {qrProductData.qrCode}
                   </Text>
                   <Text className="text-sm font-bold text-primary-sage600 mt-1">
-                    ₹{parseFloat(qrProductData.price).toFixed(2)}
+                    ₹{parseFloat(qrProductData.price || 0).toFixed(2)}
                   </Text>
                   {qrProductData.type === "Yes" && (
                     <View className="mt-2">

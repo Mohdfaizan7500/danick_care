@@ -96,7 +96,8 @@ const AMCDetails = () => {
       const preReplacedParts = {};
 
       fetchedAmcDetails.parts.forEach((part, index) => {
-        const partId = part.id || index;
+        // Use index as unique identifier since parts don't have id
+        const partId = `part_${index}`;
         if (part.qr_code && part.qr_code !== null && part.qr_code.trim() !== '') {
           preFilledQrCodes[partId] = part.qr_code;
           preLinkedItems.push(partId);
@@ -108,11 +109,15 @@ const AMCDetails = () => {
         }
       });
 
-      if (Object.keys(preFilledQrCodes).length > 0) {
-        setQrCodeNumbers(preFilledQrCodes);
-        setLinkedItems(preLinkedItems);
-        setReplacedParts(preReplacedParts);
-      }
+      // Reset states with the new data
+      setQrCodeNumbers(preFilledQrCodes);
+      setLinkedItems(preLinkedItems);
+      setReplacedParts(preReplacedParts);
+    } else {
+      // If no parts or all qr_codes are null, clear the states
+      setQrCodeNumbers({});
+      setLinkedItems([]);
+      setReplacedParts({});
     }
   }, [fetchedAmcDetails]);
 
@@ -391,13 +396,13 @@ const AMCDetails = () => {
       if (response?.data?.success) {
         // Update UI immediately without reload
         if (!linkedItems.includes(partId)) {
-          setLinkedItems([...linkedItems, partId]);
+          setLinkedItems(prev => [...prev, partId]);
         }
 
         // Update the part in spareParts if needed (optional)
         if (fetchedAmcDetails?.parts) {
-          const updatedParts = fetchedAmcDetails.parts.map(part => {
-            if ((part.id || partIndex) === partId) {
+          const updatedParts = fetchedAmcDetails.parts.map((part, index) => {
+            if (index === partIndex) {
               return { ...part, qr_code: qrCode, qr_type: response.data.qr_type || 'linked' };
             }
             return part;
@@ -556,8 +561,8 @@ const AMCDetails = () => {
 
         // Update the part in fetchedAmcDetails if available
         if (fetchedAmcDetails?.parts) {
-          const updatedParts = fetchedAmcDetails.parts.map(part => {
-            if ((part.id || part.index) === partId) {
+          const updatedParts = fetchedAmcDetails.parts.map((part, index) => {
+            if (index === parseInt(partId.split('_')[1])) {
               return {
                 ...part,
                 qr_code: selectedReplacementPart.qr_code,
@@ -607,7 +612,7 @@ const AMCDetails = () => {
     }
   };
 
-  const handleRemoveQR = async (partId, partName, qrCode, qrType) => {
+  const handleRemoveQR = async (partId, partName, qrCode, qrType, partIndex) => {
     if (!qrCode || !qrCode.trim()) {
       toast.custom(
         <StatusMessage type='error' title='No QR code to remove' />,
@@ -645,30 +650,47 @@ const AMCDetails = () => {
       }
 
       if (response?.data?.success) {
-        // Update UI immediately without reload
-        setLinkedItems(prev => prev.filter(id => id !== partId));
+        console.log('QR Code removed successfully, updating UI...');
+        
+        // CRITICAL FIX: Update all states properly
+        // 1. Remove from linkedItems
+        setLinkedItems(prev => {
+          const newLinkedItems = prev.filter(id => id !== partId);
+          console.log('Updated linkedItems:', newLinkedItems);
+          return newLinkedItems;
+        });
 
-        if (replacedParts[partId]) {
-          const newReplacedParts = { ...replacedParts };
+        // 2. Remove from replacedParts if exists
+        setReplacedParts(prev => {
+          const newReplacedParts = { ...prev };
           delete newReplacedParts[partId];
-          setReplacedParts(newReplacedParts);
-        }
+          console.log('Updated replacedParts:', newReplacedParts);
+          return newReplacedParts;
+        });
 
-        setQrCodeNumbers(prev => ({
-          ...prev,
-          [partId]: ''
-        }));
+        // 3. Clear the QR code value
+        setQrCodeNumbers(prev => {
+          const newQrCodeNumbers = { ...prev };
+          delete newQrCodeNumbers[partId];
+          console.log('Updated qrCodeNumbers:', newQrCodeNumbers);
+          return newQrCodeNumbers;
+        });
 
-        // Update the part in fetchedAmcDetails if available
+        // 4. Update fetchedAmcDetails to remove QR code from part
         if (fetchedAmcDetails?.parts) {
-          const updatedParts = fetchedAmcDetails.parts.map(part => {
-            if ((part.id || part.index) === partId) {
+          const updatedParts = fetchedAmcDetails.parts.map((part, index) => {
+            if (index === partIndex) {
+              // Create a new part object without qr_code and replaced_with
               const { qr_code, replaced_with, ...rest } = part;
+              console.log('Removed qr_code from part:', rest);
               return rest;
             }
             return part;
           });
-          setFetchedAmcDetails({ ...fetchedAmcDetails, parts: updatedParts });
+          setFetchedAmcDetails({
+            ...fetchedAmcDetails,
+            parts: updatedParts
+          });
         }
 
         toast.custom(
@@ -704,7 +726,7 @@ const AMCDetails = () => {
     }
   };
 
-  const handleRemoveReplacement = async (partId, partName) => {
+  const handleRemoveReplacement = async (partId, partName, partIndex) => {
     const replacedInfo = replacedParts[partId];
     if (!replacedInfo) return;
 
@@ -727,19 +749,22 @@ const AMCDetails = () => {
         // Update UI immediately without reload
         setLinkedItems(prev => prev.filter(id => id !== partId));
 
-        const newReplacedParts = { ...replacedParts };
-        delete newReplacedParts[partId];
-        setReplacedParts(newReplacedParts);
+        setReplacedParts(prev => {
+          const newReplacedParts = { ...prev };
+          delete newReplacedParts[partId];
+          return newReplacedParts;
+        });
 
-        setQrCodeNumbers(prev => ({
-          ...prev,
-          [partId]: ''
-        }));
+        setQrCodeNumbers(prev => {
+          const newQrCodeNumbers = { ...prev };
+          delete newQrCodeNumbers[partId];
+          return newQrCodeNumbers;
+        });
 
         // Update the part in fetchedAmcDetails if available
         if (fetchedAmcDetails?.parts) {
-          const updatedParts = fetchedAmcDetails.parts.map(part => {
-            if ((part.id || part.index) === partId) {
+          const updatedParts = fetchedAmcDetails.parts.map((part, index) => {
+            if (index === partIndex) {
               const { replaced_with, ...rest } = part;
               return rest;
             }
@@ -786,7 +811,7 @@ const AMCDetails = () => {
       navigation.replace('AMCBilling', {
         linkedParts: linkedItems.map(id => ({
           id,
-          part_name: spareParts.find(part => part.id === id)?.part_name,
+          part_name: spareParts.find((part, index) => `part_${index}` === id)?.part_name,
           qr_code: qrCodeNumbers[id],
           replaced_with: replacedParts[id] || null
         })),
@@ -794,9 +819,7 @@ const AMCDetails = () => {
         complaintData: fetchedComplaint || complaintData,
         billingId
       });
-
-    }
-    else {
+    } else {
       toast.custom(
         <StatusMessage
           type='error'
@@ -806,7 +829,6 @@ const AMCDetails = () => {
         { duration: 3000 }
       );
     }
-
   };
 
   const handleHeaderBack = () => {
@@ -986,13 +1008,16 @@ const AMCDetails = () => {
 
             {spareParts.length > 0 ? (
               spareParts.map((part, index) => {
-                const partId = part.id || index;
+                // Use index as unique identifier since parts don't have id
+                const partId = `part_${index}`;
                 const partName = part.part_name;
                 const qrType = part.qr_type || '';
                 const isLinked = linkedItems.includes(partId);
                 const currentQrCode = qrCodeNumbers[partId];
                 const replacedInfo = replacedParts[partId];
                 const isRemovingReplace = removeReplaceLoadingStates[partId];
+
+                console.log(`Part ${index}:`, { partId, isLinked, currentQrCode, qrType });
 
                 return (
                   <View key={partId} className="bg-white rounded-xl p-3 mb-3 shadow-sm">
@@ -1010,7 +1035,7 @@ const AMCDetails = () => {
 
                       {isLinked && !replacedInfo && (
                         <TouchableOpacity
-                          onPress={() => handleRemoveQR(partId, partName, currentQrCode, qrType)}
+                          onPress={() => handleRemoveQR(partId, partName, currentQrCode, qrType, index)}
                           disabled={removalLoadingStates[partId]}
                           className="bg-red-500 px-3 py-1.5 rounded-lg flex-row items-center"
                         >
@@ -1076,7 +1101,7 @@ const AMCDetails = () => {
                             </View>
 
                             <TouchableOpacity
-                              onPress={() => handleRemoveReplacement(partId, partName)}
+                              onPress={() => handleRemoveReplacement(partId, partName, index)}
                               disabled={isRemovingReplace}
                               className="mt-3 bg-red-500 py-2 rounded-lg flex-row items-center justify-center"
                             >
@@ -1176,7 +1201,6 @@ const AMCDetails = () => {
       {!isKeyboardVisible && spareParts.length > 0 && (
         <View className='bg-white w-full absolute bottom-0 py-3 border-t border-t-gray-200 left-0 right-0'>
           <TouchableOpacity
-            // disabled={!allPartsLinked}
             className={`py-3.5 mx-5 rounded-xl items-center ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'}`}
             onPress={handleNext}
           >

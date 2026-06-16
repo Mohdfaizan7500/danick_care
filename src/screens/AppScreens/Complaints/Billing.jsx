@@ -58,7 +58,7 @@ const Billing = () => {
   console.log('Complaint Data in Billing:', complaintData);
 
   const baseAmount = parseFloat(complaintData?.tot_amt) || 0;
-  const platformFee = parseFloat(complaintData?.platform_fee) || 0;
+  const platformFee = (complaintData?.platform_fee) || 0;
 
   const [parts, setParts] = useState([]);
   const [loadingParts, setLoadingParts] = useState(true);

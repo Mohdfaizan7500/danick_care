@@ -31,16 +31,16 @@ const Login = ({ navigation }) => {
     }, [])
 
     const testNotification = async () => {
-    await notifee.displayNotification({
-        title: 'Test Notification',
-        body: 'Testing custom sound',
-        android: {
-            channelId: 'default',
-            sound: 'notification',
-            importance: AndroidImportance.HIGH,
-        },
-    });
-};
+        await notifee.displayNotification({
+            title: 'Test Notification',
+            body: 'Testing custom sound',
+            android: {
+                channelId: 'default',
+                sound: 'notification',
+                importance: AndroidImportance.HIGH,
+            },
+        });
+    };
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -58,7 +58,7 @@ const Login = ({ navigation }) => {
 
     const { setAuthData, setIsOnline } = useAuth();
 
-   
+
 
     // Get FCM token when component mounts
     useEffect(() => {
@@ -300,7 +300,7 @@ const Login = ({ navigation }) => {
                         )}
                     </TouchableOpacity>
 
-                    {/* <TouchableOpacity
+                    <TouchableOpacity
                         className="bg-[#FFEDD4] mt-5 px-4 py-2 rounded-xl border border-[#FFB86A]"
                         onPress={fillDemoAccount}
                         disabled={isLoading}
@@ -308,7 +308,7 @@ const Login = ({ navigation }) => {
                         <Text className="font-bold text-sm text-gray-800 mb-2">Demo Account (Click to fill)</Text>
                         <Text className="font-normal text-xs text-gray-500">Username: 25863</Text>
                         <Text className="font-normal text-xs text-gray-500">Password: 0000</Text>
-                    </TouchableOpacity> */}
+                    </TouchableOpacity>
                 </View>
 
                 <DialogBox

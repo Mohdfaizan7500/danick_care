@@ -46,6 +46,8 @@ import ConetToAMCScreen from '../../screens/AppScreens/Complaints/ConetToAMCScre
 import Contects from '../../screens/AppScreens/Contects';
 import PermissionScreen from '../../screens/AppScreens/PermissionScreens/PermissionScreen';
 import Orders from '../../screens/AppScreens/Tabs/Orders';
+import Reschedule from '../../screens/AppScreens/Complaints/Reschedule';
+import RelatedComplaints from '../../screens/AppScreens/Complaints/RelatedComplaints';
 const Stack = createNativeStackNavigator();
 
 // 🟢 Custom loading screen with your AppIcon
@@ -75,7 +77,7 @@ const LoadingScreen = ({ navigation }) => {
         style={{ width: 100, height: 100 }}
         resizeMode="contain"
       /> */}
-      <ActivityIndicator className='blue' size={'large'}/>
+      <ActivityIndicator className='blue' size={'large'} />
     </View>
   );
 };
@@ -131,6 +133,10 @@ const AppStack = () => {
               <Stack.Screen name="ProfileDetails" component={ProfileDetails} />
               <Stack.Screen name="Orders" component={Orders} />
               <Stack.Screen name="NotificationTopNavigation" component={NotificationTopNavigation} />
+              <Stack.Screen name="Reschedule" component={Reschedule} />
+              <Stack.Screen name="RelatedComplaints" component={RelatedComplaints} />
+
+
             </Stack.Navigator>
           </OrderProvider>
         </NotificationProvider>
