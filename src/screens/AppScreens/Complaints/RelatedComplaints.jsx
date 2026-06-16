@@ -273,27 +273,7 @@ const RelatedComplaints = () => {
                 </TouchableOpacity>
             </View>
 
-            {/* Customer Info Header */}
-            <View style={styles.customerInfoContainer}>
-                <Text style={styles.customerName}>{customerName || 'Customer'}</Text>
-                <View style={styles.customerInfoRow}>
-                    <Icon name="call-outline" size={16} color="#6B7280" />
-                    <Text style={styles.customerInfoText}>{customerMobile || 'N/A'}</Text>
-                </View>
-                <View style={styles.customerInfoRow}>
-                    <Icon name="person-outline" size={16} color="#6B7280" />
-                    <Text style={styles.customerInfoText}>Customer ID: {customerId || 'N/A'}</Text>
-                </View>
-                <View style={styles.customerInfoRow}>
-                    <Icon name="qr-code-outline" size={16} color="#6B7280" />
-                    <Text style={styles.customerInfoText}>CSN: {currentComplaintCsn || 'N/A'}</Text>
-                </View>
-                <View style={styles.countContainer}>
-                    <Text style={styles.countText}>
-                        Showing {relatedComplaints.length} complaint{relatedComplaints.length !== 1 ? 's' : ''}
-                    </Text>
-                </View>
-            </View>
+           
 
             {/* Complaints List */}
             {loading && !refreshing ? (
