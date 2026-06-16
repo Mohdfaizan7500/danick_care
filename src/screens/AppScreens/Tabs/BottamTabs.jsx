@@ -109,7 +109,7 @@ const BottomTabs = () => {
     
     if (Platform.OS === 'android') {
       if (androidVersion >= 13 || apiLevel >= 33) {
-        return 60 + insets.bottom;
+        return 80 + insets.bottom;
       } else {
         return 60 + insets.bottom;
       }
@@ -125,7 +125,7 @@ const BottomTabs = () => {
     
     if (Platform.OS === 'android') {
       if (androidVersion >= 13 || apiLevel >= 33) {
-        return 12;
+        return 30;
       } else {
         return 20;
       }
@@ -181,7 +181,7 @@ const BottomTabs = () => {
           justifyContent: 'center',
           alignItems: 'center',
           paddingVertical: 0,
-          paddingTop: 10,
+          paddingTop: 0,
         },
         headerStyle: {
           backgroundColor: Colors.brand.primary,
