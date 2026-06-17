@@ -540,7 +540,7 @@ const ComplaintDetail = () => {
         }
 
         // Navigate to Reschedule screen with complaint data
-        navigation.replace('Reschedule', {
+        navigation.navigate('Reschedule', {
             complaintData: complaintData,
         });
     };
@@ -559,17 +559,7 @@ const ComplaintDetail = () => {
 
     const handleReverse = async () => {
         if (submittingReverse) return;
-        if (timerExpired && !showReasonInput) {
-            Alert.alert(
-                "Fine Warning",
-                `${TIMER_DURATION_MINUTES} minute ho gaye. Ab reverse karne par ₹100 ka fine lagega. Kya aap continue karna chahte hain?`,
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Continue", onPress: () => setShowReasonInput(true) },
-                ]
-            );
-            return;
-        }
+
         if (!showReasonInput) {
             setShowReasonInput(true);
             setTimeout(() => {
@@ -915,14 +905,14 @@ const ComplaintDetail = () => {
                     <View className="flex-row items-center mb-2"><Icon name="location-outline" size={18} color="#666" /><Text className="text-text-secondary text-base ml-2 flex-1">{complaintData.service_address}</Text></View>
                     <TouchableOpacity onPress={handlePhoneCall} className="flex-row items-center"><Icon name="call-outline" size={18} color="#666" /><Text className="text-[#666] text-base ml-2">{complaintData.customer_mobile}</Text></TouchableOpacity>
                 </View>
-                <View className="bg-ui-card border border-ui-border rounded-xl p-4 mb-4">
+                {/* <View className="bg-ui-card border border-ui-border rounded-xl p-4 mb-4">
                     <Text className="text-text-primary font-semibold text-lg mb-2">Service Details</Text>
                     <View className="flex-row justify-between mb-2"><Text className="text-text-secondary">Service Name:</Text><Text className="text-text-primary font-medium">{complaintData.service_name}</Text></View>
                     <View className="flex-row justify-between mb-2"><Text className="text-text-secondary">CSN:</Text><Text className="text-text-primary font-medium">{complaintData.csn}</Text></View>
                     <View className="flex-row justify-between mb-2"><Text className="text-text-secondary">Total Amount:</Text><Text className="text-text-primary font-medium">₹{complaintData.tot_amt}</Text></View>
                     {complaintData.slot_date && <View className="flex-row justify-between mb-2"><Text className="text-text-secondary">Slot Date:</Text><Text className="text-text-primary font-medium">{formatDate(complaintData.slot_date)}</Text></View>}
                     {complaintData.slot_time && <View className="flex-row justify-between"><Text className="text-text-secondary">Slot Time:</Text><Text className="text-text-primary font-medium">{complaintData.slot_time}</Text></View>}
-                </View>
+                </View> */}
                 {!isComplete && (
                     <>
                         {timerRemainingSeconds > 0 && (
@@ -964,9 +954,29 @@ const ComplaintDetail = () => {
                             <TouchableOpacity
                                 onPress={handleReverse}
                                 disabled={submittingReverse}
-                                className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${submittingReverse ? 'bg-ui-disabled' : (showReasonInput && reasonText.trim() ? 'bg-ui-success' : 'bg-ui-secondary/20')}`}
+                                className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${submittingReverse
+                                        ? 'bg-ui-disabled'
+                                        : timerExpired
+                                            ? 'bg-primary-sage600'
+                                            : showReasonInput && reasonText.trim()
+                                                ? 'bg-ui-success'
+                                                : 'bg-ui-secondary/20'
+                                    }`}
                             >
-                                {submittingReverse ? <ActivityIndicator color="#fff" /> : <Text className={`font-semibold ${showReasonInput && reasonText.trim() ? 'text-text-inverse' : 'text-text-secondary'}`}>Reverse</Text>}
+                                {submittingReverse ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text className={`font-semibold ${submittingReverse
+                                            ? 'text-white'
+                                            : timerExpired
+                                                ? 'text-white'
+                                                : showReasonInput && reasonText.trim()
+                                                    ? 'text-text-inverse'
+                                                    : 'text-text-secondary'
+                                        }`}>
+                                        Reverse
+                                    </Text>
+                                )}
                             </TouchableOpacity>
                             {!showVerifiedContent && !jobStarted && (
                                 <TouchableOpacity
@@ -989,9 +999,7 @@ const ComplaintDetail = () => {
                                     <Text className="text-white font-semibold text-base ml-2">Reschedule</Text>
                                 </View>
                             </TouchableOpacity>
-                            <Text className="text-xs text-gray-500 text-center mt-1">
-                                Tap to reschedule this complaint
-                            </Text>
+                           
                         </View>
                     </>
                 )}

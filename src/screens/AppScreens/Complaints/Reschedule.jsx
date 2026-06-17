@@ -15,6 +15,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 import Toast from 'react-native-toast-message'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { RescheduleComplaint } from '../../../lib/api'
+import { useAuth } from '../../../context/AuthContext'
 
 const { width } = Dimensions.get('window')
 
@@ -87,11 +88,11 @@ const Reschedule = () => {
     const [isLoading, setIsLoading] = useState(false)
     const [currentSlotInfo, setCurrentSlotInfo] = useState(null)
     const scrollRef = useRef(null)
+    const {user} = useAuth();
 
     const navigation = useNavigation();
     const route = useRoute();
     const { complaintData, isVerified, fromScreen } = route.params || {};
-    console.log("complaintData:", complaintData)
 
     useEffect(() => {
         // Build dates with current slot date pre-selected
@@ -211,7 +212,10 @@ const Reschedule = () => {
             complaint_id: complaintData.id.toString(),
             slot_date: formattedDate,
             slot_time: selectedSlot.time,
-            remark: remark.trim()
+            remark: remark.trim(),
+            technician_id:user?.id,
+            status:complaintData?.status
+
         }
 
         console.log('Reschedule Payload:', payload)
@@ -232,7 +236,7 @@ const Reschedule = () => {
                 
                 // Navigate back after 1.5 seconds
                 setTimeout(() => {
-                    navigation.pop(2)
+                    navigation.goBack();
                 }, 500)
             } else {
                 Toast.show({

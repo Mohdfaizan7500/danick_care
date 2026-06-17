@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity, StatusBar, ActivityIndicator, Dimensions, RefreshControl } from 'react-native';
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from '../../../components/Header';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast, Toaster } from 'sonner-native';
 import NetInfo from '@react-native-community/netinfo';
@@ -48,6 +48,7 @@ const SkeletonItem = () => {
 
 const Parts = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const insets = useSafeAreaInsets();
   const { user, imagUrl } = useAuth();
 
@@ -56,6 +57,13 @@ const Parts = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [isConnected, setIsConnected] = useState(true);
+
+  // Check if coming from billing screen
+  const isFromBilling = route.params?.fromBilling || false;
+  const previousScreen = route.params?.previousScreen || '';
+
+  console.log('Parts screen - isFromBilling:', isFromBilling);
+  console.log('Parts screen - previousScreen:', previousScreen);
 
   // Fetch categories from API
   const fetchCategories = useCallback(async () => {
@@ -137,6 +145,11 @@ const Parts = () => {
     navigation.navigate('SparePartScreen', { product });
   };
 
+  // Handle back button press
+  const handleBackPress = () => {
+    navigation.goBack();
+  };
+
   const renderCategoryItem = ({ item }) => (
     <TouchableOpacity
       style={{ width: itemWidth, margin: itemMargin / 2 }}
@@ -181,7 +194,8 @@ const Parts = () => {
         <Header
           title="Spare Parts"
           titleStyle="text-2xl font-bold"
-          showBackButton={false}
+          showBackButton={isFromBilling || previousScreen === 'Billing'}
+          onBackPress={handleBackPress}
           titlePosition="left"
           containerStyle="bg-white flex-row items-center justify-between px-4 py-5 border-b border-gray-200"
         />
@@ -201,7 +215,8 @@ const Parts = () => {
       <Header
         title="Spare Parts"
         titleStyle="text-2xl font-bold"
-        showBackButton={false}
+        showBackButton={isFromBilling || previousScreen === 'Billing'}
+        onBackPress={handleBackPress}
         titlePosition="left"
         containerStyle="bg-white flex-row items-center justify-between px-4 py-5 border-b border-gray-200"
       />

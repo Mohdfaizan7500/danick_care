@@ -441,10 +441,8 @@ export const getDeshBoardCount = async (payload) => {
 };
 
 export const fetchPartsForComplaint = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/FetchPartForComplaints', payload);
-        console.log('fetchPartsForComplaint api  response:', response);
         return response;
     } catch (error) {
         console.error('API error in fetchPartsForComplaint:', error);

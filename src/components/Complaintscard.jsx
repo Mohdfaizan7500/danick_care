@@ -4,9 +4,9 @@ import { ImageIcon } from '../assets/svgIcons/SVGIcons';
 
 const Complaintscard = ({ item, onPress }) => {
     const [modalVisible, setModalVisible] = useState(false);
-    
+
     if (!item) return null;
-    console.log("image:", item.image)
+    console.log('item:', item)
 
     // Safely convert any value to string
     const safeToString = (value, fallback = '') => {
@@ -119,7 +119,7 @@ const Complaintscard = ({ item, onPress }) => {
                         <Text style={{ color: '#666', fontSize: 12, fontWeight: '500' }}>
                             CSN: {csnValue}
                         </Text>
-                       
+
                     </View>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                         {/* Complaint Type Badge */}
@@ -148,18 +148,18 @@ const Complaintscard = ({ item, onPress }) => {
                         borderRadius: 20,
                         backgroundColor:
                             displayStatus === 'Assigned' ? '#E8F5E9' :
-                            displayStatus === 'On Progress' ? '#FFF3E0' :
-                            displayStatus === 'Complete' ? '#E8F5E9' :
-                            displayStatus === 'Cancel' ? '#FFEBEE' : '#F5F5F5'
+                                displayStatus === 'On Progress' ? '#FFF3E0' :
+                                    displayStatus === 'Complete' ? '#E8F5E9' :
+                                        displayStatus === 'Cancel' ? '#FFEBEE' : '#F5F5F5'
                     }}>
                         <Text style={{
                             fontSize: 12,
                             fontWeight: '500',
                             color:
                                 displayStatus === 'Assigned' ? '#2E7D32' :
-                                displayStatus === 'On Progress' ? '#E65100' :
-                                displayStatus === 'Complete' ? '#2E7D32' :
-                                displayStatus === 'Cancel' ? '#C62828' : '#757575'
+                                    displayStatus === 'On Progress' ? '#E65100' :
+                                        displayStatus === 'Complete' ? '#2E7D32' :
+                                            displayStatus === 'Cancel' ? '#C62828' : '#757575'
                         }}>
                             {displayStatus}
                         </Text>
@@ -170,15 +170,23 @@ const Complaintscard = ({ item, onPress }) => {
                     <View style={{ flex: 1, marginRight: 12 }}>
                         {/* Customer details */}
                         <View style={{ marginTop: 8 }}>
-                            <Text style={{ color: '#000', fontSize: 14, fontWeight: '500' }}>
-                                {customerNameValue}
-                            </Text>
+                            {
+                                item.status !== "success" && item.status !== "cancel" &&
+                                <Text style={{ color: '#000', fontSize: 14, fontWeight: '500' }}>
+                                    {customerNameValue}
+                                </Text>
+                            }
+
                             <Text style={{ color: '#999', fontSize: 12, marginTop: 2 }}>
                                 {addressValue}
                             </Text>
-                            <Text style={{ color: '#999', fontSize: 12, marginTop: 2 }}>
-                                {mobileValue}
-                            </Text>
+                            {
+                                item.status !== "success" && item.status !== "cancel" &&
+                                <Text style={{ color: '#999', fontSize: 12, marginTop: 2 }}>
+                                    {mobileValue}
+                                </Text>
+                            }
+
                         </View>
 
                         {/* Amount */}
@@ -202,7 +210,7 @@ const Complaintscard = ({ item, onPress }) => {
                     </View>
 
                     {/* Image with tap to open modal */}
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         activeOpacity={0.8}
                         onPress={() => item?.image && setModalVisible(true)}
                     >
@@ -253,7 +261,7 @@ const Complaintscard = ({ item, onPress }) => {
                 visible={modalVisible}
                 onRequestClose={() => setModalVisible(false)}
             >
-                <Pressable 
+                <Pressable
                     style={styles.modalOverlay}
                     onPress={() => setModalVisible(false)}
                 >
@@ -263,7 +271,7 @@ const Complaintscard = ({ item, onPress }) => {
                             style={styles.fullImage}
                             resizeMode="contain"
                         />
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.closeButton}
                             onPress={() => setModalVisible(false)}
                         >

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
@@ -7,17 +7,23 @@ import {
     TouchableOpacity,
     Image,
     ActivityIndicator,
-    Alert,
     RefreshControl,
+    ToastAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
-import { toast, Toaster } from 'sonner-native';
-import StatusMessage from '../../../components/StatusMessage';
 import { useAuth } from '../../../context/AuthContext';
 import { fetchPartsForComplaint, AttechPartWithComplaints } from '../../../lib/api';
+
+// Helper function to display N/A for missing values
+const getDisplayValue = (value) => {
+    if (value === null || value === undefined || value === '') {
+        return 'N/A';
+    }
+    return value;
+};
 
 const AddPartBilling = () => {
     const navigation = useNavigation();
@@ -25,61 +31,70 @@ const AddPartBilling = () => {
     const route = useRoute();
     const complaintData = route.params?.complaintData || null;
 
-    console.log('Complaint Data in AddPartBilling:', complaintData);
-
     const [searchQuery, setSearchQuery] = useState('');
     const [parts, setParts] = useState([]);
-    const [filteredParts, setFilteredParts] = useState([]);
     const [selectedParts, setSelectedParts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
+    const [errorMessage, setErrorMessage] = useState(null);
     const [attachingPartId, setAttachingPartId] = useState(null);
     const isInitialMount = useRef(true);
+    const isFetching = useRef(false);
 
-    // Ensure importedPart is always an array (fallback to empty array)
-    const safeImportedPart = Array.isArray(importedPart) ? importedPart : [];
+    // Memoize safeImportedPart
+    const safeImportedPart = useMemo(() => 
+        Array.isArray(importedPart) ? importedPart : [],
+        [importedPart]
+    );
 
-
-    const getImageUrl = (imagePath, baseUrl) => {
+    // Memoize getImageUrl function
+    const getImageUrl = useCallback((imagePath, baseUrl) => {
         if (!imagePath) return null;
-
-        // Check if it's already a full URL
         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
             return imagePath;
         }
-
-        // Otherwise, construct URL with base URL
         const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
         const base = baseUrl?.endsWith('/') ? baseUrl : `${baseUrl}/`;
         return `${base}${cleanPath}`;
-    };
+    }, []);
 
-    // Fetch parts from API when component mounts
-    const fetchParts = async (isRefresh = false) => {
-        if (!complaintData) {
-            console.log('No complaint data available');
+    // Memoize fetchParts function
+    const fetchParts = useCallback(async (isRefresh = false) => {
+        if (!complaintData || isFetching.current) {
             setLoading(false);
             setRefreshing(false);
             return;
         }
+
+        isFetching.current = true;
 
         try {
             if (!isRefresh) {
                 setLoading(true);
             }
             setError(null);
+            setErrorMessage(null);
 
             const payload = {
                 technician_id: user?.id?.toString() || '1',
                 service_id: complaintData.service_id?.toString() || complaintData.id?.toString()
             };
 
-            console.log('Fetching parts with payload:', payload);
             const response = await fetchPartsForComplaint(payload);
-            console.log('API Response:', response);
 
-            // Handle different response structures
+            // Check for error in response
+            if (response?.data?.success === false) {
+                const errorMsg = response?.data?.error?.sqlMessage || 
+                                response?.data?.error?.message || 
+                                'Failed to fetch parts';
+                setError(errorMsg);
+                setErrorMessage(errorMsg);
+                ToastAndroid.show(errorMsg, ToastAndroid.LONG);
+                setParts([]);
+                return;
+            }
+
             let partsData = [];
             if (response?.data?.data && Array.isArray(response.data.data)) {
                 partsData = response.data.data;
@@ -89,117 +104,104 @@ const AddPartBilling = () => {
                 partsData = response.data;
             }
 
-            // Map API response to component format
             const formattedParts = partsData.map(part => ({
-                id: part.id?.toString(),
-                qr_code: part.qr_code,
+                id: part.id?.toString() || getDisplayValue(part.id),
+                qr_code: part.qr_code || getDisplayValue(part.qr_code),
                 name: part.part_name || 'Part',
-                partNumber: part.id?.toString() || '',
+                partNumber: part.id?.toString() || getDisplayValue(part.id),
                 price: parseFloat(part.part_price) || 0,
                 imageUrl: getImageUrl(part.imageUrl || part.part_image, imagUrl),
                 description: part.description || '',
-                transfer_by: part.transfer_by,
-                part_accept: part.part_accept, // Keep as string or null
-                technician_name: part.technician_name,
-                status: part.status // '0' = not attached, '1' = attached
+                transfer_by: part.transfer_by || getDisplayValue(part.transfer_by),
+                part_accept: part.part_accept,
+                technician_name: part.technician_name || getDisplayValue(part.technician_name),
+                status: part.status
             }));
 
-            console.log('Formatted parts:', formattedParts);
             setParts(formattedParts);
-            setFilteredParts(formattedParts);
 
-            // Reset initial mount flag after successful fetch
             if (isRefresh) {
                 isInitialMount.current = true;
-            }
-
-            if (isRefresh) {
-                toast.custom(
-                    <StatusMessage type='success' title="Parts refreshed successfully" />,
-                    { duration: 1500 }
-                );
+                ToastAndroid.show('Parts refreshed successfully', ToastAndroid.SHORT);
             }
 
         } catch (err) {
             console.error('Error fetching parts:', err);
-            setError(err.message || 'Failed to fetch parts');
+            const errorMsg = err?.response?.data?.error?.sqlMessage || 
+                            err?.response?.data?.message || 
+                            err?.message || 
+                            'Failed to fetch parts';
+            setError(errorMsg);
+            setErrorMessage(errorMsg);
             if (!isRefresh) {
-                toast.custom(
-                    <StatusMessage type='error' title="Failed to load parts" />,
-                    { duration: 2000 }
-                );
+                ToastAndroid.show(errorMsg, ToastAndroid.LONG);
             }
             setParts([]);
-            setFilteredParts([]);
         } finally {
             setLoading(false);
             setRefreshing(false);
+            isFetching.current = false;
         }
-    };
+    }, [complaintData, user?.id, getImageUrl, imagUrl]);
 
     // Pull to refresh handler
     const onRefresh = useCallback(() => {
         setRefreshing(true);
         fetchParts(true);
-    }, [complaintData, user?.id]);
+    }, [fetchParts]);
 
+    // Initial fetch
     useEffect(() => {
         fetchParts();
-    }, [complaintData, user?.id]);
+    }, [fetchParts]);
 
     // Refresh when screen comes into focus
     useFocusEffect(
         useCallback(() => {
-            console.log('AddPartBilling screen focused, refreshing parts...');
             fetchParts(true);
-        }, [complaintData, user?.id])
+        }, [fetchParts])
     );
 
     // Initialize selected parts based on status field
     useEffect(() => {
         if (parts.length > 0 && isInitialMount.current) {
-            // Select parts where status is "1" (attached)
             const selectedIds = parts
                 .filter(part => part.status === "1" || part.status === 1)
                 .map(part => part.id);
-            console.log('Selected parts based on status:', selectedIds);
             setSelectedParts(selectedIds);
             isInitialMount.current = false;
         }
     }, [parts]);
 
-    // Filter parts based on search query
-    useEffect(() => {
+    // Memoize filtered parts based on search query
+    const filteredParts = useMemo(() => {
         if (searchQuery.trim() === '') {
-            setFilteredParts(parts);
-        } else {
-            const query = searchQuery.toLowerCase();
-            const filtered = parts.filter(
-                (part) =>
-                    part.name.toLowerCase().includes(query) ||
-                    part.partNumber.toLowerCase().includes(query) ||
-                    (part.description && part.description.toLowerCase().includes(query))
-            );
-            setFilteredParts(filtered);
+            return parts;
         }
+        const query = searchQuery.toLowerCase();
+        return parts.filter(
+            (part) =>
+                part.name.toLowerCase().includes(query) ||
+                part.partNumber.toLowerCase().includes(query) ||
+                (part.description && part.description.toLowerCase().includes(query))
+        );
     }, [searchQuery, parts]);
 
-    // Handle part attach/detach
-    const handlePartToggle = async (part) => {
-        // Check if part_accept is "0" (already assigned)
+    // Memoize handlePartToggle function
+    const handlePartToggle = useCallback(async (part) => {
+        // Clear any previous error
+        setErrorMessage(null);
+
         if (part.part_accept === "0") {
-            toast.custom(
-                <StatusMessage
-                    type='error'
-                    title="Part Already Assigned"
-                    message={`${part.name} is already assigned to ${part.technician_name || 'another technician'}. Please cancel it before use.`}
-                />,
-                { duration: 4000 }
-            );
-            return; // Stop execution - don't call API
+            const technicianName = part.technician_name && part.technician_name !== 'N/A' 
+                ? part.technician_name 
+                : 'another technician';
+            const errorMsg = `${part.name} is already assigned to ${technicianName}`;
+            setErrorMessage(errorMsg);
+            ToastAndroid.show(errorMsg, ToastAndroid.LONG);
+            return;
         }
 
-        // If part_accept is null, proceed normally
         const isCurrentlyAttached = selectedParts.includes(part.id);
         const newStatus = isCurrentlyAttached ? "0" : "1";
 
@@ -212,12 +214,20 @@ const AddPartBilling = () => {
                 status: newStatus
             };
 
-            console.log('Attaching/Detaching part with payload:', payload);
             const response = await AttechPartWithComplaints(payload);
-            console.log('Attach/Detach response:', response);
+
+            // Check for error in response
+            if (response?.data?.success === false) {
+                const errorMsg = response?.data?.error?.sqlMessage || 
+                                response?.data?.error?.message || 
+                                response?.data?.message || 
+                                'Failed to update part';
+                setErrorMessage(errorMsg);
+                ToastAndroid.show(errorMsg, ToastAndroid.LONG);
+                return;
+            }
 
             if (response?.data?.success) {
-                // Update the part's status in the parts array
                 const updatedParts = parts.map(p => {
                     if (p.id === part.id) {
                         return { ...p, status: newStatus };
@@ -226,57 +236,38 @@ const AddPartBilling = () => {
                 });
 
                 setParts(updatedParts);
-                setFilteredParts(updatedParts);
 
-                // Update selected parts state
                 if (newStatus === "1") {
-                    // Add to selected parts
                     setSelectedParts(prev => [...prev, part.id]);
-                    // Show success toast for attachment
-                    toast.custom(
-                        <StatusMessage
-                            type='success'
-                            title="Part attached successfully"
-                            message={`${part.name} has been added to the bill`}
-                        />,
-                        { duration: 1500 }
-                    );
+                    ToastAndroid.show(`${part.name} added to bill`, ToastAndroid.SHORT);
                 } else {
-                    // Remove from selected parts
                     setSelectedParts(prev => prev.filter(id => id !== part.id));
-                    // Show success toast for detachment
-                    toast.custom(
-                        <StatusMessage
-                            type='success'
-                            title="Part detached successfully"
-                            message={`${part.name} has been removed from the bill`}
-                        />,
-                        { duration: 1500 }
-                    );
+                    ToastAndroid.show(`${part.name} removed from bill`, ToastAndroid.SHORT);
                 }
             } else {
                 throw new Error(response?.data?.message || 'Failed to update part');
             }
         } catch (err) {
             console.error('Error attaching/detaching part:', err);
-            toast.custom(
-                <StatusMessage type='error' title={err.message || 'Failed to update part'} />,
-                { duration: 2000 }
-            );
+            const errorMsg = err?.response?.data?.error?.sqlMessage || 
+                            err?.response?.data?.message || 
+                            err?.message || 
+                            'Failed to update part';
+            setErrorMessage(errorMsg);
+            ToastAndroid.show(errorMsg, ToastAndroid.LONG);
         } finally {
             setAttachingPartId(null);
         }
-    };
+    }, [selectedParts, parts, complaintData]);
 
-    const renderPartItem = ({ item }) => {
+    // Memoize renderPartItem function - Reduced card height with bold titles
+    const renderPartItem = useCallback(({ item }) => {
         const isSelected = selectedParts.includes(item.id);
         const isAttaching = attachingPartId === item.id;
-        const isAssigned = item.part_accept === "0"; // Part is already assigned to technician
-
-        // Calculate opacity - lower opacity for assigned parts
+        const isAssigned = item.part_accept === "0";
         const cardOpacity = isAssigned ? 0.6 : 1;
 
-        const cardClasses = `flex-row items-center p-3 mb-4 rounded-2xl border ${isSelected
+        const cardClasses = `flex-row items-center p-2 mb-3 rounded-xl border ${isSelected
             ? 'bg-green-50 border-primary-sage600'
             : isAssigned
                 ? 'bg-gray-100 border-gray-300'
@@ -287,80 +278,112 @@ const AddPartBilling = () => {
             <TouchableOpacity
                 onPress={() => handlePartToggle(item)}
                 className={cardClasses}
-                disabled={isAttaching || isAssigned} // Disable if part is already assigned
+                disabled={isAttaching || isAssigned}
                 style={{ opacity: cardOpacity }}
                 activeOpacity={0.7}
             >
-                {
-                    item?.imageUrl ? (
-                        <Image
-                            source={{ uri: item.imageUrl }}
-                            className="w-16 h-16 rounded-lg bg-gray-200"
-                            resizeMode="contain"
-                            onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-                        />
-                    ) : (
-                        <View className="w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center">
-                            <Icon name="cube-outline" size={28} color="#10b981" />
-                        </View>
-                    )
-                }
-
-                <View className="flex-1 ml-3">
-                    <Text className={`font-semibold text-base ${isAssigned ? 'text-gray-500' : 'text-text-primary'}`}>
-                        {item.name}
-                    </Text>
-                    <View className='flex-row gap-5'>
-                        <Text className={`text-sm ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
-                            Part #: {item.partNumber}
-                        </Text>
-                        <Text className={`text-sm ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
-                            From: {item?.transfer_by}
-                        </Text>
-                       
+                {/* Image - Reduced size */}
+                {item?.imageUrl ? (
+                    <Image
+                        source={{ uri: item.imageUrl }}
+                        className="w-12 h-12 rounded-lg bg-gray-200"
+                        resizeMode="contain"
+                        onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+                    />
+                ) : (
+                    <View className="w-12 h-12 rounded-lg bg-green-100 items-center justify-center">
+                        <Icon name="cube-outline" size={24} color="#10b981" />
                     </View>
-                     <Text className={`text-sm ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
-                            QR Code: {item.qr_code}
-                        </Text>
-                    {item.description && (
-                        <Text className={`text-xs mt-1 ${isAssigned ? 'text-gray-400' : 'text-text-tertiary'}`} numberOfLines={2}>
-                            {item.description}
-                        </Text>
-                    )}
-                    <Text className={`font-bold text-base mt-1 ${isAssigned ? 'text-gray-500' : 'text-primary-sage700'}`}>
-                        ₹{item.price.toFixed(2)}
-                    </Text>
+                )}
 
-                    {/* Show assigned badge if part is already assigned */}
-                    {isAssigned && (
-                        <View className="bg-red-100 px-2 py-1 rounded-md mt-2 self-start">
-                            <Text className="text-red-600 text-xs font-medium">
-                                Transferred to {item.technician_name || 'Technician'}
+                {/* Content - Compact layout with bold titles */}
+                <View className="flex-1 ml-2">
+                    <View className="flex-row items-center justify-between">
+                        <Text className={`font-bold text-sm text-black ${isAssigned ? 'text-gray-500' : ''}`}>
+                            {item.name || 'Part'}
+                        </Text>
+                        {isAssigned && (
+                            <View className="bg-red-100 px-1.5 py-0.5 rounded-md mr-2">
+                                <Text className="text-red-600 text-[10px] font-medium">
+                                    Transferred
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                    
+                    <View className="flex-row items-center mt-0.5">
+                        <Text className={`text-[11px] text-black font-bold mr-1`}>
+                            Part #:
+                        </Text>
+                        <Text className={`text-[11px] ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
+                            {getDisplayValue(item.partNumber)}
+                        </Text>
+                        
+                        <Text className={`text-[11px] text-black font-bold ml-3 mr-1`}>
+                            QR:
+                        </Text>
+                        <Text className={`text-[11px] ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`}>
+                            {getDisplayValue(item.qr_code)}
+                        </Text>
+                         {/* <Text className={`text-[11px] text-black font-bold ml-3 mr-1`}>
+                            Price:
+                        </Text> */}
+                        <Text style={{color:'green', fontWeight:"500"}} className={`text-[11px] ml-4 ${isAssigned ? 'text-green-400' : 'text-text-secondary'}`}>
+                            ₹{getDisplayValue(item.price)}
+                        </Text>
+                    </View>
+
+                    {/* Transfer By Badge - Fixed positioning */}
+                    <View className="absolute right-0 top-0">
+                        <View className="bg-[#C4DAFF] px-2 py-0.5 rounded-full">
+                            <Text style={{color:'blue'}} className={`text-[11px] font-medium ${isAssigned ? 'text-blue-800' : 'text-text-secondary'}`}>
+                                {getDisplayValue(item?.transfer_by)}
                             </Text>
                         </View>
+                    </View>
+                    
+                    <View className="flex-row items-center mt-0.5">
+                        {/* <Text className={`text-[11px] text-black font-bold mr-1`}>
+                            Description:
+                        </Text> */}
+                        <Text className={`text-[11px] flex-1 ${isAssigned ? 'text-gray-400' : 'text-text-secondary'}`} >
+                            {getDisplayValue(item.description)}
+                        </Text>
+                    </View>
+
+                    {isAssigned && item.technician_name && item.technician_name !== 'N/A' && (
+                        <Text className="text-red-500 text-[10px] mt-0.5">
+                            To: {item.technician_name}
+                        </Text>
                     )}
                 </View>
+
+                {/* Action Icon - Compact */}
                 {isAttaching ? (
                     <ActivityIndicator size="small" color="#2E7D32" />
                 ) : (
                     <Icon
                         name={isSelected ? 'checkmark-circle' : 'add-circle-outline'}
-                        size={28}
+                        size={24}
                         color={isAssigned ? '#ccc' : (isSelected ? '#2E7D32' : '#666')}
                     />
                 )}
             </TouchableOpacity>
         );
-    };
+    }, [selectedParts, attachingPartId, handlePartToggle]);
 
-    const renderLoading = () => (
+    // Memoize key extractor
+    const keyExtractor = useCallback((item) => item.id || Math.random().toString(), []);
+
+    // Memoize loading and error components
+    const renderLoading = useCallback(() => (
         <View className="flex-1 justify-center items-center py-10">
             <ActivityIndicator size="large" color="#2E7D32" />
             <Text className="text-text-secondary mt-4">Loading parts...</Text>
         </View>
-    );
+    ), []);
 
-    const renderError = () => (
+    const renderError = useCallback(() => (
         <View className="flex-1 justify-center items-center py-10 px-4">
             <Icon name="alert-circle-outline" size={50} color="#ef4444" />
             <Text className="text-red-500 text-base mt-2 text-center">
@@ -373,10 +396,9 @@ const AddPartBilling = () => {
                 <Text className="text-white font-semibold">Retry</Text>
             </TouchableOpacity>
         </View>
-    );
+    ), [error, fetchParts]);
 
-    // Render empty state for FlatList
-    const renderEmptyComponent = () => (
+    const renderEmptyComponent = useCallback(() => (
         <View className="items-center justify-center py-10">
             <Icon name="sad-outline" size={50} color="#ccc" />
             <Text className="text-text-tertiary text-base mt-2">
@@ -391,14 +413,41 @@ const AddPartBilling = () => {
                 </TouchableOpacity>
             )}
         </View>
-    );
+    ), [searchQuery, onRefresh]);
+
+    // Memoize FlatList props
+    const flatListProps = useMemo(() => ({
+        data: filteredParts,
+        keyExtractor,
+        renderItem: renderPartItem,
+        contentContainerStyle: {
+            paddingHorizontal: 16,
+            paddingBottom: 16,
+            paddingTop: 8,
+            flexGrow: 1,
+            ...(filteredParts.length === 0 && { justifyContent: 'center' })
+        },
+        refreshControl: (
+            <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#2E7D32', '#4CAF50', '#81C784']}
+                tintColor="#2E7D32"
+                title="Pull to refresh"
+                titleColor="#2E7D32"
+                progressBackgroundColor="#ffffff"
+            />
+        ),
+        ListEmptyComponent: renderEmptyComponent,
+        showsVerticalScrollIndicator: true,
+        initialNumToRender: 10,
+        maxToRenderPerBatch: 10,
+        windowSize: 5,
+        removeClippedSubviews: true,
+    }), [filteredParts, keyExtractor, renderPartItem, refreshing, onRefresh, renderEmptyComponent]);
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            <View className="absolute inset-0 z-50 pointer-events-none">
-                <Toaster />
-            </View>
-
             <Header
                 title="Add Parts in Bill"
                 titlePosition="left"
@@ -416,7 +465,22 @@ const AddPartBilling = () => {
                 }
             />
 
-            {/* Search Bar - Only show if not loading and parts exist */}
+            {/* Inline Error Display - Red background with white text */}
+            {errorMessage && (
+                <View className="bg-red-600 px-4 py-3 mx-4 mt-2 rounded-lg">
+                    <View className="flex-row items-center">
+                        <Icon name="alert-circle" size={20} color="#ffffff" />
+                        <Text className="text-white font-medium ml-2 flex-1">
+                            {errorMessage}
+                        </Text>
+                        <TouchableOpacity onPress={() => setErrorMessage(null)}>
+                            <Icon name="close" size={20} color="#ffffff" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
+
+            {/* Search Bar */}
             {!loading && parts.length > 0 && (
                 <View className="px-4 py-2">
                     <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-0">
@@ -437,36 +501,13 @@ const AddPartBilling = () => {
                 </View>
             )}
 
-            {/* Conditional rendering based on loading/error state */}
+            {/* Conditional rendering */}
             {loading && !refreshing ? (
                 renderLoading()
             ) : error ? (
                 renderError()
             ) : (
-                <FlatList
-                    data={filteredParts}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderPartItem}
-                    contentContainerStyle={{
-                        paddingHorizontal: 16,
-                        paddingBottom: 16,
-                        flexGrow: 1,
-                        ...(filteredParts.length === 0 && { justifyContent: 'center' })
-                    }}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                            colors={['#2E7D32', '#4CAF50', '#81C784']}
-                            tintColor="#2E7D32"
-                            title="Pull to refresh"
-                            titleColor="#2E7D32"
-                            progressBackgroundColor="#ffffff"
-                        />
-                    }
-                    ListEmptyComponent={renderEmptyComponent}
-                    showsVerticalScrollIndicator={true}
-                />
+                <FlatList {...flatListProps} />
             )}
         </SafeAreaView>
     );

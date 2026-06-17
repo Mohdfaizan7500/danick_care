@@ -16,6 +16,7 @@ import {
   RefreshControl,
   Animated,
   ToastAndroid,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -92,6 +93,7 @@ const Billing = () => {
   const footerAnimatedHeight = useRef(new Animated.Value(0)).current;
 
   const isRecomplaint = complaintData?.recomplaint === 'Yes';
+  console.log("isRecomplaint:", isRecomplaint)
   const isAMCComplaint = complaintData?.complaint_type === 'AMC';
 
   const totalPartsPrice = parts?.reduce((sum, part) => sum + part.price, 0) || 0;
@@ -235,8 +237,7 @@ const Billing = () => {
       setParts(formattedParts);
       if (typeof updateImportedPart === 'function') updateImportedPart(formattedParts);
       if (isRefresh) {
-        ToastAndroid.show("refreshed...",ToastAndroid.SHORT,ToastAndroid.TOP);
-
+        ToastAndroid.show("refreshed...", ToastAndroid.SHORT, ToastAndroid.TOP);
       }
     } catch (err) {
       console.error('Error fetching parts:', err);
@@ -404,44 +405,96 @@ const Billing = () => {
     }
   };
 
+  // FIXED: This function now ONLY selects the part, no API calls
+  const replacePartClicked = (part) => {
+    if (part.replace_part === "Yes") {
+      toast.custom(<StatusMessage type='info' title={`This part is already a replacement part and cannot be used for replacement again.`} />, { duration: 3000 });
+      return;
+    }
+    if (part.part_accept === "0") {
+      toast.custom(<StatusMessage type='info' title={`This part is transferred to ${part.technician_name || 'the technician'}. Cancel it first to use.`} />, { duration: 3000 });
+      return;
+    }
+
+    // Just select the part - no API call here
+    setSelectedReplacePart(part);
+
+  };
+
+  // FIXED: This function handles ALL API calls when Replace button is clicked
   const handleReplacePart = async () => {
-    if (!selectedReplacePart || !partToReplace) return;
+    if (!selectedReplacePart || !partToReplace) {
+      toast.custom(<StatusMessage type='error' title="Please select a replacement part first" />, { duration: 2000 });
+      return;
+    }
+
     setReplacingPart(true);
     try {
-      if (isRecomplaint) {
-        let complaintId = complaintData?.oldcomp_id || complaintData?.id;
-        const payload = { complaint_id: complaintId?.toString(), old_part_id: partToReplace.id?.toString(), new_part_id: selectedReplacePart.id?.toString(), status: "0", part_type: complaintData?.complaint_type };
-        const response = await ReplacedPartManagement(payload);
-        if (response?.data?.success) {
-          const updatedParts = parts.map(part => part.id === partToReplace.id ? { ...selectedReplacePart, id: selectedReplacePart.id, old_part_id: selectedReplacePart.old_part_id || null, name: selectedReplacePart.name, partNumber: selectedReplacePart.partNumber, qr_code: part.qr_code || null, price: selectedReplacePart.price, imageUrl: selectedReplacePart.imageUrl, description: selectedReplacePart.description, transfer_by: selectedReplacePart.transfer_by, status: "1", part_accept: null, replace_part: "Yes", source: 'replacement' } : part);
-          setParts(updatedParts);
-          updateImportedPart(updatedParts);
-          const newTotalBeforeDiscount = baseAmount + updatedParts.reduce((sum, p) => sum + p.price, 0);
-          if (discount > newTotalBeforeDiscount) setDiscount(newTotalBeforeDiscount);
-          toast.custom(<StatusMessage type='success' title="Part replaced successfully" />, { duration: 1500 });
-          setReplaceDialogVisible(false);
-          setPartToReplace(null);
-          setSelectedReplacePart(null);
-          setAvailableParts([]);
-          await fetchParts();
-        } else throw new Error(response?.data?.message || 'Failed to replace part');
+      let response;
+
+      if (isRecomplaint || isAMCComplaint) {
+        const complaintId = complaintData?.oldcomp_id || complaintData?.id;
+        const payload = {
+          complaint_id: complaintId?.toString(),
+          old_part_id: partToReplace.id?.toString(),
+          new_part_id: selectedReplacePart.id?.toString(),
+          status: "0",
+          part_type: complaintData?.amc_complaint_id === null ? 'Complaint' : 'AMC'
+        };
+        response = await ReplacedPartManagement(payload);
       } else {
-        const payload = { complaint_id: complaintData?.id?.toString(), old_part_id: partToReplace.id?.toString(), new_part_id: selectedReplacePart.id?.toString(), status: "0" };
-        const response = await AttechPartWithComplaints(payload);
-        if (response?.data?.success) {
-          const updatedParts = parts.map(part => part.id === partToReplace.id ? { ...selectedReplacePart, id: selectedReplacePart.id, old_part_id: selectedReplacePart.old_part_id || null, name: selectedReplacePart.name, partNumber: selectedReplacePart.partNumber, qr_code: part.qr_code || null, price: selectedReplacePart.price, imageUrl: selectedReplacePart.imageUrl, description: selectedReplacePart.description, transfer_by: selectedReplacePart.transfer_by, status: "1", part_accept: null, replace_part: "Yes", source: 'replacement' } : part);
-          setParts(updatedParts);
-          updateImportedPart(updatedParts);
-          const newTotalBeforeDiscount = baseAmount + updatedParts.reduce((sum, p) => sum + p.price, 0);
-          if (discount > newTotalBeforeDiscount) setDiscount(newTotalBeforeDiscount);
-          toast.custom(<StatusMessage type='success' title="Part replaced successfully" />, { duration: 1500 });
-          setReplaceDialogVisible(false);
-          setPartToReplace(null);
-          setSelectedReplacePart(null);
-          setAvailableParts([]);
-        } else throw new Error(response?.data?.message || 'Failed to replace part');
+        const payload = {
+          complaint_id: complaintData?.id?.toString(),
+          old_part_id: partToReplace.id?.toString(),
+          new_part_id: selectedReplacePart.id?.toString(),
+          status: "0"
+        };
+        response = await AttechPartWithComplaints(payload);
+      }
+
+      if (response?.data?.success) {
+        // Update the parts list
+        const updatedParts = parts.map(part =>
+          part.id === partToReplace.id ? {
+            ...selectedReplacePart,
+            id: selectedReplacePart.id,
+            old_part_id: selectedReplacePart.old_part_id || null,
+            name: selectedReplacePart.name,
+            partNumber: selectedReplacePart.partNumber,
+            qr_code: selectedReplacePart.qr_code || null,
+            price: selectedReplacePart.price,
+            imageUrl: selectedReplacePart.imageUrl,
+            description: selectedReplacePart.description,
+            transfer_by: selectedReplacePart.transfer_by,
+            status: "1",
+            part_accept: null,
+            replace_part: "Yes",
+            source: 'replacement'
+          } : part
+        );
+
+        setParts(updatedParts);
+        updateImportedPart(updatedParts);
+
+        // Update discount if needed
+        const newTotalBeforeDiscount = baseAmount + updatedParts.reduce((sum, p) => sum + p.price, 0);
+        if (discount > newTotalBeforeDiscount) setDiscount(newTotalBeforeDiscount);
+
+        toast.custom(<StatusMessage type='success' title="Part replaced successfully" />, { duration: 1500 });
+
+        // Close dialog and reset states
+        setReplaceDialogVisible(false);
+        setPartToReplace(null);
+        setSelectedReplacePart(null);
+        setAvailableParts([]);
+
+        // Refresh parts list
+        await fetchParts();
+      } else {
+        throw new Error(response?.data?.message || 'Failed to replace part');
       }
     } catch (err) {
+      console.error('Error replacing part:', err);
       toast.custom(<StatusMessage type='error' title={err.message || 'Failed to replace part'} />, { duration: 2000 });
     } finally {
       setReplacingPart(false);
@@ -451,7 +504,12 @@ const Billing = () => {
   const handleRemoveReplacementPart = async () => {
     if (!replacementPartToRemove) return;
     try {
-      const payload = { complaint_id: complaintData?.oldcomp_id?.toString(), old_part_id: replacementPartToRemove?.old_part_id?.toString(), new_part_id: replacementPartToRemove.id?.toString(), status: "1" };
+      const payload = {
+        complaint_id: complaintData?.oldcomp_id?.toString(),
+        old_part_id: replacementPartToRemove?.old_part_id?.toString(),
+        new_part_id: replacementPartToRemove.id?.toString(),
+        status: "1"
+      };
       const response = await ReplacedPartManagement(payload);
       if (response?.data?.success) {
         const updatedParts = parts.filter((p) => p.id !== replacementPartToRemove.id);
@@ -467,41 +525,6 @@ const Billing = () => {
     } finally {
       setRemoveReplacementDialogVisible(false);
       setReplacementPartToRemove(null);
-    }
-  };
-
-  const replacePartClicked = async (part) => {
-    if (part.replace_part === "Yes") {
-      toast.custom(<StatusMessage type='info' title={`This part is already a replacement part and cannot be used for replacement again.`} />, { duration: 3000 });
-      return;
-    }
-    if (part.part_accept === "0") {
-      toast.custom(<StatusMessage type='info' title={`This part is transferred to ${part.technician_name || 'the technician'}. Cancel it first to use.`} />, { duration: 3000 });
-      return;
-    }
-    if (isRecomplaint && complaintData?.oldcomp_id) {
-      const payload = { complaint_id: complaintData.oldcomp_id?.toString(), old_part_id: partToReplace?.id?.toString(), new_part_id: part.id?.toString(), status: "0" };
-      try {
-        const response = await ReplacedPartManagement(payload);
-        if (response?.data?.success) {
-          const updatedParts = parts.map(p => p.id === partToReplace?.id ? { ...part, id: part.id, old_part_id: part.old_part_id || null, name: part.name, partNumber: part.partNumber, qr_code: part.qr_code || null, price: part.price, imageUrl: part.imageUrl, description: part.description, transfer_by: part.transfer_by, status: "1", part_accept: null, replace_part: "Yes", source: 'replacement' } : p);
-          setParts(updatedParts);
-          updateImportedPart(updatedParts);
-          const newTotalBeforeDiscount = baseAmount + updatedParts.reduce((sum, p) => sum + p.price, 0);
-          if (discount > newTotalBeforeDiscount) setDiscount(newTotalBeforeDiscount);
-          toast.custom(<StatusMessage type='success' title="Part replaced successfully" />, { duration: 1500 });
-          setReplaceDialogVisible(false);
-          setPartToReplace(null);
-          setSelectedReplacePart(null);
-          setAvailableParts([]);
-          await fetchParts();
-        } else throw new Error(response?.data?.message || 'Failed to replace part');
-      } catch (error) {
-        toast.custom(<StatusMessage type='error' title={error.message || 'Failed to replace part'} />, { duration: 3000 });
-      }
-    } else {
-      setSelectedReplacePart(part);
-      toast.custom(<StatusMessage type='info' title={`You selected ${part.name} for replacement. Click Replace to confirm.`} />, { duration: 3000 });
     }
   };
 
@@ -521,27 +544,30 @@ const Billing = () => {
   };
 
   const renderReplacePartItem = ({ item }) => (
-    <TouchableOpacity onPress={() => replacePartClicked(item)} className={`flex-row items-center p-3 mb-2 rounded-xl border border-gray-300 ${selectedReplacePart?.id === item.id ? 'ring-2 ring-blue-500' : ''} ${item.part_accept === "0" ? 'opacity-50 bg-gray-100' : ''} ${item.replace_part === "Yes" ? 'opacity-50 bg-gray-100' : ''}`} disabled={item.part_accept === "0" || item.replace_part === "Yes"}>
+    <TouchableOpacity
+      onPress={() => replacePartClicked(item)}
+      className={`flex-row items-center p-3 mb-2 rounded-xl border border-gray-300 ${selectedReplacePart?.id === item.id ? 'ring-2 ring-blue-500 bg-green-100 border-green-500' : ''} ${item.part_accept === "0" ? 'opacity-50 bg-gray-100' : ''} ${item.replace_part === "Yes" ? 'opacity-50 bg-gray-100' : ''}`}
+      disabled={item.part_accept === "0" || item.replace_part === "Yes"}
+    >
       <Image source={{ uri: item.imageUrl }} className="w-12 h-12 rounded-lg bg-gray-300" resizeMode="cover" />
       <View className="flex-1 ml-3">
         <View className="flex-row justify-between items-start">
           <Text className="text-text-primary font-semibold text-base flex-1 mr-2">{item.name}</Text>
           <View className={`px-2 py-0.5 rounded-full ${item.transfer_by === 'AMC' ? 'bg-green-200' : 'bg-blue-200'}`}>
-            <Text className={`text-xs font-medium ${getTransferByTextColor(item)}`}>{item.transfer_by === 'AMC' ? 'AMC Part' : 'Market Part'}</Text>
+            {/* <Text className={`text-xs font-medium ${getTransferByTextColor(item)}`}>{item.transfer_by === 'AMC' ? 'AMC Part' : 'Market Part'}</Text> */}
+            <Text className={`text-xs font-medium ${getTransferByTextColor(item)}`}>{item.transfer_by}</Text>
+
           </View>
         </View>
-        <View className="flex-row items-center gap-5">
-          <Text className="text-text-secondary text-sm">Part #: {item.partNumber}</Text>
-          <Text className="text-text-secondary text-sm">From: {item?.transfer_by}</Text>
-        </View>
-        <Text className="text-text-secondary text-sm">QR Code: {item.qr_code || 'N/A'}</Text>
-        <Text className="text-text-tertiary text-xs mt-1" numberOfLines={2}>{item.description}</Text>
-        <View className="flex-row justify-between items-center mt-1">
+        <View className="flex-row items-center gap-2">
           <Text className="text-primary-sage700 font-bold">₹{truncateToTwoDecimals(item.price)}</Text>
-          {item.price === 0 && <Text className="text-green-600 text-xs font-medium">Free (AMC)</Text>}
+
+          <Text className="text-text-secondary text-sm">Part #: {item.partNumber}</Text>
+          <Text className="text-text-secondary text-sm">QR Code: {item?.qr_code}</Text>
         </View>
-        {item.replace_part === "Yes" && <Text className="text-orange-600 text-xs mt-1">This is a replacement part</Text>}
-        {item.part_accept === "0" && item.technician_name ? <Text className="text-red-500 text-xs mt-1">Transferred to: {item.technician_name}</Text> : <Text className="text-green-600 text-xs mt-1">Available for use</Text>}
+        <Text className="text-text-tertiary text-xs mt-1" numberOfLines={2}>{item.description}</Text>
+
+
       </View>
       {selectedReplacePart?.id === item.id && <Icon name="checkmark-circle" size={24} color="#3b82f6" />}
     </TouchableOpacity>
@@ -603,7 +629,13 @@ const Billing = () => {
   const replaceDialogFooter = (
     <View className="flex-row justify-end gap-2">
       <TouchableOpacity onPress={() => { setReplaceDialogVisible(false); setPartToReplace(null); setSelectedReplacePart(null); setAvailableParts([]); }} className="px-4 py-2 rounded-lg bg-gray-200"><Text className="text-gray-700 font-medium">Cancel</Text></TouchableOpacity>
-      <TouchableOpacity onPress={handleReplacePart} disabled={!selectedReplacePart || replacingPart} className={`px-4 py-2 rounded-lg ${selectedReplacePart ? 'bg-blue-500' : 'bg-gray-300'}`}>{replacingPart ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-white font-medium">Replace</Text>}</TouchableOpacity>
+      <TouchableOpacity
+        onPress={handleReplacePart}
+        disabled={!selectedReplacePart || replacingPart}
+        className={`px-4 py-2 rounded-lg ${selectedReplacePart && !replacingPart ? 'bg-blue-500' : 'bg-gray-300'}`}
+      >
+        {replacingPart ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-white font-medium">Replace</Text>}
+      </TouchableOpacity>
     </View>
   );
 
@@ -673,6 +705,7 @@ const Billing = () => {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View className="flex-1">
+
             <Header
               title={isRecomplaint ? "Recomplaint Billing" : "Billing"}
               titlePosition="left"
@@ -681,6 +714,20 @@ const Billing = () => {
               showRightIcon={true}
               customRightIconComponent={<Icon name="bag-add-outline" size={24} color="#333" />}
               onRightIconPress={() => navigation.navigate('AddPartBilling', { complaintData })}
+
+              showRightIcon2={true}
+              customRightIcon2Component={<Icon name="add-outline" size={24} color="#333" />}
+              rightIcon2ContainerStyle="w-10 h-10 rounded-full bg-gray-100 justify-center items-center ml-2"
+              onRightIcon2Press={() => {
+                // Navigate to Parts screen with params
+                navigation.navigate('Parts', {
+                  fromBilling: true,
+                  previousScreen: 'Billing',
+                  complaintData: complaintData // Pass complaint data to return
+                });
+              }}
+
+
               containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
             />
             <ScrollView
@@ -826,7 +873,7 @@ const Billing = () => {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-      {/* Modals (unchanged) */}
+      {/* Modals */}
       <Modal visible={previewImageVisible} transparent={true} animationType="fade" onRequestClose={() => setPreviewImageVisible(false)}>
         <View className="flex-1 bg-black/50 justify-center items-center p-4">
           <View className="bg-white rounded-2xl w-full max-w-[90%] max-h-[80%] overflow-hidden">
@@ -851,8 +898,7 @@ const Billing = () => {
       </CustomModal>
 
       <CustomModal visible={replaceDialogVisible} onClose={() => { setReplaceDialogVisible(false); setPartToReplace(null); setSelectedReplacePart(null); setAvailableParts([]); }} title={`Replace ${partToReplace?.name || 'Part'}`} size="lg" footer={replaceDialogFooter} overlayColor="bg-black/70" position="bottom" containerStyle="flex-1 items-center justify-center" closeOnBackdropPress={true} showCloseIcon={true}>
-        <View className="py-2">
-          <Text className="text-text-primary text-base mb-3">Select a replacement part for <Text className="font-bold">{partToReplace?.name}</Text>:</Text>
+        <View className="py-2 ">
           {loadingPartsList ? <View className="items-center py-8"><ActivityIndicator size="large" color="#2E7D32" /><Text className="text-text-secondary mt-2">Loading replacement parts...</Text></View> : availableParts.length > 0 ? <>
             <Text className="text-text-secondary text-xs mb-2">Found {availableParts.length} replacement part(s)</Text>
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 450 }}>{availableParts.map((item) => <View key={item.id}>{renderReplacePartItem({ item })}</View>)}</ScrollView>

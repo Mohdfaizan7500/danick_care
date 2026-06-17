@@ -48,6 +48,7 @@ import PermissionScreen from '../../screens/AppScreens/PermissionScreens/Permiss
 import Orders from '../../screens/AppScreens/Tabs/Orders';
 import Reschedule from '../../screens/AppScreens/Complaints/Reschedule';
 import RelatedComplaints from '../../screens/AppScreens/Complaints/RelatedComplaints';
+import Part from '../../screens/AppScreens/Tabs/Parts';
 const Stack = createNativeStackNavigator();
 
 // 🟢 Custom loading screen with your AppIcon
@@ -135,6 +136,8 @@ const AppStack = () => {
               <Stack.Screen name="NotificationTopNavigation" component={NotificationTopNavigation} />
               <Stack.Screen name="Reschedule" component={Reschedule} />
               <Stack.Screen name="RelatedComplaints" component={RelatedComplaints} />
+              <Stack.Screen name="Part" component={Part} />
+
 
 
             </Stack.Navigator>

@@ -97,7 +97,7 @@ const BottomTabs = () => {
   console.log("Android Version:", getAndroidVersion());
   console.log("Android API Level:", getAndroidApiLevel());
   console.log("Platform Version:", Platform.Version);
-  
+
   const { IsOnline } = useAuth();
   const insets = useSafeAreaInsets();
   const { orderCount } = useOrder();
@@ -106,7 +106,7 @@ const BottomTabs = () => {
   const getTabBarHeight = () => {
     const androidVersion = getAndroidVersion();
     const apiLevel = getAndroidApiLevel();
-    
+
     if (Platform.OS === 'android') {
       if (androidVersion >= 13 || apiLevel >= 33) {
         return 80 + insets.bottom;
@@ -122,7 +122,7 @@ const BottomTabs = () => {
   const getTabBarPaddingBottom = () => {
     const androidVersion = getAndroidVersion();
     const apiLevel = getAndroidApiLevel();
-    
+
     if (Platform.OS === 'android') {
       if (androidVersion >= 13 || apiLevel >= 33) {
         return 30;
@@ -137,7 +137,7 @@ const BottomTabs = () => {
   const getIconSize = (defaultSize) => {
     const androidVersion = getAndroidVersion();
     const apiLevel = getAndroidApiLevel();
-    
+
     if (Platform.OS === 'android') {
       if (androidVersion >= 13 || apiLevel >= 33) {
         return defaultSize * 0.9;
@@ -150,7 +150,7 @@ const BottomTabs = () => {
   const getLabelFontSize = () => {
     const androidVersion = getAndroidVersion();
     const apiLevel = getAndroidApiLevel();
-    
+
     if (Platform.OS === 'android') {
       if (androidVersion >= 13 || apiLevel >= 33) {
         return 11;
@@ -273,6 +273,7 @@ const BottomTabs = () => {
         }}
       />
 
+
       <Tab.Screen
         name="Parts"
         component={Parts}
@@ -294,6 +295,7 @@ const BottomTabs = () => {
           ),
           headerTitle: 'Parts',
         }}
+        initialParams={{ fromBilling: false, previousScreen: '' }}
       />
 
       <Tab.Screen
