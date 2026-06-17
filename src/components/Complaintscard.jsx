@@ -171,7 +171,7 @@ const Complaintscard = ({ item, onPress }) => {
                         {/* Customer details */}
                         <View style={{ marginTop: 8 }}>
                             {
-                                item.status !== "success" && item.status !== "cancel" &&
+                                (item.status !== "success" && item.status !== "Cancel") &&
                                 <Text style={{ color: '#000', fontSize: 14, fontWeight: '500' }}>
                                     {customerNameValue}
                                 </Text>
@@ -181,7 +181,7 @@ const Complaintscard = ({ item, onPress }) => {
                                 {addressValue}
                             </Text>
                             {
-                                item.status !== "success" && item.status !== "cancel" &&
+                                 (item.status !== "success" && item.status !== "Cancel") &&
                                 <Text style={{ color: '#999', fontSize: 12, marginTop: 2 }}>
                                     {mobileValue}
                                 </Text>

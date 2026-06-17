@@ -13,7 +13,7 @@ const Cancel = () => {
   const [hasMore, setHasMore] = useState(true);
 
   const { user } = useAuth();
-  const technicianId = user?.id ;
+  const technicianId = user?.id;
 
   const fetchComplaints = async (pageNum = 1, isRefresh = false) => {
     try {
@@ -94,8 +94,12 @@ const Cancel = () => {
     customer_mobile: complaint.customer_mobile,
     tot_amt: complaint.tot_amt,
     slot_date: complaint.slot_date,
+    slot_time: complaint.slot_time, // Added this
+    image: complaint.image, // IMPORTANT: Added image field
+    complaint_type: complaint.complaint_type, // Added this
     isRecomplaint: complaint.recomplaint === 'Yes',
     days: complaint.days,
+    remark: complaint.remark, // Added this for completeness
   });
 
   const transformedComplaints = complaints.map(transformComplaintData);
