@@ -9,6 +9,7 @@ import {
     Platform,
     Dimensions,
     ActivityIndicator,
+    Vibration,
 } from 'react-native'
 import React, { useState, useEffect, useRef } from 'react'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
@@ -26,7 +27,7 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 const buildDates = (currentSlotDate = null) => {
     const today = new Date()
     const dates = []
-    
+
     // Parse current slot date if exists (format: "DD-MM-YYYY")
     let currentDateObj = null
     if (currentSlotDate) {
@@ -46,10 +47,10 @@ const buildDates = (currentSlotDate = null) => {
     for (let i = 0; i < 15; i++) {
         const d = new Date(today)
         d.setDate(today.getDate() + i)
-        
+
         const isToday = i === 0
         let isSelected = false
-        
+
         // Check if this date matches the current slot date
         if (currentDateObj) {
             if (d.getDate() === currentDateObj.getDate() &&
@@ -58,7 +59,7 @@ const buildDates = (currentSlotDate = null) => {
                 isSelected = true
             }
         }
-        
+
         dates.push({
             id: i,
             fullDate: d,
@@ -88,7 +89,7 @@ const Reschedule = () => {
     const [isLoading, setIsLoading] = useState(false)
     const [currentSlotInfo, setCurrentSlotInfo] = useState(null)
     const scrollRef = useRef(null)
-    const {user} = useAuth();
+    const { user } = useAuth();
 
     const navigation = useNavigation();
     const route = useRoute();
@@ -98,7 +99,7 @@ const Reschedule = () => {
         // Build dates with current slot date pre-selected
         const week = buildDates(complaintData?.slot_date)
         setDates(week)
-        
+
         // Find and set the pre-selected date
         const preSelected = week.find(d => d.isSelected)
         if (preSelected) {
@@ -111,7 +112,7 @@ const Reschedule = () => {
                 isSelected: index === 0
             })))
         }
-        
+
         // Pre-select the current slot time if available
         if (complaintData?.slot_time) {
             const matchedSlot = TIME_SLOTS.find(slot => slot.time === complaintData.slot_time)
@@ -123,7 +124,7 @@ const Reschedule = () => {
                 time: complaintData.slot_time
             })
         }
-        
+
         // Pre-fill remark with current remark if available
         if (complaintData?.remark) {
             setRemark(complaintData.remark)
@@ -153,24 +154,24 @@ const Reschedule = () => {
 
     const handleSubmit = async () => {
         if (!selectedDate) {
-            Toast.show({ 
-                type: 'error', 
-                text1: 'Date Required', 
-                text2: 'Please select a date', 
-                position: 'top', 
-                visibilityTime: 2000, 
-                topOffset: 50 
+            Toast.show({
+                type: 'error',
+                text1: 'Date Required',
+                text2: 'Please select a date',
+                position: 'top',
+                visibilityTime: 2000,
+                topOffset: 50
             })
             return
         }
         if (!selectedSlot) {
-            Toast.show({ 
-                type: 'error', 
-                text1: 'Time Slot Required', 
-                text2: 'Please select a time slot', 
-                position: 'top', 
-                visibilityTime: 2000, 
-                topOffset: 50 
+            Toast.show({
+                type: 'error',
+                text1: 'Time Slot Required',
+                text2: 'Please select a time slot',
+                position: 'top',
+                visibilityTime: 2000,
+                topOffset: 50
             })
             return
         }
@@ -213,8 +214,8 @@ const Reschedule = () => {
             slot_date: formattedDate,
             slot_time: selectedSlot.time,
             remark: remark.trim(),
-            technician_id:user?.id,
-            status:complaintData?.status
+            technician_id: user?.id,
+            status: complaintData?.status
 
         }
 
@@ -223,7 +224,7 @@ const Reschedule = () => {
         setIsLoading(true)
         try {
             const response = await RescheduleComplaint(payload)
-            
+
             if (response?.data?.success) {
                 Toast.show({
                     type: 'success',
@@ -233,7 +234,7 @@ const Reschedule = () => {
                     visibilityTime: 3000,
                     topOffset: 50,
                 })
-                
+
                 // Navigate back after 1.5 seconds
                 setTimeout(() => {
                     navigation.goBack();
@@ -351,7 +352,10 @@ const Reschedule = () => {
                                     sel && styles.dateCardSelected,
                                     !sel && today && styles.dateCardToday,
                                 ]}
-                                onPress={() => handleDateSelect(date)}
+                                onPress={() => {
+                                    Vibration.vibrate(50);
+                                    handleDateSelect(date)
+                                }}
                                 activeOpacity={0.75}
                             >
                                 {/* Week label */}
@@ -379,7 +383,7 @@ const Reschedule = () => {
                 </ScrollView>
 
                 {/* ── Selected date and time display ─────────────────────── */}
-               
+
 
                 {/* ── Time Slots (2 columns) ─────────────────────────────── */}
                 <Text style={[styles.sectionLabel, { marginTop: 16 }]}>Choose a new time slot</Text>
@@ -394,7 +398,10 @@ const Reschedule = () => {
                                     active && styles.slotCardActive,
                                     !slot.available && styles.slotCardDisabled,
                                 ]}
-                                onPress={() => handleSlotSelect(slot)}
+                                onPress={() => {
+                                    Vibration.vibrate(50);
+                                    handleSlotSelect(slot)
+                                }}
                                 disabled={!slot.available}
                                 activeOpacity={0.8}
                             >
@@ -435,7 +442,7 @@ const Reschedule = () => {
                 {/* ── Submit ─────────────────────────────────── */}
                 <TouchableOpacity
                     style={[
-                        styles.submitBtn, 
+                        styles.submitBtn,
                         (!selectedDate || !selectedSlot || !remark.trim() || isLoading) && styles.submitBtnDisabled
                     ]}
                     onPress={handleSubmit}
