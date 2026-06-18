@@ -21,7 +21,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import Header from '../../../components/Header';
 import { useAuth } from '../../../context/AuthContext';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
@@ -554,20 +553,15 @@ const Billing = () => {
         <View className="flex-row justify-between items-start">
           <Text className="text-text-primary font-semibold text-base flex-1 mr-2">{item.name}</Text>
           <View className={`px-2 py-0.5 rounded-full ${item.transfer_by === 'AMC' ? 'bg-green-200' : 'bg-blue-200'}`}>
-            {/* <Text className={`text-xs font-medium ${getTransferByTextColor(item)}`}>{item.transfer_by === 'AMC' ? 'AMC Part' : 'Market Part'}</Text> */}
             <Text className={`text-xs font-medium ${getTransferByTextColor(item)}`}>{item.transfer_by}</Text>
-
           </View>
         </View>
         <View className="flex-row items-center gap-2">
           <Text className="text-primary-sage700 font-bold">₹{truncateToTwoDecimals(item.price)}</Text>
-
           <Text className="text-text-secondary text-sm">Part #: {item.partNumber}</Text>
           <Text className="text-text-secondary text-sm">QR Code: {item?.qr_code}</Text>
         </View>
         <Text className="text-text-tertiary text-xs mt-1" numberOfLines={2}>{item.description}</Text>
-
-
       </View>
       {selectedReplacePart?.id === item.id && <Icon name="checkmark-circle" size={24} color="#3b82f6" />}
     </TouchableOpacity>
@@ -699,37 +693,56 @@ const Billing = () => {
     <SafeAreaView className="flex-1 bg-white">
       <View className="absolute inset-0 z-50 pointer-events-none"><Toaster /></View>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View className="flex-1">
 
-            <Header
-              title={isRecomplaint ? "Recomplaint Billing" : "Billing"}
-              titlePosition="left"
-              titleStyle="font-bold text-2xl ml-5"
-              showBackButton={true}
-              showRightIcon={true}
-              customRightIconComponent={<Icon name="bag-add-outline" size={24} color="#333" />}
-              onRightIconPress={() => navigation.navigate('AddPartBilling', { complaintData })}
+            {/* Custom Header - Replaced Header component with custom implementation */}
+            <View className="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5">
+              {/* Left: Back button and Title */}
+              <View className="flex-row items-center flex-1">
+                <TouchableOpacity 
+                  onPress={() => navigation.goBack()} 
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  className="mr-3"
+                >
+                  <Icon name="chevron-back-outline" size={28} color="#333" />
+                </TouchableOpacity>
+                <Text className="font-bold text-2xl ml-1 text-gray-900">
+                  {!isRecomplaint ? "Billing" : "Billing"}
+                </Text>
+              </View>
 
-              showRightIcon2={true}
-              customRightIcon2Component={<Icon name="add-outline" size={24} color="#333" />}
-              rightIcon2ContainerStyle="w-10 h-10 rounded-full bg-gray-100 justify-center items-center ml-2"
-              onRightIcon2Press={() => {
-                // Navigate to Parts screen with params
-                navigation.navigate('Parts', {
-                  fromBilling: true,
-                  previousScreen: 'Billing',
-                  complaintData: complaintData // Pass complaint data to return
-                });
-              }}
+              {/* Right: Add Part from Market Button (Text) and Add Part Button (Icon) */}
+              <View className="flex-row items-center">
+                {/* Add Part from Market - Text button */}
+                <TouchableOpacity
+                  onPress={() => {
+                    navigation.navigate('Parts', {
+                      fromBilling: true,
+                      previousScreen: 'Billing',
+                      complaintData: complaintData
+                    });
+                  }}
+                  className="bg-gray-100 px-3 py-2 rounded-lg mr-2 flex-row items-center"
+                >
+                  <Icon name="add-outline" size={18} color="#333" />
+                  <Text className="text-gray-700 text-sm font-medium ml-1">Purchase Part from Market</Text>
+                </TouchableOpacity>
 
+                {/* Add Part button (bag icon) */}
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('AddPartBilling', { complaintData })}
+                  className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center"
+                >
+                  <Icon name="bag-add-outline" size={24} color="#333" />
+                </TouchableOpacity>
+              </View>
+            </View>
 
-              containerStyle="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5"
-            />
             <ScrollView
               ref={scrollViewRef}
               contentContainerStyle={{
@@ -818,29 +831,29 @@ const Billing = () => {
               <View className="px-3 pt-2 pb-2">
                 <View className="border p-3 mb-2 border-gray-200 rounded-xl bg-gray-50">
                   <View className="flex-row justify-between items-center mb-1">
-                    <Text className="text-gray-600 text-xs leading-tight">Base Amount</Text>
+                    <Text className="text-gray-600 text-xs leading-tight">Service Amount</Text>
                     <Text className="text-gray-800 text-xs font-medium">
-                      ₹{truncateToTwoDecimals(baseAmount - platformFee)}
+                      ₹{truncateToTwoDecimals(baseAmount - platformFee - (complaintData?.gst || 0))}
                     </Text>
                   </View>
                   <View className="flex-row justify-between items-center mb-1">
-                    <Text className="text-gray-600 text-xs leading-tight">Platform Fee</Text>
+                    <Text className="text-gray-600 text-[12px] leading-tight">Platform Fee</Text>
                     <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(platformFee)}</Text>
                   </View>
                   <View className="flex-row justify-between items-center mb-1">
-                    <Text className="text-gray-600 text-xs leading-tight">Total Base Amt</Text>
-                    <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(baseAmount)}</Text>
+                    <Text className="text-gray-600 text-[12px] leading-tight">GST</Text>
+                    <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(complaintData?.gst || 0)}</Text>
                   </View>
                   <View className="flex-row justify-between items-center mb-1">
-                    <Text className="text-gray-600 text-xs leading-tight">Parts Total</Text>
+                    <Text className="text-gray-600 text-[12px] leading-tight">Parts Total</Text>
                     <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(totalPartsPrice)}</Text>
                   </View>
                   <View className="flex-row justify-between items-center pt-1 border-t border-gray-200">
-                    <Text className="text-gray-700 text-xs font-semibold">Subtotal</Text>
+                    <Text className="text-gray-700 text-[12px] font-semibold">Subtotal</Text>
                     <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(totalBeforeDiscount)}</Text>
                   </View>
                   <View className="flex-row justify-between items-center mt-1">
-                    <Text className="text-gray-600 text-xs leading-tight">Discount</Text>
+                    <Text className="text-gray-600 text-[12px] leading-tight">Discount</Text>
                     <TextInput
                       className="border border-gray-300 text-black rounded-md px-2 py-0.5 w-20 text-right text-xs"
                       keyboardType="numeric"

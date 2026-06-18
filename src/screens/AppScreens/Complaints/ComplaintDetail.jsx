@@ -814,15 +814,25 @@ const ComplaintDetail = () => {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View>
                 <View className="flex-row items-center justify-between">
-                    <Text className="text-text-primary mb-4 text-2xl font-bold ">{complaintData.service_name}</Text>
-                    {/* Related Complaints Button - positioned next to title */}
+                    <Text className="text-text-primary mb-4 text-2xl font-bold">{complaintData.service_name}</Text>
+                </View>
+                
+                {/* Action Buttons Row */}
+                <View className="flex-row items-center mb-4" style={{ gap: 8 }}>
+                    <TouchableOpacity 
+                        onPress={handlePhoneCall}
+                        className="bg-blue-600 flex-1 py-3 rounded-lg flex-row items-center justify-center"
+                    >
+                        <Icon name="call-outline" size={20} color="white" />
+                        <Text className="text-white font-medium ml-2">Call</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity
                         onPress={handleRelatedComplaints}
-                        className="bg-purple-500 px-3 py-2 rounded-lg flex-row items-center"
+                        className="bg-purple-500 flex-1 py-3 rounded-lg flex-row items-center justify-center"
                         activeOpacity={0.7}
                     >
-                        <Icon name="list-outline" size={18} color="white" />
-                        <Text className="text-white text-xs font-medium ml-1">Related</Text>
+                        <Icon name="list-outline" size={20} color="white" />
+                        <Text className="text-white font-medium ml-2">Related CSN Service</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -856,15 +866,7 @@ const ComplaintDetail = () => {
                                 </TouchableOpacity>
                             </View>
                         )}
-                        {showVerifiedContent && (
-                            <View className="bg-ui-success/10 border border-ui-success rounded-xl p-3 mb-4">
-                                <View className="flex-row items-center">
-                                    <Icon name="checkmark-circle" size={20} color="#58A890" />
-                                    <Text className="text-ui-success font-bold ml-2">Job Verified</Text>
-                                </View>
-                                <Text className="text-text-primary text-sm mt-1">{complaintData.customer_name} • {complaintData.customer_mobile}</Text>
-                            </View>
-                        )}
+                        
                         {showVerifiedContent && (
                             <View className="mb-6">
                                 <Text className="text-text-primary text-base mb-2 font-semibold">Take Before Working Photo</Text>
@@ -893,26 +895,9 @@ const ComplaintDetail = () => {
                         )}
                     </>
                 )}
-                <View className="bg-ui-card border border-ui-border rounded-xl p-4 mb-4">
-                    <View className="flex-row justify-between items-center mb-2">
-                        <Text className="text-black font-semibold text-lg">Customer Information</Text>
-                        <View className="flex-row">
-                            <TouchableOpacity onPress={handlePhoneCall} className="mr-4"><Icon name="call-outline" size={22} color="#000" /></TouchableOpacity>
-                            <TouchableOpacity onPress={handleOpenMaps}><Icon name="location-outline" size={22} color="#000" /></TouchableOpacity>
-                        </View>
-                    </View>
-                    <View className="flex-row items-center mb-2"><Icon name="person-outline" size={18} color="#666" /><Text className="text-text-primary text-base ml-2">{complaintData.customer_name}</Text></View>
-                    <View className="flex-row items-center mb-2"><Icon name="location-outline" size={18} color="#666" /><Text className="text-text-secondary text-base ml-2 flex-1">{complaintData.service_address}</Text></View>
-                    <TouchableOpacity onPress={handlePhoneCall} className="flex-row items-center"><Icon name="call-outline" size={18} color="#666" /><Text className="text-[#666] text-base ml-2">{complaintData.customer_mobile}</Text></TouchableOpacity>
-                </View>
-                {/* <View className="bg-ui-card border border-ui-border rounded-xl p-4 mb-4">
-                    <Text className="text-text-primary font-semibold text-lg mb-2">Service Details</Text>
-                    <View className="flex-row justify-between mb-2"><Text className="text-text-secondary">Service Name:</Text><Text className="text-text-primary font-medium">{complaintData.service_name}</Text></View>
-                    <View className="flex-row justify-between mb-2"><Text className="text-text-secondary">CSN:</Text><Text className="text-text-primary font-medium">{complaintData.csn}</Text></View>
-                    <View className="flex-row justify-between mb-2"><Text className="text-text-secondary">Total Amount:</Text><Text className="text-text-primary font-medium">₹{complaintData.tot_amt}</Text></View>
-                    {complaintData.slot_date && <View className="flex-row justify-between mb-2"><Text className="text-text-secondary">Slot Date:</Text><Text className="text-text-primary font-medium">{formatDate(complaintData.slot_date)}</Text></View>}
-                    {complaintData.slot_time && <View className="flex-row justify-between"><Text className="text-text-secondary">Slot Time:</Text><Text className="text-text-primary font-medium">{complaintData.slot_time}</Text></View>}
-                </View> */}
+                
+               
+
                 {!isComplete && (
                     <>
                         {timerRemainingSeconds > 0 && (
@@ -955,24 +940,24 @@ const ComplaintDetail = () => {
                                 onPress={handleReverse}
                                 disabled={submittingReverse}
                                 className={`px-6 py-3 rounded-xl flex-1 mr-2 items-center ${submittingReverse
-                                        ? 'bg-ui-disabled'
-                                        : timerExpired
-                                            ? 'bg-primary-sage600'
-                                            : showReasonInput && reasonText.trim()
-                                                ? 'bg-ui-success'
-                                                : 'bg-ui-secondary/20'
+                                    ? 'bg-ui-disabled'
+                                    : timerExpired
+                                        ? 'bg-primary-sage600'
+                                        : showReasonInput && reasonText.trim()
+                                            ? 'bg-ui-success'
+                                            : 'bg-ui-secondary/20'
                                     }`}
                             >
                                 {submittingReverse ? (
                                     <ActivityIndicator color="#fff" />
                                 ) : (
                                     <Text className={`font-semibold ${submittingReverse
+                                        ? 'text-white'
+                                        : timerExpired
                                             ? 'text-white'
-                                            : timerExpired
-                                                ? 'text-white'
-                                                : showReasonInput && reasonText.trim()
-                                                    ? 'text-text-inverse'
-                                                    : 'text-text-secondary'
+                                            : showReasonInput && reasonText.trim()
+                                                ? 'text-text-inverse'
+                                                : 'text-text-secondary'
                                         }`}>
                                         Reverse
                                     </Text>
@@ -999,7 +984,6 @@ const ComplaintDetail = () => {
                                     <Text className="text-white font-semibold text-base ml-2">Reschedule</Text>
                                 </View>
                             </TouchableOpacity>
-                           
                         </View>
                     </>
                 )}
