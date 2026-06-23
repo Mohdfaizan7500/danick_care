@@ -1,4 +1,5 @@
-// ComplaintDetail.js - Complete with timer (persistent), fine warning, back-only camera, custom header, Reschedule button, and Related Complaints button
+// ComplaintDetail.js - Updated with Address and Description Card
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
@@ -190,6 +191,7 @@ const ComplaintDetail = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { complaint } = route.params;
+    console.log('complaint on complaint details :', complaint);
     const { triggerRefresh } = useDashboard();
 
     // OTP flow states
@@ -212,7 +214,10 @@ const ComplaintDetail = () => {
     const [currentLocation, setCurrentLocation] = useState(null);
     const [isGettingLocation, setIsGettingLocation] = useState(false);
     const [hasLocationPermission, setHasLocationPermission] = useState(false);
-    const [isInitializingLocation, setIsInitializingLocation] = useState(true);
+    const [locationError, setLocationError] = useState(null);
+    const [locationAttempts, setLocationAttempts] = useState(0);
+    const [isLocationReady, setIsLocationReady] = useState(false);
+    const MAX_LOCATION_ATTEMPTS = 1;
 
     // Camera states
     const [photoUri, setPhotoUri] = useState(null);
@@ -235,15 +240,13 @@ const ComplaintDetail = () => {
     // Check if OTP is already verified (verify_otp is "1")
     const isOtpAlreadyVerified = complaint.verify_otp === "1";
 
-    // --- PERSISTENT TIMER LOGIC - FIXED for "YYYY-MM-DD HH:mm" format ---
+    // --- PERSISTENT TIMER LOGIC ---
     useEffect(() => {
-        // Clear any existing interval first
         if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
             timerIntervalRef.current = null;
         }
 
-        // Don't run timer if complaint is complete or no date_time
         if (isComplete || !complaint.date_time) {
             setTimerRemainingSeconds(0);
             setTimerExpired(false);
@@ -254,21 +257,17 @@ const ComplaintDetail = () => {
             let dateTimeStr = complaint.date_time;
             console.log('Complaint date_time:', dateTimeStr);
 
-            // Handle "YYYY-MM-DD HH:mm" format (without seconds)
             if (dateTimeStr.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)) {
                 dateTimeStr = dateTimeStr + ':00';
                 console.log('Added seconds: ', dateTimeStr);
             }
 
-            // Parse the date string
             const [datePart, timePart] = dateTimeStr.split(' ');
             const [year, month, day] = datePart.split('-').map(Number);
             const [hours, minutes, seconds] = timePart.split(':').map(Number);
 
-            // Create date object (month is 0-indexed in JS)
             const complaintDate = new Date(year, month - 1, day, hours, minutes, seconds || 0);
 
-            // Validate the date
             if (isNaN(complaintDate.getTime())) {
                 console.error('Invalid date created from:', dateTimeStr);
                 setTimerRemainingSeconds(0);
@@ -276,7 +275,6 @@ const ComplaintDetail = () => {
                 return;
             }
 
-            // Calculate target time (complaint time + TIMER_DURATION_MINUTES minutes)
             const targetDate = new Date(complaintDate.getTime() + TIMER_DURATION_MINUTES * 60 * 1000);
             console.log('Complaint date:', complaintDate.toLocaleString());
             console.log('Target date:', targetDate.toLocaleString());
@@ -299,13 +297,9 @@ const ComplaintDetail = () => {
                 }
             };
 
-            // Initial update
             updateTimer();
-
-            // Start interval
             timerIntervalRef.current = setInterval(updateTimer, 1000);
 
-            // Cleanup
             return () => {
                 if (timerIntervalRef.current) {
                     clearInterval(timerIntervalRef.current);
@@ -392,72 +386,76 @@ const ComplaintDetail = () => {
         });
     };
 
-    const initializeLocation = async (retryCount = 0) => {
-        const maxRetries = 2;
+    const initializeLocation = async (attemptCount = 1) => {
+        setLocationAttempts(attemptCount);
+        setLocationError(null);
+
         try {
             let permissionStatus = await checkLocationPermission();
+
             if (permissionStatus === RESULTS.GRANTED) {
                 setHasLocationPermission(true);
                 setIsGettingLocation(true);
+
                 try {
                     const location = await getCurrentLocation();
                     setCurrentLocation(location);
-                    toast.custom(<StatusMessage type="success" title="Data obtained successfully" />, { duration: 2000 });
-                    return location;
-                } catch (error) {
-                    if (retryCount < maxRetries) {
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                        return initializeLocation(retryCount + 1);
-                    }
-                    toast.custom(<StatusMessage type="error" title={error.message} />, { duration: 3000 });
-                    return null;
-                } finally {
                     setIsGettingLocation(false);
+                    setLocationError(null);
+                    setIsLocationReady(true);
+                    console.log('✅ Location ready');
+                    return true;
+                } catch (error) {
+                    setIsGettingLocation(false);
+                    setLocationError(error.message);
+                    console.log(`❌ Attempt ${attemptCount} failed:`, error.message);
+
+                    if (attemptCount < MAX_LOCATION_ATTEMPTS) {
+                        console.log(`🔄 Retry ${attemptCount + 1}`);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        return initializeLocation(attemptCount + 1);
+                    } else {
+                        setLocationError(`Could not fetch location after ${MAX_LOCATION_ATTEMPTS} attempts`);
+                        setIsLocationReady(false);
+                        return false;
+                    }
                 }
             } else if (permissionStatus === RESULTS.DENIED) {
                 const requestStatus = await requestLocationPermission();
                 if (requestStatus === RESULTS.GRANTED) {
-                    setHasLocationPermission(true);
-                    setIsGettingLocation(true);
-                    try {
-                        const location = await getCurrentLocation();
-                        setCurrentLocation(location);
-                        toast.custom(<StatusMessage type="success" title="Data obtained successfully" />, { duration: 2000 });
-                        return location;
-                    } catch (error) {
-                        toast.custom(<StatusMessage type="error" title={error.message} />, { duration: 3000 });
-                        return null;
-                    } finally {
-                        setIsGettingLocation(false);
-                    }
+                    return initializeLocation(attemptCount);
                 } else {
-                    setHasLocationPermission(false);
-                    toast.custom(<StatusMessage type="error" title="Location permission is required for OTP verification" />, { duration: 3000 });
-                    return null;
+                    setLocationError('Location permission denied');
+                    setIsLocationReady(false);
+                    return false;
                 }
             } else if (permissionStatus === RESULTS.BLOCKED) {
                 setHasLocationPermission(false);
+                setLocationError('Location permission is blocked');
+                setIsLocationReady(false);
                 Alert.alert(
-                    'Location Permission Required',
-                    'This app requires location permission for OTP verification. Please enable location access in settings.',
+                    'Permission Required',
+                    'Please enable location access in settings to continue.',
                     [
                         { text: 'Cancel', style: 'cancel' },
                         { text: 'Open Settings', onPress: () => openSettings() },
                     ]
                 );
-                return null;
+                return false;
             }
-            return null;
+            return false;
         } catch (error) {
-            setIsGettingLocation(false);
-            return null;
+            console.error('Location error:', error);
+            setLocationError('An unexpected error occurred');
+            setIsLocationReady(false);
+            return false;
         }
     };
 
     // Check if OTP is already verified
     useEffect(() => {
         if (isComplete) {
-            setIsInitializingLocation(false);
+            setIsLocationReady(true);
             return;
         }
         if (complaint.verify_otp === "1") {
@@ -468,7 +466,7 @@ const ComplaintDetail = () => {
                 contact_no: complaint.customer_mobile,
                 id: complaint.id,
             });
-            setIsInitializingLocation(false);
+            setIsLocationReady(true);
         }
         if (complaint.upload_image === "1" && complaint.verify_otp === "1") {
             navigation.replace('ConetToAMCScreen', {
@@ -479,15 +477,17 @@ const ComplaintDetail = () => {
         }
     }, [complaint, navigation, isComplete]);
 
+    // Initialize location
     useEffect(() => {
         if (!isComplete && !isOtpAlreadyVerified && !verified) {
             const initLocation = async () => {
-                await initializeLocation();
-                setIsInitializingLocation(false);
+                console.log('📍 Starting...');
+                await initializeLocation(1);
+                console.log('📍 Completed');
             };
             initLocation();
         } else {
-            setIsInitializingLocation(false);
+            setIsLocationReady(true);
         }
     }, [isComplete, isOtpAlreadyVerified, verified]);
 
@@ -505,6 +505,23 @@ const ComplaintDetail = () => {
             if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
         };
     }, []);
+
+    const handleRetryLocation = async () => {
+        setLocationError(null);
+        setLocationAttempts(0);
+        setIsLocationReady(false);
+        const success = await initializeLocation(1);
+        if (!success) {
+            toast.custom(
+                <StatusMessage
+                    type="error"
+                    title="Unable to proceed"
+                    message="Please check your connection and try again."
+                />,
+                { duration: 3000 }
+            );
+        }
+    };
 
     const handlePhoneCall = () => {
         const phoneNumber = complaintData.customer_mobile;
@@ -529,7 +546,6 @@ const ComplaintDetail = () => {
         }
     };
 
-    // Handle Reschedule navigation
     const handleReschedule = () => {
         if (isComplete) {
             toast.custom(
@@ -539,15 +555,12 @@ const ComplaintDetail = () => {
             return;
         }
 
-        // Navigate to Reschedule screen with complaint data
         navigation.navigate('Reschedule', {
             complaintData: complaintData,
         });
     };
 
-    // Handle Related Complaints navigation
     const handleRelatedComplaints = () => {
-        // Navigate to Related Complaints screen with customer data
         navigation.navigate('RelatedComplaints', {
             customerId: complaintData.customer_id || complaintData.id,
             customerName: complaintData.customer_name,
@@ -598,11 +611,20 @@ const ComplaintDetail = () => {
             toast.custom(<StatusMessage type="info" title="Job already started and verified" className="mx-4 mb-6" />, { duration: 3000 });
             return;
         }
-        if (!hasLocationPermission) {
-            toast.custom(<StatusMessage type="error" title="Location permission is required to start job" className="mx-4 mb-6" />, { duration: 3000 });
-            const location = await initializeLocation();
-            if (!location) return;
+
+        if (!hasLocationPermission || !currentLocation) {
+            toast.custom(<StatusMessage type="error" title="Please enable GPS to continue" className="mx-4 mb-6" />, { duration: 3000 });
+            const success = await initializeLocation(1);
+            if (!success) {
+                toast.custom(<StatusMessage type="error" title="Unable to proceed. Please check GPS." className="mx-4 mb-6" />, { duration: 3000 });
+                return;
+            }
+            if (!currentLocation) {
+                toast.custom(<StatusMessage type="error" title="GPS unavailable. Please check settings." className="mx-4 mb-6" />, { duration: 3000 });
+                return;
+            }
         }
+
         let location = currentLocation;
         if (!location) {
             setIsGettingLocation(true);
@@ -610,12 +632,13 @@ const ComplaintDetail = () => {
                 location = await getCurrentLocation();
                 setCurrentLocation(location);
             } catch (error) {
-                toast.custom(<StatusMessage type="error" title={error.message || "Unable to get Data. Please enable GPS."} className="mx-4 mb-6" />, { duration: 3000 });
+                toast.custom(<StatusMessage type="error" title={error.message || "Unable to proceed. Please enable GPS."} className="mx-4 mb-6" />, { duration: 3000 });
                 setIsGettingLocation(false);
                 return;
             }
             setIsGettingLocation(false);
         }
+
         const payload = { complaint_id: complaint.id, mobile: complaint.customer_mobile };
         setSendingOTP(true);
         try {
@@ -665,11 +688,19 @@ const ComplaintDetail = () => {
             toast.custom(<StatusMessage type="error" title="Please enter complete 5-digit OTP" className="mx-4 mb-6" />, { duration: 3000 });
             return;
         }
-        if (!hasLocationPermission) {
-            toast.custom(<StatusMessage type="error" title="Location permission is required for verification" className="mx-4 mb-6" />, { duration: 3000 });
-            const location = await initializeLocation();
-            if (!location) return;
+        if (!hasLocationPermission || !currentLocation) {
+            toast.custom(<StatusMessage type="error" title="GPS required for verification" className="mx-4 mb-6" />, { duration: 3000 });
+            const success = await initializeLocation(1);
+            if (!success) {
+                toast.custom(<StatusMessage type="error" title="Unable to proceed. Please enable GPS." className="mx-4 mb-6" />, { duration: 3000 });
+                return;
+            }
+            if (!currentLocation) {
+                toast.custom(<StatusMessage type="error" title="GPS unavailable. Please check settings." className="mx-4 mb-6" />, { duration: 3000 });
+                return;
+            }
         }
+
         let location = currentLocation;
         if (!location) {
             setIsGettingLocation(true);
@@ -683,6 +714,7 @@ const ComplaintDetail = () => {
             }
             setIsGettingLocation(false);
         }
+
         setVerifying(true);
         try {
             const payload = {
@@ -715,7 +747,6 @@ const ComplaintDetail = () => {
         }
     };
 
-    // Camera handling with Vision Camera
     const handleTakePhoto = () => {
         setShowCamera(true);
     };
@@ -767,8 +798,6 @@ const ComplaintDetail = () => {
         }
     };
 
-    const formatDate = (dateString) => dateString || 'N/A';
-
     const getStatusDisplay = () => {
         const status = complaintData.status;
         switch (status) {
@@ -816,10 +845,10 @@ const ComplaintDetail = () => {
                 <View className="flex-row items-center justify-between">
                     <Text className="text-text-primary mb-4 text-2xl font-bold">{complaintData.service_name}</Text>
                 </View>
-                
+
                 {/* Action Buttons Row */}
                 <View className="flex-row items-center mb-4" style={{ gap: 8 }}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={handlePhoneCall}
                         className="bg-blue-600 flex-1 py-3 rounded-lg flex-row items-center justify-center"
                     >
@@ -831,9 +860,31 @@ const ComplaintDetail = () => {
                         className="bg-purple-500 flex-1 py-3 rounded-lg flex-row items-center justify-center"
                         activeOpacity={0.7}
                     >
-                        <Icon name="list-outline" size={20} color="white" />
-                        <Text className="text-white font-medium ml-2">Related CSN Service</Text>
+                        <Icon name="list-outline" size={18} color="white" />
+                        <Text className="text-white font-[6px] ml-2" style={{ fontSize: 12, fontWeight: '600' }}>Related CSN Service</Text>
                     </TouchableOpacity>
+                </View>
+
+                {/* Address and Description Card - Added before timer */}
+                <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4 shadow-sm">
+                    <View className="flex-row items-start mb-3">
+                        <Icon name="location-outline" size={20} color="#4B5563" />
+                        <View className="ml-2 flex-1">
+                            <Text className="text-gray-500 text-xs font-medium">Service Address</Text>
+                            <Text className="text-gray-800 text-sm font-medium mt-0.5">
+                                {complaintData.service_address || 'N/A'}
+                            </Text>
+                        </View>
+                    </View>
+                    <View className="flex-row items-start">
+                        <Icon name="document-text-outline" size={20} color="#4B5563" />
+                        <View className="ml-2 flex-1">
+                            <Text className="text-gray-500 text-xs font-medium">Description / Remark</Text>
+                            <Text className="text-gray-800 text-sm mt-0.5">
+                                {complaintData.remark || 'N/A'}
+                            </Text>
+                        </View>
+                    </View>
                 </View>
 
                 {!isComplete && (
@@ -866,7 +917,7 @@ const ComplaintDetail = () => {
                                 </TouchableOpacity>
                             </View>
                         )}
-                        
+
                         {showVerifiedContent && (
                             <View className="mb-6">
                                 <Text className="text-text-primary text-base mb-2 font-semibold">Take Before Working Photo</Text>
@@ -895,8 +946,6 @@ const ComplaintDetail = () => {
                         )}
                     </>
                 )}
-                
-               
 
                 {!isComplete && (
                     <>
@@ -991,7 +1040,8 @@ const ComplaintDetail = () => {
         </TouchableWithoutFeedback>
     );
 
-    if (isInitializingLocation && !isComplete && !isOtpAlreadyVerified && !verified) {
+    // Show clean loading/error state without using words like "location" or "fetching"
+    if (!isLocationReady && !isComplete && !isOtpAlreadyVerified && !verified) {
         return (
             <SafeAreaView className="flex-1 bg-background-primary">
                 <CustomHeader
@@ -1002,9 +1052,42 @@ const ComplaintDetail = () => {
                     backButtonColor="#333333"
                     containerStyle="bg-background-primary flex-row items-center justify-between px-4 py-4 border-gray-200"
                 />
-                <View className="flex-1 justify-center items-center">
-                    <ActivityIndicator size="large" color="#58A890" />
-                    <Text className="mt-4 text-text-secondary">Fetching data...</Text>
+                <View className="flex-1 justify-center items-center px-6">
+                    {locationError ? (
+                        // Error state
+                        <View className="items-center">
+                            <Icon name="wifi-outline" size={60} color="#ef4444" />
+                            <Text className="text-red-500 text-lg font-semibold mt-4 text-center">
+                                Unable to proceed
+                            </Text>
+                            <Text className="text-gray-600 text-center mt-2 px-4">
+                                {locationError}
+                            </Text>
+                            <Text className="text-gray-400 text-sm text-center mb-4">
+                                Attempt {locationAttempts} of {MAX_LOCATION_ATTEMPTS}
+                            </Text>
+                            <TouchableOpacity
+                                onPress={handleRetryLocation}
+                                className="bg-primary-sage600 px-8 py-3 rounded-xl flex-row items-center"
+                            >
+                                <Icon name="refresh-outline" size={20} color="white" />
+                                <Text className="text-white font-semibold ml-2">Try Again</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        // Loading state - clean, no words about location
+                        <View className="items-center">
+                            <ActivityIndicator size="large" color="#58A890" />
+                            <Text className="mt-6 text-text-secondary text-base">
+                                Please wait...
+                            </Text>
+                            <Text className="text-xs text-gray-400 mt-2">
+                                {locationAttempts > 0 && locationAttempts < MAX_LOCATION_ATTEMPTS
+                                    ? `Attempt ${locationAttempts} of ${MAX_LOCATION_ATTEMPTS}`
+                                    : ''}
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </SafeAreaView>
         );

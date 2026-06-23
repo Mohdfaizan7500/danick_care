@@ -109,9 +109,9 @@ const BottomTabs = () => {
 
     if (Platform.OS === 'android') {
       if (androidVersion >= 13 || apiLevel >= 33) {
-        return 80 + insets.bottom;
+        return 90 + insets.bottom;
       } else {
-        return 60 + insets.bottom;
+        return 80 + insets.bottom;
       }
     } else {
       return 80 + insets.bottom;

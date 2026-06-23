@@ -6,7 +6,6 @@ const Complaintscard = ({ item, onPress }) => {
     const [modalVisible, setModalVisible] = useState(false);
 
     if (!item) return null;
-    console.log('item:', item)
 
     // Safely convert any value to string
     const safeToString = (value, fallback = '') => {
