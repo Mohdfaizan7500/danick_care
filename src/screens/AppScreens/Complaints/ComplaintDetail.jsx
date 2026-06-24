@@ -26,10 +26,11 @@ import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { sendOTP, verifyOTP, UploadComplaintImage, ReverseComplaint } from '../../../lib/api';
 import { check, request, RESULTS, PERMISSIONS, openSettings } from 'react-native-permissions';
-// *** REPLACED with @amrshbib/react-native-geolocation ***
 import Geolocation from '@amrshbib/react-native-geolocation';
 import { useDashboard } from '../../../context/DashboardContext';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import { LocateIcon } from 'lucide-react-native';
+import { MapIcon } from '../../../assets/svgIcons/SVGIcons';
 
 // --- Custom Header Component ---
 const CustomHeader = ({
@@ -865,17 +866,52 @@ const ComplaintDetail = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Address and Description Card - Added before timer */}
+                {/* Address and Description Card - Updated Address Row with Map Icon */}
                 <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4 shadow-sm">
-                    <View className="flex-row items-start mb-3">
-                        <Icon name="location-outline" size={20} color="#4B5563" />
-                        <View className="ml-2 flex-1">
-                            <Text className="text-gray-500 text-xs font-medium">Service Address</Text>
-                            <Text className="text-gray-800 text-sm font-medium mt-0.5">
-                                {complaintData.service_address || 'N/A'}
-                            </Text>
+                    {/* Address Row with Map Icon */}
+                    <View className="flex-row items-start mb-3 justify-between">
+                        <View className="flex-row items-start flex-1">
+                            <Icon name="location-outline" size={20} color="#4B5563" />
+                            <View className="ml-2 flex-1">
+                                <Text className="text-gray-500 text-xs font-medium">Service Address</Text>
+                                <Text className="text-gray-800 text-sm font-medium mt-0.5">
+                                    {complaintData.service_address || 'N/A'}
+                                </Text>
+                            </View>
                         </View>
+                        {/* Map / Location Icon */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                const lat = complaintData.latitude;
+                                const lng = complaintData.longitude;
+                                if (lat && lng) {
+                                    const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                                    Linking.openURL(url).catch(() => {
+                                        toast.custom(
+                                            <StatusMessage type="error" title="Could not open maps" className="mx-4 mb-6" />,
+                                            { duration: 3000 }
+                                        );
+                                    });
+                                } else {
+                                    toast.custom(
+                                            <StatusMessage type="error" title="User Location Not Available" className="mx-4 mb-6" />,
+                                            { duration: 3000 }
+                                        );
+                                    // Alert.alert('Location Not Available', 'No coordinates provided for this complaint.');
+                                }
+                            }}
+                            activeOpacity={0.7}
+                            className="ml-2 p-2"
+                        >
+
+                            {complaintData.latitude && complaintData.longitude ? (
+                                <MapIcon width={30} height={30} />
+                            ) : (
+                                <Icon name="location-outline" size={22} color="#9CA3AF" />
+                            )}
+                        </TouchableOpacity>
                     </View>
+
                     <View className="flex-row items-start">
                         <Icon name="document-text-outline" size={20} color="#4B5563" />
                         <View className="ml-2 flex-1">

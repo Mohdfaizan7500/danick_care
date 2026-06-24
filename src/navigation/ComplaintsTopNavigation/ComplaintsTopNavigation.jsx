@@ -288,11 +288,7 @@ const ComplaintsTopNavigation = () => {
             tabBarActiveTintColor: '#059669',
             tabBarInactiveTintColor: '#4B5563',
           }}>
-          <Tab.Screen
-            name="AllComplaints"
-            component={AllComplaints}
-            options={{ title: 'All' }}
-          />
+
           <Tab.Screen
             name="Assigned"
             component={Assigned}
@@ -312,6 +308,11 @@ const ComplaintsTopNavigation = () => {
             name="Cancel"
             component={Cancel}
             options={{ title: 'Cancelled' }}
+          />
+          <Tab.Screen
+            name="AllComplaints"
+            component={AllComplaints}
+            options={{ title: 'All' }}
           />
         </Tab.Navigator>
       </View>
