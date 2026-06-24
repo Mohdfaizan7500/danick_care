@@ -1,4 +1,5 @@
 // ComplaintDetail.js - Updated with Address and Description Card
+// Now using @amrshbib/react-native-geolocation
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -25,7 +26,8 @@ import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { sendOTP, verifyOTP, UploadComplaintImage, ReverseComplaint } from '../../../lib/api';
 import { check, request, RESULTS, PERMISSIONS, openSettings } from 'react-native-permissions';
-import Geolocation from '@react-native-community/geolocation';
+// *** REPLACED with @amrshbib/react-native-geolocation ***
+import Geolocation from '@amrshbib/react-native-geolocation';
 import { useDashboard } from '../../../context/DashboardContext';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 
@@ -326,6 +328,35 @@ const ComplaintDetail = () => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
+    // --- REPLACED getCurrentLocation with @amrshbib/react-native-geolocation ---
+    const getCurrentLocation = async () => {
+        try {
+            const location = await Geolocation.getCurrentLocation({
+                enableHighAccuracy: true,
+                timeout: 15000,
+                priority: 'high_accuracy', // or 'balanced' for less battery drain
+            });
+            // The library returns an object containing latitude, longitude, accuracy, etc.
+            return {
+                latitude: location.latitude.toString(),
+                longitude: location.longitude.toString(),
+                accuracy: location.accuracy,
+            };
+        } catch (error) {
+            // Map errors to user‑friendly messages based on error.message or error.code
+            let errorMessage = 'Failed to get location';
+            const msg = error.message ? error.message.toLowerCase() : '';
+            if (error.code === 1 || msg.includes('permission')) {
+                errorMessage = 'Location permission denied';
+            } else if (error.code === 2 || msg.includes('unavailable') || msg.includes('gps')) {
+                errorMessage = 'Location unavailable. Please enable GPS.';
+            } else if (error.code === 3 || msg.includes('timeout')) {
+                errorMessage = 'Location request timed out. Please try again.';
+            }
+            throw new Error(errorMessage);
+        }
+    };
+
     // Location permission and getting current location
     const checkLocationPermission = async () => {
         try {
@@ -353,37 +384,6 @@ const ComplaintDetail = () => {
             console.log('Permission request error:', error);
             return RESULTS.UNAVAILABLE;
         }
-    };
-
-    const getCurrentLocation = () => {
-        return new Promise((resolve, reject) => {
-            let timeoutId;
-            const successCallback = (position) => {
-                if (timeoutId) clearTimeout(timeoutId);
-                const { latitude, longitude } = position.coords;
-                resolve({
-                    latitude: latitude.toString(),
-                    longitude: longitude.toString(),
-                    accuracy: position.coords.accuracy,
-                });
-            };
-            const errorCallback = (error) => {
-                if (timeoutId) clearTimeout(timeoutId);
-                let errorMessage = 'Failed to get location';
-                if (error.code === 1) errorMessage = 'Location permission denied';
-                else if (error.code === 2) errorMessage = 'Location unavailable. Please enable GPS.';
-                else if (error.code === 3) errorMessage = 'Location request timed out. Please try again.';
-                reject(new Error(errorMessage));
-            };
-            timeoutId = setTimeout(() => {
-                errorCallback({ code: 3, message: 'Location request timed out after 15 seconds' });
-            }, 15000);
-            Geolocation.getCurrentPosition(successCallback, errorCallback, {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 10000,
-            });
-        });
     };
 
     const initializeLocation = async (attemptCount = 1) => {

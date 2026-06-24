@@ -730,7 +730,7 @@ const Billing = () => {
                   className="bg-gray-100 px-3 py-2 rounded-lg mr-2 flex-row items-center"
                 >
                   <Icon name="add-outline" size={18} color="#333" />
-                  <Text className="text-gray-700 text-sm font-medium ml-1">Purchase Part from Market</Text>
+                  <Text className="text-gray-700 text-[8px] font-medium ml-1">Purchase Part from Market</Text>
                 </TouchableOpacity>
 
                 {/* Add Part button (bag icon) */}
