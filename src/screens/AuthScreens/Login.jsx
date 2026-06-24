@@ -272,7 +272,7 @@ const Login = ({ navigation }) => {
                                 placeholder="Enter your password"
                                 placeholderTextColor="#999"
                                 value={password}
-                                onChangeText={setPassword}
+                                onChangeText={(text) => setPassword(text.replace(/[^0-9]/g, ''))} // Only allow digits
                                 secureTextEntry={!showPassword}
                                 autoCapitalize="none"
                                 autoCorrect={false}
