@@ -288,7 +288,7 @@ const Profile = () => {
 
         {/* Version Text */}
         <Text className="text-center text-gray-400 text-xs pb-2">
-          Version 1.0.0
+          Version 1.1.0
         </Text>
       </ScrollView>
 
