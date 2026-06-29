@@ -1,26 +1,25 @@
-import { StyleSheet, Text, View, TouchableOpacity, Image, Modal, Pressable } from 'react-native'
-import React, { useState } from 'react'
+import { StyleSheet, Text, View, TouchableOpacity, Image, Modal, Pressable, Linking } from 'react-native';
+import React, { useState } from 'react';
 import { ImageIcon } from '../assets/svgIcons/SVGIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 const Complaintscard = ({ item, onPress }) => {
     const [modalVisible, setModalVisible] = useState(false);
+    console.log("item:", item)
 
     if (!item) return null;
 
-    // Safely convert any value to string
     const safeToString = (value, fallback = '') => {
         if (value === null || value === undefined) return fallback;
         if (typeof value === 'object') return fallback;
         return String(value);
     };
 
-    // Safely parse number
     const safeParseFloat = (value, fallback = 0) => {
         const parsed = parseFloat(value);
         return isNaN(parsed) ? fallback : parsed;
     };
 
-    // Map status to display format
     const mapStatusToDisplay = (status) => {
         const statusMap = {
             'Assigned': 'Assigned',
@@ -40,12 +39,10 @@ const Complaintscard = ({ item, onPress }) => {
         return statusMap[safeStatus] || safeStatus;
     };
 
-    // Check if it's a recomplaint
     const isRecomplaint = (item) => {
         return item.isRecomplaint === true || item.recomplaint === 'Yes';
     };
 
-    // Get safe values
     const rawStatus = item?.status;
     const displayStatus = mapStatusToDisplay(rawStatus);
     const serviceType = safeToString(item?.service || item?.service_name, 'Service');
@@ -53,10 +50,10 @@ const Complaintscard = ({ item, onPress }) => {
     const recomplaint = isRecomplaint(item);
 
     const csnValue = safeToString(item?.csn, 'N/A');
-    const idValue = safeToString(item?.id, 'N/A');
     const serviceNameValue = safeToString(item?.service_name, 'Service');
     const customerNameValue = safeToString(item?.customer_name, 'Customer');
-    const addressValue = safeToString(item?.service_address, 'Address not available');
+    const area = safeToString(item?.area, '');
+    const city = safeToString(item?.city, '');
     const mobileValue = safeToString(item?.customer_mobile, 'Mobile not available');
     const amountValue = safeParseFloat(item?.tot_amt, 0);
     const slotDateValue = safeToString(item?.slot_date, '');
@@ -76,14 +73,9 @@ const Complaintscard = ({ item, onPress }) => {
         return dateString;
     };
 
-    const formatTime = (timeString) => {
-        if (!timeString || timeString === '') return 'N/A';
-        return timeString;
-    };
-
     const isCancel = displayStatus === 'Cancel';
+    const isSuccessOrCancel = rawStatus === 'success' || rawStatus === 'cancel' || rawStatus === 'Cancel' || rawStatus === 'cancelled';
 
-    // Color for complaint type badge
     const getComplaintTypeStyle = () => {
         switch (complaintType) {
             case 'AMC':
@@ -112,22 +104,19 @@ const Complaintscard = ({ item, onPress }) => {
                     marginBottom: 12,
                 }}
             >
-                {/* Header: Complaint number and service type */}
+                {/* Header */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <View>
                         <Text style={{ color: '#666', fontSize: 12, fontWeight: '500' }}>
                             CSN: {csnValue}
                         </Text>
-
                     </View>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
-                        {/* Complaint Type Badge */}
                         <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: typeStyle.backgroundColor }}>
                             <Text style={{ fontSize: 12, fontWeight: '500', color: typeStyle.textColor }}>
                                 {complaintType}
                             </Text>
                         </View>
-                        {/* Service Type Badge */}
                         <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: '#E8F5E9' }}>
                             <Text style={{ fontSize: 12, fontWeight: '500', color: '#2E7D32' }}>
                                 {serviceType}
@@ -136,7 +125,7 @@ const Complaintscard = ({ item, onPress }) => {
                     </View>
                 </View>
 
-                {/* Title and status */}
+                {/* Title & Status */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <Text style={{ color: '#000', fontWeight: '600', fontSize: 16, flex: 1, marginRight: 8 }}>
                         {serviceNameValue}
@@ -167,93 +156,135 @@ const Complaintscard = ({ item, onPress }) => {
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <View style={{ flex: 1, marginRight: 12 }}>
-                        {/* Customer details */}
                         <View style={{ marginTop: 8 }}>
                             {
-                                (item.status !== "success" && item.status !== "Cancel") &&
+                                !isSuccessOrCancel &&
                                 <Text style={{ color: '#000', fontSize: 14, fontWeight: '500' }}>
                                     {customerNameValue}
                                 </Text>
                             }
-
+                            {/* ✅ Always show city, conditionally show area */}
                             <Text style={{ color: '#999', fontSize: 12, marginTop: 2 }}>
-                                {addressValue}
+                                {!isSuccessOrCancel && area ? area + ' ' : ''}{city || 'hhh'}
                             </Text>
                             {
-                                 (item.status !== "success" && item.status !== "Cancel") &&
+                                !isSuccessOrCancel &&
                                 <Text style={{ color: '#999', fontSize: 12, marginTop: 2 }}>
                                     {mobileValue}
                                 </Text>
                             }
-
                         </View>
 
-                        {/* Amount */}
                         <Text style={{ color: '#666', fontSize: 14, marginTop: 8 }} numberOfLines={2}>
-                            Amount: ₹{amountValue.toFixed(2)}
+                            Amount: ₹{amountValue.toFixed(2) || 'N/A'}
                         </Text>
 
-                        {/* Slot Date */}
-                        {slotDateValue !== '' && (
-                            <Text style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
-                                Slot Date: {formatDate(slotDateValue)}
-                            </Text>
-                        )}
+                        <Text style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
+                            Slot Date: {formatDate(slotDateValue) || 'N/A'}
+                        </Text>
 
-                        {/* Slot Time */}
-                        {slotTimeValue !== '' && (
-                            <Text style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
-                                Slot Time: {formatTime(slotTimeValue)}
-                            </Text>
-                        )}
+                        <Text style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
+                            Slot Time: {formatDate(slotTimeValue) || 'N/A'}
+                        </Text>
+
+                        <Text style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
+                            Description/Remark : {item?.remark || 'N/A'}
+                        </Text>
+                        <Text style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
+                            Review : {item?.review || 'N/A'}
+                        </Text>
                     </View>
+                    <View style={{alignItems:"flex-end",gap:5}}>
 
-                    {/* Image with tap to open modal */}
-                    <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => item?.image && setModalVisible(true)}
-                    >
-                        {item?.image ? (
-                            <View style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#E8F5E9', overflow: 'hidden' }}>
-                                <Image
-                                    source={{ uri: item.image }}
-                                    style={{ width: '100%', height: '100%' }}
-                                    resizeMode='cover'
-                                    onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-                                />
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => item?.image && setModalVisible(true)}
+                        >
+                            {item?.image ? (
+                                <View style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#E8F5E9', overflow: 'hidden' }}>
+                                    <Image
+                                        source={{ uri: item.image }}
+                                        style={{ width: '100%', height: '100%' }}
+                                        resizeMode='cover'
+                                        onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+                                    />
+                                </View>
+                            ) : (
+                                <View style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 1, borderColor: '#2E7D32', backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center' }}>
+                                    <ImageIcon width={36} height={36} fill={'#2E7D32'} />
+                                    <Text style={{ fontSize: 9, color: '#2E7D32', marginTop: 4 }}>No Image</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                        <View style={{ }}>
+                            <View style={{
+                                paddingHorizontal: 8,
+                                paddingVertical: 4,
+                                borderRadius: 20,
+                                backgroundColor: recomplaint ? '#FF9800' : '#2196F3'
+                            }}>
+                                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' }}>
+                                    {recomplaint ? 'Recomplaint' : 'New'}
+                                </Text>
                             </View>
-                        ) : (
-                            <View style={{ width: 96, height: 96, borderRadius: 16, borderWidth: 1, borderColor: '#2E7D32', backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center' }}>
-                                <ImageIcon width={36} height={36} fill={'#2E7D32'} />
-                                <Text style={{ fontSize: 9, color: '#2E7D32', marginTop: 4 }}>No Image</Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
+                        </View>
+                    </View>
                 </View>
 
-                {/* Days since complaint */}
                 {daysValue !== '' && daysValue !== '0' && (
                     <Text style={{ color: '#999', fontSize: 12, marginTop: 8 }}>
                         {daysValue} days ago
                     </Text>
                 )}
 
-                {/* Recomplaint/New Badge - positioned at bottom right */}
-                <View style={{ position: 'absolute', bottom: 8, right: 8 }}>
-                    <View style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 20,
-                        backgroundColor: recomplaint ? '#FF9800' : '#2196F3'
-                    }}>
-                        <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' }}>
-                            {recomplaint ? 'Recomplaint' : 'New'}
-                        </Text>
-                    </View>
+                <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
+                    <TouchableOpacity
+                        onPress={() => {
+                            const phoneNumber = item?.customer_mobile;
+                            if (phoneNumber) {
+                                Linking.openURL(`tel:${phoneNumber}`).catch(() => { });
+                            }
+                        }}
+                        style={{
+                            flex: 1,
+                            backgroundColor: '#2563EB',
+                            paddingVertical: 10,
+                            borderRadius: 8,
+                            flexDirection: 'row',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <Icon name="call-outline" size={18} color="white" />
+                        <Text style={{ color: 'white', fontWeight: '600', marginLeft: 6 }}>Call</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => {
+                            const address = item?.service_address;
+                            if (address) {
+                                const encodedAddress = encodeURIComponent(address);
+                                Linking.openURL(`https://maps.google.com/?q=${encodedAddress}`).catch(() => { });
+                            }
+                        }}
+                        style={{
+                            flex: 1,
+                            backgroundColor: '#10B981',
+                            paddingVertical: 10,
+                            borderRadius: 8,
+                            flexDirection: 'row',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <Icon name="map-outline" size={18} color="white" />
+                        <Text style={{ color: 'white', fontWeight: '600', marginLeft: 6 }}>Location</Text>
+                    </TouchableOpacity>
                 </View>
+
+                
             </TouchableOpacity>
 
-            {/* Modal for fullscreen image */}
             <Modal
                 animationType="fade"
                 transparent={true}
@@ -280,10 +311,10 @@ const Complaintscard = ({ item, onPress }) => {
                 </Pressable>
             </Modal>
         </>
-    )
-}
+    );
+};
 
-export default Complaintscard
+export default Complaintscard;
 
 const styles = StyleSheet.create({
     modalOverlay: {
@@ -319,4 +350,4 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         lineHeight: 32,
     },
-})
+});

@@ -100,6 +100,7 @@ const Cancel = () => {
     isRecomplaint: complaint.recomplaint === 'Yes',
     days: complaint.days,
     remark: complaint.remark, // Added this for completeness
+    city:complaint.city
   });
 
   const transformedComplaints = complaints.map(transformComplaintData);

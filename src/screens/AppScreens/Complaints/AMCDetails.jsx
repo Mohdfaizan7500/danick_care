@@ -651,7 +651,7 @@ const AMCDetails = () => {
 
       if (response?.data?.success) {
         console.log('QR Code removed successfully, updating UI...');
-        
+
         // CRITICAL FIX: Update all states properly
         // 1. Remove from linkedItems
         setLinkedItems(prev => {
@@ -955,14 +955,14 @@ const AMCDetails = () => {
             <Text className="text-sm text-gray-600 mt-1">Valid: {fetchedAmcDetails?.valid || amc?.valid || '1 Year'}</Text>
             <Text className="text-sm text-teal-600 font-semibold mt-1">Price: ₹{fetchedAmcDetails?.price || amc?.price || '0'}</Text>
             {billingId && (
-              <Text className="text-xs text-gray-500 mt-2">Billing ID: {billingId}</Text>
+              <Text className="text-md text-gray-700 mt-2">Billing ID: {billingId}</Text>
             )}
 
             {fetchedComplaint && (
               <View className="mt-3 pt-3 border-t border-gray-100">
-                <Text className="text-xs text-gray-500">Complaint ID: {fetchedComplaint.complaint_id}</Text>
-                <Text className="text-xs text-gray-500">Status: {fetchedComplaint.status}</Text>
-                <Text className="text-xs text-gray-500">Total Service: {fetchedComplaint.total_service}</Text>
+                <Text className="text-md text-gray-700">CSN: {fetchedComplaint.complaint_id}</Text>
+                <Text className="text-md text-gray-700">Status: {fetchedComplaint.status}</Text>
+                <Text className="text-md text-gray-700">Total Service: {fetchedComplaint.total_service}</Text>
               </View>
             )}
 
@@ -1126,10 +1126,15 @@ const AMCDetails = () => {
                       ) : (
                         <View>
                           <View className="flex-row items-center">
-                            <View className="flex-1 flex-row items-center border border-gray-300 rounded-l-lg bg-white px-3">
-                              <Icon name="qr-code-outline" size={18} color="#666" />
+                            <TouchableOpacity
+                              onPress={() => handleScan(partId)}
+                              className="rounded-l-lg px-3 py-3 border items-center justify-center bg-teal-500 border-teal-500"
+                            >
+                              <Icon name="camera-outline" size={18} color="white" />
+                            </TouchableOpacity>
+                            <View className="flex-1 flex-row items-center border border-gray-300 rounded-r-lg bg-white px-3">
                               <TextInput
-                                className="flex-1 ml-2 text-sm text-gray-800 py-3"
+                                className="flex-1 ml-0 text-sm text-gray-800 py-3"
                                 placeholder="Enter QR Code Number"
                                 placeholderTextColor={'gray'}
                                 value={currentQrCode || ''}
@@ -1146,32 +1151,28 @@ const AMCDetails = () => {
                               )}
                             </View>
 
+
                             <TouchableOpacity
-                              onPress={() => handleScan(partId)}
-                              className="rounded-r-lg px-3 py-3 border items-center justify-center bg-teal-500 border-teal-500"
-                            >
-                              <Icon name="camera-outline" size={18} color="white" />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              className="py-2.5 px-3 rounded-lg items-center bg-orange-500 ml-2"
+                              className="justify-center items-center w-20 h-11 bg-orange-500 ml-2 rounded-lg"
                               onPress={() => handleLinkQR(partId, partName, index)}
                               disabled={loadingStates[partId]}
                             >
                               {loadingStates[partId] ? (
                                 <ActivityIndicator size="small" color="white" />
                               ) : (
-                                <View className="flex-row items-center">
-                                  <LinkQrCodeIcon color="white" size={16} />
-                                </View>
+                                <Text className="text-white text-xs font-medium">Blank QR</Text>
                               )}
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                              className="py-2.5 px-3 rounded-lg items-center bg-red-500 ml-2"
+                              className="w-20 h-11 justify-center  rounded-lg items-center bg-red-500 ml-2"
                               onPress={() => handleReplacePart(partId, partName)}
                               disabled={loadingStates[partId]}
                             >
-                              <BucketIcon color="white" size={16} />
+                              {/* <BucketIcon color="white" size={16} /> */}
+                              <Text className='text-white text-xs font-medium'>Bucket Part</Text>
+
+
                             </TouchableOpacity>
                           </View>
                         </View>
@@ -1199,7 +1200,7 @@ const AMCDetails = () => {
 
       {/* Next Button */}
       {!isKeyboardVisible && spareParts.length > 0 && (
-        <View className='bg-white w-full absolute bottom-0 py-3 border-t border-t-gray-200 left-0 right-0'>
+        <View className='bg-white w-full absolute bottom-4 py-3 border-t border-t-gray-200 left-0 right-0'>
           <TouchableOpacity
             className={`py-3.5 mx-5 rounded-xl items-center ${allPartsLinked ? 'bg-teal-500' : 'bg-gray-400'}`}
             onPress={handleNext}

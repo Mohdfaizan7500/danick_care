@@ -1,7 +1,7 @@
 // ComplaintDetail.js - Updated with Address and Description Card
 // Now using @amrshbib/react-native-geolocation
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import {
     View,
     Text,
@@ -29,10 +29,11 @@ import { check, request, RESULTS, PERMISSIONS, openSettings } from 'react-native
 import Geolocation from '@amrshbib/react-native-geolocation';
 import { useDashboard } from '../../../context/DashboardContext';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
-import { LocateIcon } from 'lucide-react-native';
 import { MapIcon } from '../../../assets/svgIcons/SVGIcons';
+import RNFS from 'react-native-fs';
+import ImageResizer from 'react-native-image-resizer';
 
-// --- Custom Header Component ---
+// --- Custom Header Component (unchanged) ---
 const CustomHeader = ({
     title,
     titleStyle = 'text-base font-semibold text-gray-800',
@@ -106,7 +107,7 @@ const isAndroid15OrHigher = () => {
     return false;
 };
 
-// Custom Camera Modal - Forces back camera only
+// Custom Camera Modal - Forces back camera only (unchanged)
 const CustomCameraModal = ({ visible, onClose, onCapture }) => {
     const device = useCameraDevice('back');
     const { hasPermission, requestPermission } = useCameraPermission();
@@ -194,7 +195,20 @@ const ComplaintDetail = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { complaint } = route.params;
-    console.log('complaint on complaint details :', complaint);
+
+    // --- STABILISE COMPLAINT REFERENCE TO PREVENT RE-RENDERS ---
+    const initialComplaintRef = useRef(complaint);
+    const initialComplaint = initialComplaintRef.current;
+
+    // Derive stable booleans from the ref
+    const isComplete = initialComplaint.status === 'success';
+    const isOtpAlreadyVerified = initialComplaint.verify_otp === "1";
+
+    // Log the complaint only once on mount
+    useEffect(() => {
+        console.log('complaint on complaint details :', initialComplaint);
+    }, []);
+
     const { triggerRefresh } = useDashboard();
 
     // OTP flow states
@@ -224,8 +238,10 @@ const ComplaintDetail = () => {
 
     // Camera states
     const [photoUri, setPhotoUri] = useState(null);
+    const [originalPhotoUri, setOriginalPhotoUri] = useState(null);
     const [sendingPhoto, setSendingPhoto] = useState(false);
     const [showCamera, setShowCamera] = useState(false);
+    const [resizing, setResizing] = useState(false);
 
     // Reverse reason states
     const [showReasonInput, setShowReasonInput] = useState(false);
@@ -238,26 +254,21 @@ const ComplaintDetail = () => {
     const [timerExpired, setTimerExpired] = useState(false);
     const timerIntervalRef = useRef(null);
 
-    // Check if complaint status is complete (success)
-    const isComplete = complaint.status === 'success';
-    // Check if OTP is already verified (verify_otp is "1")
-    const isOtpAlreadyVerified = complaint.verify_otp === "1";
-
-    // --- PERSISTENT TIMER LOGIC ---
+    // --- PERSISTENT TIMER LOGIC (stabilised) ---
     useEffect(() => {
         if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
             timerIntervalRef.current = null;
         }
 
-        if (isComplete || !complaint.date_time) {
+        if (isComplete || !initialComplaint.date_time) {
             setTimerRemainingSeconds(0);
             setTimerExpired(false);
             return;
         }
 
         try {
-            let dateTimeStr = complaint.date_time;
+            let dateTimeStr = initialComplaint.date_time;
             console.log('Complaint date_time:', dateTimeStr);
 
             if (dateTimeStr.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)) {
@@ -320,7 +331,7 @@ const ComplaintDetail = () => {
                 }
             };
         }
-    }, [complaint.date_time, isComplete]);
+    }, [isComplete]); // only depends on stable boolean
 
     const formatTimer = (seconds) => {
         if (isNaN(seconds) || seconds < 0) return '00:00';
@@ -329,22 +340,20 @@ const ComplaintDetail = () => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // --- REPLACED getCurrentLocation with @amrshbib/react-native-geolocation ---
+    // --- Location handling (unchanged) ---
     const getCurrentLocation = async () => {
         try {
             const location = await Geolocation.getCurrentLocation({
                 enableHighAccuracy: true,
                 timeout: 15000,
-                priority: 'high_accuracy', // or 'balanced' for less battery drain
+                priority: 'high_accuracy',
             });
-            // The library returns an object containing latitude, longitude, accuracy, etc.
             return {
                 latitude: location.latitude.toString(),
                 longitude: location.longitude.toString(),
                 accuracy: location.accuracy,
             };
         } catch (error) {
-            // Map errors to user‑friendly messages based on error.message or error.code
             let errorMessage = 'Failed to get location';
             const msg = error.message ? error.message.toLowerCase() : '';
             if (error.code === 1 || msg.includes('permission')) {
@@ -358,7 +367,6 @@ const ComplaintDetail = () => {
         }
     };
 
-    // Location permission and getting current location
     const checkLocationPermission = async () => {
         try {
             if (Platform.OS === 'ios') {
@@ -453,32 +461,32 @@ const ComplaintDetail = () => {
         }
     };
 
-    // Check if OTP is already verified
+    // Check if OTP is already verified – now with stable dependency
     useEffect(() => {
         if (isComplete) {
             setIsLocationReady(true);
             return;
         }
-        if (complaint.verify_otp === "1") {
+        if (initialComplaint.verify_otp === "1") {
             setVerified(true);
             setJobStarted(true);
             setOtpResponseData({
-                customer_name: complaint.customer_name,
-                contact_no: complaint.customer_mobile,
-                id: complaint.id,
+                customer_name: initialComplaint.customer_name,
+                contact_no: initialComplaint.customer_mobile,
+                id: initialComplaint.id,
             });
             setIsLocationReady(true);
         }
-        if (complaint.upload_image === "1" && complaint.verify_otp === "1") {
+        if (initialComplaint.upload_image === "1" && initialComplaint.verify_otp === "1") {
             navigation.replace('ConetToAMCScreen', {
-                complaintData: complaint,
+                complaintData: initialComplaint,
                 isVerified: true,
                 isImageUploaded: true,
             });
         }
-    }, [complaint, navigation, isComplete]);
+    }, []); // run once on mount
 
-    // Initialize location
+    // Initialize location – stable dependencies
     useEffect(() => {
         if (!isComplete && !isOtpAlreadyVerified && !verified) {
             const initLocation = async () => {
@@ -587,7 +595,11 @@ const ComplaintDetail = () => {
             }
             setSubmittingReverse(true);
             try {
-                const payload = { id: complaintData.id.toString(), remark: reasonText.trim() };
+                const payload = {
+                    id: complaintData.id.toString(),
+                    remark: reasonText.trim(),
+                    type: timerExpired ? 'no' : 'yes',
+                };
                 const response = await ReverseComplaint(payload);
                 if (response?.data?.success) {
                     toast.custom(<StatusMessage type="success" title={response.data.msg || "Complaint reversed successfully"} className="mx-4 mb-6" />, { duration: 2000 });
@@ -752,13 +764,60 @@ const ComplaintDetail = () => {
         setShowCamera(true);
     };
 
+    // Helper: get file size in bytes
+    const getFileSize = async (uri) => {
+        try {
+            const filePath = uri.startsWith('file://') ? uri.replace('file://', '') : uri;
+            const stat = await RNFS.stat(filePath);
+            return stat.size;
+        } catch (err) {
+            console.error('Could not get file size:', err);
+            return 0;
+        }
+    };
+
+    // Resize the image and update photoUri with the smaller version
+    const resizeAndSetPhoto = async (originalUri) => {
+        setResizing(true);
+        try {
+            const originalSize = await getFileSize(originalUri);
+            console.log('📷 Original size:', (originalSize / 1024).toFixed(2), 'KB');
+
+            const resizedImage = await ImageResizer.createResizedImage(
+                originalUri,
+                800,
+                800,
+                'JPEG',
+                80,
+                0,
+                undefined,
+                false,
+            );
+
+            const resizedUri = resizedImage.uri;
+            console.log('✅ Resized image URI:', resizedUri);
+
+            const resizedSize = await getFileSize(resizedUri);
+            console.log('📦 Resized size:', (resizedSize / 1024).toFixed(2), 'KB');
+
+            setOriginalPhotoUri(originalUri);
+            setPhotoUri(resizedUri);
+        } catch (error) {
+            console.error('Resize failed:', error);
+            setPhotoUri(originalUri);
+        } finally {
+            setResizing(false);
+        }
+    };
+
     const handleCameraCapture = (uri) => {
-        setPhotoUri(uri);
         setShowCamera(false);
+        resizeAndSetPhoto(uri);
     };
 
     const handleDeletePhoto = () => {
         setPhotoUri(null);
+        setOriginalPhotoUri(null);
     };
 
     const handleSendPhoto = async () => {
@@ -850,13 +909,6 @@ const ComplaintDetail = () => {
                 {/* Action Buttons Row */}
                 <View className="flex-row items-center mb-4" style={{ gap: 8 }}>
                     <TouchableOpacity
-                        onPress={handlePhoneCall}
-                        className="bg-blue-600 flex-1 py-3 rounded-lg flex-row items-center justify-center"
-                    >
-                        <Icon name="call-outline" size={20} color="white" />
-                        <Text className="text-white font-medium ml-2">Call</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
                         onPress={handleRelatedComplaints}
                         className="bg-purple-500 flex-1 py-3 rounded-lg flex-row items-center justify-center"
                         activeOpacity={0.7}
@@ -866,9 +918,8 @@ const ComplaintDetail = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Address and Description Card - Updated Address Row with Map Icon */}
+                {/* Address and Description Card */}
                 <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4 shadow-sm">
-                    {/* Address Row with Map Icon */}
                     <View className="flex-row items-start mb-3 justify-between">
                         <View className="flex-row items-start flex-1">
                             <Icon name="location-outline" size={20} color="#4B5563" />
@@ -879,7 +930,6 @@ const ComplaintDetail = () => {
                                 </Text>
                             </View>
                         </View>
-                        {/* Map / Location Icon */}
                         <TouchableOpacity
                             onPress={() => {
                                 const lat = complaintData.latitude;
@@ -894,16 +944,14 @@ const ComplaintDetail = () => {
                                     });
                                 } else {
                                     toast.custom(
-                                            <StatusMessage type="error" title="User Location Not Available" className="mx-4 mb-6" />,
-                                            { duration: 3000 }
-                                        );
-                                    // Alert.alert('Location Not Available', 'No coordinates provided for this complaint.');
+                                        <StatusMessage type="error" title="User Location Not Available" className="mx-4 mb-6" />,
+                                        { duration: 3000 }
+                                    );
                                 }
                             }}
                             activeOpacity={0.7}
                             className="ml-2 p-2"
                         >
-
                             {complaintData.latitude && complaintData.longitude ? (
                                 <MapIcon width={30} height={30} />
                             ) : (
@@ -962,6 +1010,7 @@ const ComplaintDetail = () => {
                                         <Icon name="camera-outline" size={40} color="#666" />
                                         <Text className="text-text-primary font-semibold text-base mt-2">Take Photo</Text>
                                         <Text className="text-text-tertiary text-sm text-center mt-1">Tap to open camera (Back camera only)</Text>
+                                        {resizing && <ActivityIndicator style={{ marginTop: 8 }} />}
                                     </TouchableOpacity>
                                 ) : (
                                     <View className="relative mb-4">
@@ -973,8 +1022,8 @@ const ComplaintDetail = () => {
                                 )}
                                 <TouchableOpacity
                                     onPress={handleSendPhoto}
-                                    className={`py-4 rounded-xl items-center ${sendingPhoto || !photoUri ? 'bg-ui-disabled' : 'bg-ui-success'}`}
-                                    disabled={sendingPhoto || !photoUri}
+                                    className={`py-4 rounded-xl items-center ${sendingPhoto || !photoUri || resizing ? 'bg-ui-disabled' : 'bg-ui-success'}`}
+                                    disabled={sendingPhoto || !photoUri || resizing}
                                 >
                                     {sendingPhoto ? <ActivityIndicator color="#fff" /> : <Text className="text-text-inverse font-semibold text-base">Upload Photo</Text>}
                                 </TouchableOpacity>
@@ -1076,7 +1125,7 @@ const ComplaintDetail = () => {
         </TouchableWithoutFeedback>
     );
 
-    // Show clean loading/error state without using words like "location" or "fetching"
+    // Loading/Error screen (unchanged)
     if (!isLocationReady && !isComplete && !isOtpAlreadyVerified && !verified) {
         return (
             <SafeAreaView className="flex-1 bg-background-primary">
@@ -1090,7 +1139,6 @@ const ComplaintDetail = () => {
                 />
                 <View className="flex-1 justify-center items-center px-6">
                     {locationError ? (
-                        // Error state
                         <View className="items-center">
                             <Icon name="wifi-outline" size={60} color="#ef4444" />
                             <Text className="text-red-500 text-lg font-semibold mt-4 text-center">
@@ -1111,7 +1159,6 @@ const ComplaintDetail = () => {
                             </TouchableOpacity>
                         </View>
                     ) : (
-                        // Loading state - clean, no words about location
                         <View className="items-center">
                             <ActivityIndicator size="large" color="#58A890" />
                             <Text className="mt-6 text-text-secondary text-base">
@@ -1222,4 +1269,4 @@ const styles = StyleSheet.create({
     closeText: { color: 'white', fontSize: 16 },
 });
 
-export default ComplaintDetail;
+export default memo(ComplaintDetail);

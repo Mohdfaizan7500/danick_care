@@ -704,8 +704,8 @@ const Billing = () => {
             <View className="bg-white flex-row items-center justify-between px-4 py-4 pr-7 pt-5">
               {/* Left: Back button and Title */}
               <View className="flex-row items-center flex-1">
-                <TouchableOpacity 
-                  onPress={() => navigation.goBack()} 
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   className="mr-3"
                 >
@@ -837,6 +837,10 @@ const Billing = () => {
                     </Text>
                   </View>
                   <View className="flex-row justify-between items-center mb-1">
+                    <Text className="text-gray-600 text-[12px] leading-tight">Parts Total</Text>
+                    <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(totalPartsPrice)}</Text>
+                  </View>
+                  <View className="flex-row justify-between items-center mb-1">
                     <Text className="text-gray-600 text-[12px] leading-tight">Platform Fee</Text>
                     <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(platformFee)}</Text>
                   </View>
@@ -844,10 +848,7 @@ const Billing = () => {
                     <Text className="text-gray-600 text-[12px] leading-tight">GST</Text>
                     <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(complaintData?.gst || 0)}</Text>
                   </View>
-                  <View className="flex-row justify-between items-center mb-1">
-                    <Text className="text-gray-600 text-[12px] leading-tight">Parts Total</Text>
-                    <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(totalPartsPrice)}</Text>
-                  </View>
+
                   <View className="flex-row justify-between items-center pt-1 border-t border-gray-200">
                     <Text className="text-gray-700 text-[12px] font-semibold">Subtotal</Text>
                     <Text className="text-gray-800 text-xs font-medium">₹{truncateToTwoDecimals(totalBeforeDiscount)}</Text>
@@ -855,7 +856,7 @@ const Billing = () => {
                   <View className="flex-row justify-between items-center mt-1">
                     <Text className="text-gray-600 text-[12px] leading-tight">Discount</Text>
                     <TextInput
-                      className="border border-gray-300 text-black rounded-md px-2 py-0.5 w-20 text-right text-xs"
+                      className="border border-gray-300 text-black bg-white rounded-md px-2 py-2 w-32 text-right text-xl"
                       keyboardType="numeric"
                       placeholder="amount"
                       value={discount ? discount.toString() : ''}

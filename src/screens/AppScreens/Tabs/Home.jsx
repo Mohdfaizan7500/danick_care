@@ -706,7 +706,7 @@ const Home = () => {
                       <Wallet size={24} height={24} color="#10b981" />
                     </View>
                     <Text className="text-2xl font-bold text-gray-800">{formatNumberToK(count?.payout || 0)}</Text>
-                    <Text className="text-xs text-gray-500 text-center">Payout</Text>
+                    <Text className="text-xs text-gray-500 text-center">Balance</Text>
                   </TouchableOpacity>
                 </View>
               </View>
