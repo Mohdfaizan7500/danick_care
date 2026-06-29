@@ -9,16 +9,17 @@ import { useAuth } from '../../context/AuthContext'
 
 const { width: screenWidth } = Dimensions.get('window')
 
-// Skeleton card component with proper styling
+// Skeleton card with horizontal layout (image left, text right)
 const SkeletonCard = ({ width, margin }) => (
-    <View style={{ width, margin }} className="p-2 bg-white rounded-3xl border border-gray-200 overflow-hidden">
+    <View style={{ width, margin }} className="p-2 bg-white rounded-3xl border border-gray-200 overflow-hidden flex-row">
         {/* Image skeleton */}
-        <View className="bg-gray-200 w-full h-[70] rounded-3xl" />
-        
+        <View className="bg-gray-200 w-24 h-24 rounded-3xl" />
+
         {/* Content skeleton */}
-        <View className="px-4 py-3">
+        <View className="flex-1 px-4 py-2 justify-center">
             <View className="h-3 bg-gray-200 rounded w-3/4 mb-2" />
-            <View className="h-5 bg-gray-200 rounded w-1/2" />
+            <View className="h-5 bg-gray-200 rounded w-1/3 mb-2" />
+            <View className="h-3 bg-gray-200 rounded w-2/3" />
         </View>
     </View>
 )
@@ -62,13 +63,11 @@ const SparePartScreen = () => {
         fetchSpareParts();
     }, [])
 
-    // Pull to refresh handler
     const onRefresh = async () => {
         setRefreshing(true);
         await fetchSpareParts(true);
     };
 
-    // Filter parts based on search query (search in part_name)
     const filteredParts = partsData.filter(item =>
         item.part_name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -81,9 +80,9 @@ const SparePartScreen = () => {
         navigation.navigate('PartDetails', { part })
     }
 
-    // Grid configuration
-    const numColumns = 3;
-    const margin = 8; // m-2 = 8
+    // Grid configuration (one column)
+    const numColumns = 1;
+    const margin = 8;
     const containerPadding = 8;
     const itemWidth = (screenWidth - (containerPadding * 2) - (margin * 2 * numColumns)) / numColumns;
 
@@ -91,38 +90,51 @@ const SparePartScreen = () => {
         <Pressable
             onPress={() => handleClickedProduct(item)}
             style={{ width: itemWidth, margin }}
-            className="p-2 bg-white rounded-3xl border border-gray-200 overflow-hidden"
+            className="p-2 bg-white rounded-3xl border border-gray-200 overflow-hidden flex-row"
         >
-            <View className='bg-white w-full h-[70] rounded-3xl'>
+            <View className='bg-white w-24 h-24 rounded-3xl'>
                 <Image
                     source={{ uri: imagUrl + item.part_image }}
-                    className="w-full h-full"
-                    resizeMode="contain"
-                    onError={(e) => console.log('Image load error for', item.name, e.nativeEvent.error)}
+                    className="w-full h-full rounded-2xl bg-zinc-100"
+                    resizeMode="cover"
+                    onError={(e) => console.log('Image load error for', item.part_name, e.nativeEvent.error)}
                     defaultSource={require('../../assets/images/imageplaceholder.png')}
                 />
             </View>
-            <View className='px-4 py-3'>
-                <Text className='font-bold text-xs text-black' numberOfLines={2}>
+            <View className='flex-1 px-4 py-2 justify-center'>
+                <Text className='font-bold text-sm text-black' numberOfLines={2}>
                     {item.part_name}
                 </Text>
                 <Text className='font-semibold text-blue-800 text-lg'>₹{item.part_price}</Text>
+
+                <View style={{
+                    flexDirection: "row",
+                    gap: 5,
+                }}>
+                    <Text style={{ width: '95%' }}>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#000' }}>
+                            Description :{' '}
+                        </Text>
+                        <Text className="text-xs text-gray-600 mt-1">
+                            {item.description || 'N/A'}
+                        </Text>
+                    </Text>
+                </View>
+
             </View>
         </Pressable>
     );
 
-    // Skeleton loader using FlatList with unique keys
+    // Skeleton loader using FlatList with unique keys (horizontal layout skeleton)
     const renderSkeletonLoader = () => {
-        // Create skeleton data array with 12 items (4 rows of 3 cards)
         const skeletonData = Array(9).fill().map((_, index) => ({ id: `skeleton-${index}` }));
-        
         return (
             <FlatList
                 data={skeletonData}
                 renderItem={({ item }) => (
                     <SkeletonCard width={itemWidth} margin={margin} />
                 )}
-                keyExtractor={(item) => item.id} // unique key
+                keyExtractor={(item) => item.id}
                 numColumns={numColumns}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ padding: containerPadding }}
@@ -184,7 +196,6 @@ const SparePartScreen = () => {
                     data={filteredParts}
                     renderItem={renderItem}
                     keyExtractor={(item, index) => {
-                        // Use a combination of id (if exists) and index to guarantee uniqueness
                         const baseKey = item.id ? String(item.id) : `part-${index}`;
                         return `${baseKey}-${index}`;
                     }}
