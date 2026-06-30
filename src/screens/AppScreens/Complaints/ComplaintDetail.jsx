@@ -1,5 +1,4 @@
-// ComplaintDetail.js - Updated with Address and Description Card
-// Now using @amrshbib/react-native-geolocation
+// ComplaintDetail.js - Full implementation with auto-start after location fetch
 
 import React, { useState, useEffect, useRef, memo } from 'react';
 import {
@@ -33,7 +32,7 @@ import { MapIcon } from '../../../assets/svgIcons/SVGIcons';
 import RNFS from 'react-native-fs';
 import ImageResizer from 'react-native-image-resizer';
 
-// --- Custom Header Component (unchanged) ---
+// --- Custom Header Component ---
 const CustomHeader = ({
     title,
     titleStyle = 'text-base font-semibold text-gray-800',
@@ -107,7 +106,7 @@ const isAndroid15OrHigher = () => {
     return false;
 };
 
-// Custom Camera Modal - Forces back camera only (unchanged)
+// Custom Camera Modal - Forces back camera only
 const CustomCameraModal = ({ visible, onClose, onCapture }) => {
     const device = useCameraDevice('back');
     const { hasPermission, requestPermission } = useCameraPermission();
@@ -195,6 +194,7 @@ const ComplaintDetail = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { complaint } = route.params;
+    console.log("complaint:", complaint)
 
     // --- STABILISE COMPLAINT REFERENCE TO PREVENT RE-RENDERS ---
     const initialComplaintRef = useRef(complaint);
@@ -234,6 +234,7 @@ const ComplaintDetail = () => {
     const [locationError, setLocationError] = useState(null);
     const [locationAttempts, setLocationAttempts] = useState(0);
     const [isLocationReady, setIsLocationReady] = useState(false);
+    const [autoStartAttempted, setAutoStartAttempted] = useState(false);
     const MAX_LOCATION_ATTEMPTS = 1;
 
     // Camera states
@@ -331,7 +332,7 @@ const ComplaintDetail = () => {
                 }
             };
         }
-    }, [isComplete]); // only depends on stable boolean
+    }, [isComplete]);
 
     const formatTimer = (seconds) => {
         if (isNaN(seconds) || seconds < 0) return '00:00';
@@ -340,7 +341,7 @@ const ComplaintDetail = () => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // --- Location handling (unchanged) ---
+    // --- Location handling ---
     const getCurrentLocation = async () => {
         try {
             const location = await Geolocation.getCurrentLocation({
@@ -461,7 +462,7 @@ const ComplaintDetail = () => {
         }
     };
 
-    // Check if OTP is already verified – now with stable dependency
+    // Check if OTP is already verified – run once on mount
     useEffect(() => {
         if (isComplete) {
             setIsLocationReady(true);
@@ -484,21 +485,58 @@ const ComplaintDetail = () => {
                 isImageUploaded: true,
             });
         }
-    }, []); // run once on mount
+    }, []);
 
     // Initialize location – stable dependencies
     useEffect(() => {
         if (!isComplete && !isOtpAlreadyVerified && !verified) {
             const initLocation = async () => {
-                console.log('📍 Starting...');
+                console.log('📍 Starting location...');
                 await initializeLocation(1);
-                console.log('📍 Completed');
+                console.log('📍 Location initialization completed');
             };
             initLocation();
         } else {
             setIsLocationReady(true);
         }
     }, [isComplete, isOtpAlreadyVerified, verified]);
+
+    // --- NEW: AUTO-START JOB AFTER LOCATION IS READY ---
+    useEffect(() => {
+        // Conditions to auto-start:
+        // - location ready (isLocationReady true)
+        // - not complete, not already verified, not manually verified yet
+        // - job not started yet
+        // - not already attempted auto-start
+        // - have location permission and current location
+        // - no location error
+        if (
+            isLocationReady &&
+            !isComplete &&
+            !isOtpAlreadyVerified &&
+            !verified &&
+            !jobStarted &&
+            !autoStartAttempted &&
+            hasLocationPermission &&
+            currentLocation &&
+            !locationError
+        ) {
+            setAutoStartAttempted(true);
+            console.log('🚀 Auto-starting job...');
+            handleStartJob(complaintData);
+        }
+    }, [
+        isLocationReady,
+        isComplete,
+        isOtpAlreadyVerified,
+        verified,
+        jobStarted,
+        autoStartAttempted,
+        hasLocationPermission,
+        currentLocation,
+        locationError,
+        complaintData,
+    ]);
 
     useEffect(() => {
         if (!isComplete) {
@@ -540,18 +578,6 @@ const ComplaintDetail = () => {
             });
         } else {
             toast.custom(<StatusMessage type="error" title="No phone number available" className="mx-4 mb-6" />, { duration: 3000 });
-        }
-    };
-
-    const handleOpenMaps = () => {
-        const address = complaintData.service_address;
-        if (address) {
-            const encodedAddress = encodeURIComponent(address);
-            Linking.openURL(`https://maps.google.com/?q=${encodedAddress}`).catch(() => {
-                toast.custom(<StatusMessage type="error" title="Could not open maps" className="mx-4 mb-6" />, { duration: 3000 });
-            });
-        } else {
-            toast.custom(<StatusMessage type="error" title="No address available" className="mx-4 mb-6" />, { duration: 3000 });
         }
     };
 
@@ -660,9 +686,9 @@ const ComplaintDetail = () => {
                 if (response.data.otp) setGeneratedOTP(response.data.otp);
                 setJobStarted(true);
                 setShowOtp(true);
-                toast.custom(<StatusMessage type="success" title={response.data.msg || "OTP sent to customer"} className="mx-4 mb-6" />, { duration: 3000 });
+                toast.custom(<StatusMessage type="success" title={response.data.msg || "OTP sent to customer"} className="mx-4 mb-6" />, { duration: 100 });
             } else {
-                toast.custom(<StatusMessage type="error" title={response?.data?.msg || "Failed to send OTP"} className="mx-4 mb-6" />, { duration: 3000 });
+                toast.custom(<StatusMessage type="error" title={response?.data?.msg || "Failed to send OTP"} className="mx-4 mb-6" />, { duration: 100 });
             }
         } catch (error) {
             toast.custom(<StatusMessage type="error" title={error.response?.data?.msg || error.message || "Failed to send OTP"} className="mx-4 mb-6" />, { duration: 3000 });
@@ -926,7 +952,7 @@ const ComplaintDetail = () => {
                             <View className="ml-2 flex-1">
                                 <Text className="text-gray-500 text-xs font-medium">Service Address</Text>
                                 <Text className="text-gray-800 text-sm font-medium mt-0.5">
-                                    {complaintData.service_address || 'N/A'}
+                                    {`${complaintData.area} ${complaintData.city}` || 'N/A'}
                                 </Text>
                             </View>
                         </View>
@@ -1125,7 +1151,7 @@ const ComplaintDetail = () => {
         </TouchableWithoutFeedback>
     );
 
-    // Loading/Error screen (unchanged)
+    // Loading/Error screen
     if (!isLocationReady && !isComplete && !isOtpAlreadyVerified && !verified) {
         return (
             <SafeAreaView className="flex-1 bg-background-primary">

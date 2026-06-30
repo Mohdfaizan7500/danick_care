@@ -1,7 +1,18 @@
-import { StyleSheet, Text, View, TouchableOpacity, Image, Modal, Pressable, Linking } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, Modal, Pressable, Linking, ToastAndroid, Alert, Platform } from 'react-native';
 import React, { useState } from 'react';
 import { ImageIcon } from '../assets/svgIcons/SVGIcons';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { toast } from 'sonner-native';
+import StatusMessage from './StatusMessage';
+
+// Helper for cross-platform toast
+const showToast = (message) => {
+    if (Platform.OS === 'android') {
+        ToastAndroid.show(message, ToastAndroid.SHORT);
+    } else {
+        Alert.alert('Info', message);
+    }
+};
 
 const Complaintscard = ({ item, onPress }) => {
     const [modalVisible, setModalVisible] = useState(false);
@@ -59,6 +70,40 @@ const Complaintscard = ({ item, onPress }) => {
     const slotDateValue = safeToString(item?.slot_date, '');
     const slotTimeValue = safeToString(item?.slot_time, '');
     const daysValue = safeToString(item?.days, '');
+
+    // Check if latitude and longitude are available
+    const hasLocation =
+        item?.latitude &&
+        item?.longitude &&
+        item.latitude !== '' &&
+        item.longitude !== '' &&
+        item.latitude !== null &&
+        item.longitude !== null;
+
+    const handleLocationPress = () => {
+        if (hasLocation) {
+            const lat = parseFloat(item.latitude);
+            const lng = parseFloat(item.longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                const url = `https://www.google.com/maps?q=${lat},${lng}`;
+                Linking.openURL(url).catch(() => {
+                    showToast('Unable to open maps');
+                });
+            } else {
+                showToast('Invalid coordinates');
+            }
+        } else {
+            // Toast('⚠️ Location not available');
+            toast.custom(<StatusMessage type="error" title={"⚠️ Location not available"} className="mx-4 mb-6" />, { duration: 300 });
+        }
+    };
+
+    const handleCallPress = () => {
+        const phoneNumber = item?.customer_mobile;
+        if (phoneNumber) {
+            Linking.openURL(`tel:${phoneNumber}`).catch(() => { });
+        }
+    };
 
     const handleComplaintPress = (complaint) => {
         if (onPress) {
@@ -163,7 +208,6 @@ const Complaintscard = ({ item, onPress }) => {
                                     {customerNameValue}
                                 </Text>
                             }
-                            {/* ✅ Always show city, conditionally show area */}
                             <Text style={{ color: '#999', fontSize: 12, marginTop: 2 }}>
                                 {!isSuccessOrCancel && area ? area + ' ' : ''}{city || 'hhh'}
                             </Text>
@@ -194,7 +238,7 @@ const Complaintscard = ({ item, onPress }) => {
                             Review : {item?.review || 'N/A'}
                         </Text>
                     </View>
-                    <View style={{alignItems:"flex-end",gap:5}}>
+                    <View style={{ alignItems: "flex-end", gap: 5 }}>
 
                         <TouchableOpacity
                             activeOpacity={0.8}
@@ -216,7 +260,7 @@ const Complaintscard = ({ item, onPress }) => {
                                 </View>
                             )}
                         </TouchableOpacity>
-                        <View style={{ }}>
+                        <View style={{}}>
                             <View style={{
                                 paddingHorizontal: 8,
                                 paddingVertical: 4,
@@ -239,12 +283,7 @@ const Complaintscard = ({ item, onPress }) => {
 
                 <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
                     <TouchableOpacity
-                        onPress={() => {
-                            const phoneNumber = item?.customer_mobile;
-                            if (phoneNumber) {
-                                Linking.openURL(`tel:${phoneNumber}`).catch(() => { });
-                            }
-                        }}
+                        onPress={handleCallPress}
                         style={{
                             flex: 1,
                             backgroundColor: '#2563EB',
@@ -260,16 +299,10 @@ const Complaintscard = ({ item, onPress }) => {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        onPress={() => {
-                            const address = item?.service_address;
-                            if (address) {
-                                const encodedAddress = encodeURIComponent(address);
-                                Linking.openURL(`https://maps.google.com/?q=${encodedAddress}`).catch(() => { });
-                            }
-                        }}
+                        onPress={handleLocationPress}
                         style={{
                             flex: 1,
-                            backgroundColor: '#10B981',
+                            backgroundColor: hasLocation ? '#10B981' : '#9CA3AF',
                             paddingVertical: 10,
                             borderRadius: 8,
                             flexDirection: 'row',
@@ -278,11 +311,28 @@ const Complaintscard = ({ item, onPress }) => {
                         }}
                     >
                         <Icon name="map-outline" size={18} color="white" />
-                        <Text style={{ color: 'white', fontWeight: '600', marginLeft: 6 }}>Location</Text>
+                        <Text style={{ color: 'white', fontWeight: '600', marginLeft: 6 }}>
+                            {hasLocation ? 'Location' : 'No Location'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Job Start Button - Updated with orange color and same onPress as card */}
+                    <TouchableOpacity
+                        onPress={() => handleComplaintPress(item)}
+                        style={{
+                            flex: 1,
+                            backgroundColor: '#F59E0B', // Orange/amber color
+                            paddingVertical: 10,
+                            borderRadius: 8,
+                            flexDirection: 'row',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <Icon name="play-outline" size={18} color="white" />
+                        <Text style={{ color: 'white', fontWeight: '600', marginLeft: 6 }}>Job Start</Text>
                     </TouchableOpacity>
                 </View>
-
-                
             </TouchableOpacity>
 
             <Modal
