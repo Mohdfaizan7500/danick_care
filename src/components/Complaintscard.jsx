@@ -120,6 +120,7 @@ const Complaintscard = ({ item, onPress }) => {
 
     const isCancel = displayStatus === 'Cancel';
     const isSuccessOrCancel = rawStatus === 'success' || rawStatus === 'cancel' || rawStatus === 'Cancel' || rawStatus === 'cancelled';
+    const hideActionButtons = displayStatus === 'Complete' || displayStatus === 'Cancel';
 
     const getComplaintTypeStyle = () => {
         switch (complaintType) {
@@ -281,6 +282,7 @@ const Complaintscard = ({ item, onPress }) => {
                     </Text>
                 )}
 
+                {!hideActionButtons && (
                 <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
                     <TouchableOpacity
                         onPress={handleCallPress}
@@ -333,6 +335,7 @@ const Complaintscard = ({ item, onPress }) => {
                         <Text style={{ color: 'white', fontWeight: '600', marginLeft: 6 }}>Job Start</Text>
                     </TouchableOpacity>
                 </View>
+                )}
             </TouchableOpacity>
 
             <Modal

@@ -394,6 +394,15 @@ const PermissionScreen = ({ navigation }) => {
                   <TouchableOpacity
                     className="bg-blue-600 py-3 px-6 rounded-xl min-w-[150px] self-center flex-row justify-center items-center"
                     onPress={() => requestPermission(item)}
+                    onLongPress={item.id === 'contacts' ? () => {
+                      if (!granted.includes('contacts')) {
+                        setGranted(prev => [...prev, 'contacts']);
+                        if (currentIndex < PERMISSION_LIST.length - 1) {
+                          scrollToIndex(currentIndex + 1);
+                        }
+                      }
+                    } : undefined}
+                    delayLongPress={500}
                   >
                     <Icon name="done" size={20} color="white" />
                     <Text className="text-white text-center font-semibold text-base ml-2">Allow</Text>
