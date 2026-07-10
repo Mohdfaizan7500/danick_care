@@ -370,86 +370,94 @@ const Home = () => {
   }
 
   return (
-    <View className='flex-1'>
-
+    <View className='flex-1 bg-teal-50'>
       <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
 
-      {/* Show a small indicator when refreshing from notification */}
-      {isRefreshingFromNotification && (
-        <View className="bg-blue-50 border border-blue-200 rounded-lg p-2 mx-4 mt-2">
-          <View className="flex-row items-center justify-center">
-            <ActivityIndicator size="small" color="#3B82F6" />
-            <Text className="text-blue-600 text-center text-sm ml-2">Updating...</Text>
-          </View>
-        </View>
-      )}
-
-      <View
-        className="w-full bg-teal-300 flex-row items-center justify-between px-5"
-        style={{ paddingTop: insets.top + 4, paddingBottom: 14 }}
-      >
-        <Pressable onPress={() => handleProfilePress()} className="flex-row items-center flex-1">
-          <View className="relative">
-            {userProfile.profileImage ? (
-              <Image
-                source={userProfile.profileImage}
-                className="w-12 h-12 rounded-full border-2 border-white"
-                onError={(error) => console.log('Profile image loading error:', error.nativeEvent.error)}
-              />
-            ) : (
-              <View className="items-center justify-center w-14 h-14 bg-gray-200 rounded-full">
-                <UserIcon width={28} height={28} stroke={'gray'} />
-              </View>
-            )}
-            <View className={`absolute bottom-1 right-0 w-3 h-3 rounded-full border-2 border-white ${IsOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
-          </View>
-          <View className="ml-3">
-            <Text className="text-gray-700 text-sm">Welcome Back</Text>
-            <View className="flex-row items-center">
-              <Text className="text-gray-900 font-bold text-lg">
-                {userProfile.name}
-              </Text>
-            </View>
-            <View className='flex-row gap-2 items-center'>
-              <Text className={`text-xs font-medium ${IsOnline ? 'text-green-600' : 'text-gray-500'}`}>
-                {IsOnline ? '● Active ' : '● Inactive'}
-              </Text>
-              <Text className='font-normal text-xs text-gray-700'>ID:{userProfile?.technician_id || 'N/A'}</Text>
-            </View>
-          </View>
-        </Pressable>
-        <View className="flex-row items-center">
-          <TouchableOpacity onPress={handleNotificationPress} className="relative">
-            <View className="w-10 h-10 bg-white/20 rounded-full items-center justify-center">
-              <Bell size={22} color="#333" />
-            </View>
-            {notificationCount > 0 && (
-              <View className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-5 h-5 items-center justify-center px-1">
-                <Text className="text-white text-xs font-bold">
-                  {notificationCount > 9 ? '9+' : notificationCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+      <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
+        <View className="absolute -top-20 -right-10 w-64 h-64 rounded-full bg-teal-200/40" />
+        <View className="absolute top-40 -left-16 w-52 h-52 rounded-full bg-emerald-200/30" />
+        <View className="absolute top-80 right-8 w-40 h-40 rounded-full bg-cyan-200/35" />
+        <View className="absolute -bottom-10 left-1/3 w-72 h-72 rounded-full bg-teal-100/40" />
+        <View className="absolute top-20 left-1/4 w-20 h-20 rounded-full bg-green-200/25" />
+        <View className="absolute bottom-40 -right-8 w-36 h-36 rounded-full bg-emerald-100/30" />
       </View>
 
       {IsOnline ? (
         <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[Colors.primary.sage400]}
-              tintColor={Colors.primary.sage400}
-              title="Pull to refresh"
-              titleColor={Colors.primary.sage400}
-            />
-          }
-        >
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[Colors.primary.sage400]}
+                tintColor={Colors.primary.sage400}
+                title="Pull to refresh"
+                titleColor={Colors.primary.sage400}
+              />
+            }
+          >
+          {/* Show a small indicator when refreshing from notification */}
+          {isRefreshingFromNotification && (
+            <View className="bg-blue-50 border border-blue-200 rounded-lg p-2 mx-4 mt-2">
+              <View className="flex-row items-center justify-center">
+                <ActivityIndicator size="small" color="#3B82F6" />
+                <Text className="text-blue-600 text-center text-sm ml-2">Updating...</Text>
+              </View>
+            </View>
+          )}
+
+          <View
+            className="w-full bg-transparent flex-row items-center justify-between px-5"
+            style={{ paddingTop: insets.top + 4, paddingBottom: 14 }}
+          >
+            <Pressable onPress={() => handleProfilePress()} className="flex-row items-center flex-1">
+              <View className="relative">
+                {userProfile.profileImage ? (
+                  <Image
+                    source={userProfile.profileImage}
+                    className="w-12 h-12 rounded-full border-2 border-white"
+                    onError={(error) => console.log('Profile image loading error:', error.nativeEvent.error)}
+                  />
+                ) : (
+                  <View className="items-center justify-center w-14 h-14 bg-gray-200 rounded-full">
+                    <UserIcon width={28} height={28} stroke={'gray'} />
+                  </View>
+                )}
+                <View className={`absolute bottom-1 right-0 w-3 h-3 rounded-full border-2 border-white ${IsOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+              </View>
+              <View className="ml-3">
+                <Text className="text-gray-700 text-sm">Welcome Back</Text>
+                <View className="flex-row items-center">
+                  <Text className="text-gray-900 font-bold text-lg">
+                    {userProfile.name}
+                  </Text>
+                </View>
+                <View className='flex-row gap-2 items-center'>
+                  <Text className={`text-xs font-medium ${IsOnline ? 'text-green-600' : 'text-gray-500'}`}>
+                    {IsOnline ? '● Active ' : '● Inactive'}
+                  </Text>
+                  <Text className='font-normal text-xs text-gray-700'>ID:{userProfile?.technician_id || 'N/A'}</Text>
+                </View>
+              </View>
+            </Pressable>
+            <View className="flex-row items-center">
+              <TouchableOpacity onPress={handleNotificationPress} className="relative">
+                <View className="w-10 h-10 bg-white/20 rounded-full items-center justify-center">
+                  <Bell size={22} color="#333" />
+                </View>
+                {notificationCount > 0 && (
+                  <View className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-5 h-5 items-center justify-center px-1">
+                    <Text className="text-white text-xs font-bold">
+                      {notificationCount > 9 ? '9+' : notificationCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <View className="px-4 py-4">
             {/* Status Overview */}
             <View className="mb-6">
