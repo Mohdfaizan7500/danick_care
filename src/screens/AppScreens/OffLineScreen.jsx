@@ -259,11 +259,19 @@ const OffLineScreen = ({ navigation }) => {
     const displayNumber = formatPhoneNumber(serviceNumber);
 
     return (
-        <>
+        <View className="flex-1 bg-teal-50">
+            <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
+                <View className="absolute -top-20 -right-10 w-64 h-64 rounded-full bg-teal-200/40" />
+                <View className="absolute top-40 -left-16 w-52 h-52 rounded-full bg-emerald-200/30" />
+                <View className="absolute top-80 right-8 w-40 h-40 rounded-full bg-cyan-200/35" />
+                <View className="absolute -bottom-10 left-1/3 w-72 h-72 rounded-full bg-teal-100/40" />
+                <View className="absolute top-20 left-1/4 w-20 h-20 rounded-full bg-green-200/25" />
+                <View className="absolute bottom-40 -right-8 w-36 h-36 rounded-full bg-emerald-100/30" />
+            </View>
             <View className="absolute inset-0 z-50 pointer-events-none">
                 <Toaster />
             </View>
-            <View className="flex-1 bg-background-primary items-center justify-center px-6">
+            <View className="flex-1 bg-transparent items-center justify-center px-6" style={{zIndex: 1}}>
                 <View className="w-24 h-24 rounded-full bg-status-inactive items-center justify-center mb-6">
                     <Icon name="app-blocking" size={50} color="#999999" />
                 </View>
@@ -380,7 +388,7 @@ const OffLineScreen = ({ navigation }) => {
                     )}
                 </View>
             </DialogBox>
-        </>
+        </View>
     );
 };
 

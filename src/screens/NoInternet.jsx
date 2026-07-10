@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import React, { useState } from 'react';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -49,7 +49,7 @@ const NoInternet = ({ onRetry, onConnectionRestored }) => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-transparent">
       <View className="flex-1 items-center justify-center px-6">
         {/* Icon or Loader */}
         <View className="w-24 h-24 rounded-full bg-red-100 items-center justify-center mb-6">
@@ -87,5 +87,3 @@ const NoInternet = ({ onRetry, onConnectionRestored }) => {
 };
 
 export default NoInternet;
-
-const styles = StyleSheet.create({});

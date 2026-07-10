@@ -307,11 +307,21 @@ const Home = () => {
 
   if (!isConnected) {
     return (
-      <View style={{ flex: 1 }}>
+      <View className='flex-1 bg-teal-50'>
         <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
+
+        <View className="absolute inset-0 overflow-hidden" pointerEvents="none">
+          <View className="absolute -top-20 -right-10 w-64 h-64 rounded-full bg-teal-200/40" />
+          <View className="absolute top-40 -left-16 w-52 h-52 rounded-full bg-emerald-200/30" />
+          <View className="absolute top-80 right-8 w-40 h-40 rounded-full bg-cyan-200/35" />
+          <View className="absolute -bottom-10 left-1/3 w-72 h-72 rounded-full bg-teal-100/40" />
+          <View className="absolute top-20 left-1/4 w-20 h-20 rounded-full bg-green-200/25" />
+          <View className="absolute bottom-40 -right-8 w-36 h-36 rounded-full bg-emerald-100/30" />
+        </View>
+
         <View
-          className="w-full bg-teal-300 flex-row items-center justify-between px-4"
-          style={{ paddingTop: insets.top + 4, paddingBottom: 4, }}
+          className="w-full bg-transparent flex-row items-center justify-between px-4"
+          style={{ paddingTop: insets.top + 4, paddingBottom: 4, zIndex: 1 }}
         >
           <Pressable onPress={() => handleProfilePress()} className="flex-row items-center flex-1">
             <View className="relative">
@@ -355,7 +365,7 @@ const Home = () => {
           </View>
         </View>
         {checkingConnection && (
-          <View className="px-4 mt-4 bg-white pt-5">
+          <View className="px-4 mt-4 pt-5" style={{zIndex: 1}}>
             <View className="bg-blue-50 border border-blue-200 rounded-lg p-3 mx-4">
               <View className="flex-row items-center justify-center">
                 <ActivityIndicator size="small" color="#3B82F6" />
@@ -364,7 +374,9 @@ const Home = () => {
             </View>
           </View>
         )}
-        <NoInternet onRetry={handleRetryConnection} isChecking={checkingConnection} />
+        <View style={{zIndex: 1, flex: 1}}>
+          <NoInternet onRetry={handleRetryConnection} isChecking={checkingConnection} />
+        </View>
       </View>
     );
   }
@@ -463,7 +475,7 @@ const Home = () => {
             <View className="mb-6">
               <Text className="text-gray-800 font-bold text-lg mb-3">Status Overview</Text>
               <View className="flex-row justify-between mb-3">
-                <Pressable onPress={() => handleCardPress('All')} className="bg-white rounded-[25px] p-4 py-6 flex-row items-center justify-between border border-gray-200 flex-1 mr-2">
+                <Pressable onPress={() => handleCardPress('All')} className="bg-white rounded-[25px] p-4 py-6 flex-row items-center justify-between shadow-sm border border-gray-200 flex-1 mr-2">
                   <View>
                     <Text className="text-2xl font-bold text-gray-800">{count?.all || 0}</Text>
                     <Text className="text-xs text-gray-500">All</Text>
@@ -472,7 +484,7 @@ const Home = () => {
                     <ComplaintsIcon width={24} height={24} fill="red" />
                   </View>
                 </Pressable>
-                <Pressable onPress={() => handleCardPress('Cancel')} className="bg-white rounded-[25px] p-4 flex-row items-center justify-between border border-gray-200 flex-1 ml-2">
+                <Pressable onPress={() => handleCardPress('Cancel')} className="bg-white rounded-[25px] p-4 flex-row items-center justify-between shadow-sm border border-gray-200 flex-1 ml-2">
                   <View>
                     <Text className="text-2xl font-bold text-gray-800">{count?.cancel || 0}</Text>
                     <Text className="text-xs text-gray-500">Cancel</Text>
@@ -483,21 +495,21 @@ const Home = () => {
                 </Pressable>
               </View>
               <View className="flex-row justify-between">
-                <Pressable onPress={() => handleCardPress('Assign')} className="bg-white rounded-[25px] p-3 items-center border border-gray-200 flex-1 mr-1">
+                <Pressable onPress={() => handleCardPress('Assign')} className="bg-white rounded-[25px] p-3 items-center shadow-sm border border-gray-200 flex-1 mr-1">
                   <View className="bg-yellow-100 p-2 rounded-full mb-1">
                     <Icon name="wrench-clock" size={20} color="#eab308" />
                   </View>
                   <Text className="text-lg font-bold text-gray-800">{count?.assign || 0}</Text>
                   <Text className="text-xs text-gray-500 text-center">Assign</Text>
                 </Pressable>
-                <Pressable onPress={() => handleCardPress('Onworking')} className="bg-white rounded-[25px] p-3 items-center border border-gray-200 flex-1 mx-1">
+                <Pressable onPress={() => handleCardPress('Onworking')} className="bg-white rounded-[25px] p-3 items-center shadow-sm border border-gray-200 flex-1 mx-1">
                   <View className="bg-orange-100 p-2 rounded-full mb-1">
                     <Icon name="clock-outline" size={20} color="#f97316" />
                   </View>
                   <Text className="text-lg font-bold text-gray-800">{count?.onworking || 0}</Text>
                   <Text className="text-xs text-gray-500 text-center">On working</Text>
                 </Pressable>
-                <Pressable onPress={() => handleCardPress('Complete')} className="bg-white rounded-[25px] p-3 items-center border border-gray-200 flex-1 ml-1">
+                <Pressable onPress={() => handleCardPress('Complete')} className="bg-white rounded-[25px] p-3 items-center shadow-sm border border-gray-200 flex-1 ml-1">
                   <View className="bg-green-100 p-2 rounded-full mb-1">
                     <CompleteIcon width={20} height={20} fill="teal" />
                   </View>
@@ -511,14 +523,14 @@ const Home = () => {
             <View className="mb-6">
               <Text className="text-gray-800 font-bold text-lg mb-3">Business Metrics</Text>
               <View className="flex-row justify-between mb-3">
-                <TouchableOpacity onPress={() => handleCardPress('AMC')} className="bg-white rounded-[25px] p-4 items-center border border-gray-200 flex-1 mr-2">
+                <TouchableOpacity onPress={() => handleCardPress('AMC')} className="bg-white rounded-[25px] p-4 items-center shadow-sm border border-gray-200 flex-1 mr-2">
                   <View className="bg-blue-100 p-3 rounded-full mb-2">
                     <FileIcon width={24} height={24} stroke="blue" />
                   </View>
                   <Text className="text-2xl font-bold text-gray-800">{count?.amc || 0}</Text>
                   <Text className="text-xs text-gray-500 text-center">AMC</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleCardPress('Bucket')} className="bg-white rounded-[25px] p-4 items-center border border-gray-200 flex-1 ml-2">
+                <TouchableOpacity onPress={() => handleCardPress('Bucket')} className="bg-white rounded-[25px] p-4 items-center shadow-sm border border-gray-200 flex-1 ml-2">
                   <View className="bg-orange-100 p-3 rounded-full mb-2">
                     <BucketIcon width={24} height={24} fill="#f97316" />
                   </View>
@@ -527,14 +539,14 @@ const Home = () => {
                 </TouchableOpacity>
               </View>
               <View className="flex-row justify-between">
-                <TouchableOpacity onPress={() => handleCardPress('Pre-Booking')} className="bg-white rounded-[25px] p-4 items-center border border-gray-200 flex-1 mr-2">
+                <TouchableOpacity onPress={() => handleCardPress('Pre-Booking')} className="bg-white rounded-[25px] p-4 items-center shadow-sm border border-gray-200 flex-1 mr-2">
                   <View className="bg-purple-100 p-3 rounded-full mb-2">
                     <CalanderIcon width={24} height={24} stroke="#a855f7" />
                   </View>
                   <Text className="text-2xl font-bold text-gray-800">{count?.prebooking || 0}</Text>
                   <Text className="text-xs text-gray-500 text-center">Pre-Booking</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleCardPress('Payout')} className="bg-white rounded-[25px] p-4 items-center border border-gray-200 flex-1 ml-2">
+                <TouchableOpacity onPress={() => handleCardPress('Payout')} className="bg-white rounded-[25px] p-4 items-center shadow-sm border border-gray-200 flex-1 ml-2">
                   <View className="bg-emerald-100 p-3 rounded-full mb-2">
                     <Wallet size={24} height={24} color="#10b981" />
                   </View>
@@ -548,21 +560,21 @@ const Home = () => {
             <View className="mb-6">
               <Text className="text-gray-800 font-bold text-lg mt-3 mb-3">QR Code Section</Text>
               <View className="flex-row justify-between">
-                <Pressable onPress={() => handleCardPress('AllQRCodes')} className="bg-white rounded-[25px] p-3 items-center border border-gray-200 flex-1 mr-1">
+                <Pressable onPress={() => handleCardPress('AllQRCodes')} className="bg-white rounded-[25px] p-3 items-center shadow-sm border border-gray-200 flex-1 mr-1">
                   <View className="bg-purple-100 p-2 rounded-full mb-1">
                     <Icon name="qrcode-scan" size={24} color="#8B5CF6" />
                   </View>
                   <Text className="text-lg font-bold text-gray-800">{count?.allQr || '0'}</Text>
                   <Text className="text-xs text-gray-500 text-center">All QR codes</Text>
                 </Pressable>
-                <Pressable onPress={() => handleCardPress('Used')} className="bg-white rounded-[25px] p-3 items-center border border-gray-200 flex-1 mx-1">
+                <Pressable onPress={() => handleCardPress('Used')} className="bg-white rounded-[25px] p-3 items-center shadow-sm border border-gray-200 flex-1 mx-1">
                   <View className="bg-orange-100 p-2 rounded-full mb-1">
                     <UsedQrCodeIcon width={24} height={24} fill="#F97316" />
                   </View>
                   <Text className="text-lg font-bold text-gray-800">{count?.usedQr || '0'}</Text>
                   <Text className="text-xs text-gray-500 text-center">Used QR codes</Text>
                 </Pressable>
-                <Pressable onPress={() => handleCardPress('Fresh')} className="bg-white rounded-[25px] p-3 items-center border border-gray-200 flex-1 ml-1">
+                <Pressable onPress={() => handleCardPress('Fresh')} className="bg-white rounded-[25px] p-3 items-center shadow-sm border border-gray-200 flex-1 ml-1">
                   <View className="bg-teal-100 p-2 rounded-full mb-1">
                     <FreshQrCodeIcon width={24} height={24} fill="#14B8A6" />
                   </View>
