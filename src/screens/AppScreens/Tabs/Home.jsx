@@ -1,28 +1,23 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StatusBar,
-  StyleSheet,
   Text,
   View,
   Image,
-  FlatList,
   TouchableOpacity,
   ScrollView,
   Pressable,
   Dimensions,
-  Alert,
   ActivityIndicator,
   RefreshControl,
   ToastAndroid,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import LinearGradient from 'react-native-linear-gradient';
-import { Bell, ChevronRight, TestTube, Wallet } from 'lucide-react-native';
+import { Bell, Wallet } from 'lucide-react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from '../../../constants/Color';
 import {
-  AMCIcon,
   BucketIcon,
   CalanderIcon,
   ComplaintsIcon,
@@ -37,14 +32,9 @@ import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from '../../../context/AuthContext';
 import NoInternet from '../../NoInternet';
 import OffLineScreen from '../OffLineScreen';
-import { getDeshBoardCount, getProfile, AssignQRCodeCount } from '../../../lib/api';
-import { check, request, RESULTS, PERMISSIONS } from 'react-native-permissions';
-import Geolocation from '@react-native-community/geolocation';
-import { Platform } from 'react-native';
-import { openSettings } from 'react-native-permissions';
+import { getDeshBoardCount, getProfile } from '../../../lib/api';
 import { getFCMToken } from '../../../service/getToken';
 import Toast from 'react-native-toast-message';
-// Import the notification refresh emitter
 import { notificationRefreshEmitter } from '../../../navigation/NotificationHandler';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -87,138 +77,6 @@ const Home = () => {
     notificationCount: 3,
     technician_id: profileData?.technician_id,
     walletBalance: '₹2,500',
-  };
-
-  // Location permission functions
-  const checkLocationPermission = async () => {
-    try {
-      if (Platform.OS === 'ios') {
-        return await check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-      } else {
-        return await check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
-      }
-    } catch (error) {
-      console.log('Permission check error:', error);
-    }
-  };
-
-  const requestLocationPermission = async () => {
-    try {
-      if (Platform.OS === 'ios') {
-        return await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-      } else {
-        return await request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
-      }
-    } catch (error) {
-      console.log('Permission request error:', error);
-    }
-  };
-
-  const getCurrentLocation = () => {
-    Geolocation.getCurrentPosition(
-      position => {
-        const { latitude, longitude } = position.coords;
-      },
-      error => {
-        console.log('Location error:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Failed to get location',
-          position: 'top',
-          visibilityTime: 2000,
-          autoHide: true,
-          topOffset: 30,
-        });
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 10000,
-      }
-    );
-  };
-
-  // Storage permission functions
-  const checkStoragePermission = async () => {
-    try {
-      if (Platform.OS === 'ios') {
-        return await check(PERMISSIONS.IOS.PHOTO_LIBRARY);
-      } else {
-        if (Platform.Version >= 33) {
-          const readImagesStatus = await check(PERMISSIONS.ANDROID.READ_MEDIA_IMAGES);
-          return readImagesStatus;
-        } else {
-          const readStatus = await check(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
-          const writeStatus = await check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
-          return readStatus === RESULTS.GRANTED && writeStatus === RESULTS.GRANTED ? RESULTS.GRANTED : RESULTS.DENIED;
-        }
-      }
-    } catch (error) {
-      console.log('Storage permission check error:', error);
-      return RESULTS.DENIED;
-    }
-  };
-
-  const requestStoragePermission = async () => {
-    try {
-      if (Platform.OS === 'ios') {
-        return await request(PERMISSIONS.IOS.PHOTO_LIBRARY);
-      } else {
-        if (Platform.Version >= 33) {
-          const readImagesResult = await request(PERMISSIONS.ANDROID.READ_MEDIA_IMAGES);
-          await request(PERMISSIONS.ANDROID.READ_MEDIA_VIDEO);
-          await request(PERMISSIONS.ANDROID.READ_MEDIA_AUDIO);
-          return readImagesResult;
-        } else {
-          const readResult = await request(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE);
-          const writeResult = await request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
-          return readResult === RESULTS.GRANTED && writeResult === RESULTS.GRANTED ? RESULTS.GRANTED : RESULTS.DENIED;
-        }
-      }
-    } catch (error) {
-      console.log('Storage permission request error:', error);
-      return RESULTS.DENIED;
-    }
-  };
-
-  const initStoragePermission = async () => {
-    try {
-      let permissionStatus = await checkStoragePermission();
-      console.log('Initial storage permission:', permissionStatus);
-
-      if (permissionStatus === RESULTS.DENIED) {
-        const requestStatus = await requestStoragePermission();
-        console.log('After storage request:', requestStatus);
-        if (requestStatus === RESULTS.GRANTED) {
-          Toast.show({
-            type: 'success',
-            text1: 'Storage access granted',
-            position: 'top',
-            visibilityTime: 2000,
-            autoHide: true,
-            topOffset: 30,
-          });
-        }
-        return;
-      }
-
-      if (permissionStatus === RESULTS.BLOCKED) {
-        Alert.alert(
-          'Storage Permission Required',
-          'Please enable storage permission from settings to access photos and files',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => openSettings() },
-          ]
-        );
-      }
-
-      if (permissionStatus === RESULTS.GRANTED) {
-        console.log('Storage permission already granted');
-      }
-    } catch (error) {
-      console.log('Storage permission initialization error:', error);
-    }
   };
 
   const fetchProfile = async () => {
@@ -343,29 +201,6 @@ const Home = () => {
     setCheckingConnection(false);
   };
 
-  // useEffect(() => {
-  //   const initPermissions = async () => {
-  //     let locationPermissionStatus = await checkLocationPermission();
-  //     if (locationPermissionStatus === RESULTS.DENIED) {
-  //       const requestStatus = await requestLocationPermission();
-  //       if (requestStatus === RESULTS.GRANTED) getCurrentLocation();
-  //     } else if (locationPermissionStatus === RESULTS.GRANTED) {
-  //       getCurrentLocation();
-  //     } else if (locationPermissionStatus === RESULTS.BLOCKED) {
-  //       Alert.alert(
-  //         'Permission Required',
-  //         'Please enable location permission from settings',
-  //         [
-  //           { text: 'Cancel', style: 'cancel' },
-  //           { text: 'Open Settings', onPress: () => openSettings() },
-  //         ]
-  //       );
-  //     }
-  //     await initStoragePermission();
-  //   };
-  //   initPermissions();
-  // }, []);
-
   useEffect(() => {
     if (user?.id && isInitialLoad) {
       refreshAllData(false);
@@ -472,15 +307,10 @@ const Home = () => {
 
   if (!isConnected) {
     return (
-      <LinearGradient
-        colors={[`${Colors.primary.sage400}`, '#fff', '#fff']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={{ flex: 1 }}
-      >
+      <View style={{ flex: 1 }}>
         <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent={true} />
         <View
-          className="w-full  flex-row items-center justify-between px-4"
+          className="w-full bg-teal-300 flex-row items-center justify-between px-4"
           style={{ paddingTop: insets.top + 4, paddingBottom: 4, }}
         >
           <Pressable onPress={() => handleProfilePress()} className="flex-row items-center flex-1">
@@ -535,7 +365,7 @@ const Home = () => {
           </View>
         )}
         <NoInternet onRetry={handleRetryConnection} isChecking={checkingConnection} />
-      </LinearGradient>
+      </View>
     );
   }
 
@@ -555,8 +385,8 @@ const Home = () => {
       )}
 
       <View
-        className="w-full bg-teal-300 flex-row items-center justify-between px-4"
-        style={{ paddingTop: insets.top + 4, paddingBottom: 4 }}
+        className="w-full bg-teal-300 flex-row items-center justify-between px-5"
+        style={{ paddingTop: insets.top + 4, paddingBottom: 14 }}
       >
         <Pressable onPress={() => handleProfilePress()} className="flex-row items-center flex-1">
           <View className="relative">
@@ -744,5 +574,3 @@ const Home = () => {
 };
 
 export default Home;
-
-const styles = StyleSheet.create({});
