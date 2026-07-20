@@ -3,11 +3,12 @@ import React, { useState, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Header from '../../components/Header'
 import { useAuth } from '../../context/AuthContext'
-import { TechnicianAMC } from '../../lib/api'
+// import { TechnicianAMC } from '../../lib/api'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useNavigation } from '@react-navigation/native'
 import { UserIcon } from '../../assets/svgIcons/SVGIcons' // adjust path if needed
+import dummyData from '../../lib/dummyData';
 
 const { width, height } = Dimensions.get('window')
 
@@ -54,7 +55,9 @@ const MyAmc = () => {
 
             console.log('Fetching AMC data with payload:', payload, 'params:', params);
 
-            const response = await TechnicianAMC(payload, params);
+            // const response = await TechnicianAMC(payload, params);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.technicianAMC;
 
             console.log('API Response:', response?.data);
 

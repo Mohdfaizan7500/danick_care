@@ -32,10 +32,11 @@ import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from '../../../context/AuthContext';
 import NoInternet from '../../NoInternet';
 import OffLineScreen from '../OffLineScreen';
-import { getDeshBoardCount, getProfile } from '../../../lib/api';
+// import { getDeshBoardCount, getProfile } from '../../../lib/api';
 import { getFCMToken } from '../../../service/getToken';
 import Toast from 'react-native-toast-message';
 import { notificationRefreshEmitter } from '../../../navigation/NotificationHandler';
+import dummyData from '../../../lib/dummyData';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -83,7 +84,9 @@ const Home = () => {
     if (!user?.id) return;
     try {
       setLoadingProfile(true);
-      const response = await getProfile(user.id);
+      // const response = await getProfile(user.id);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.profileData;
       const data = response?.data?.data[0];
       if (data) {
         await updateProfileData(data);
@@ -104,7 +107,9 @@ const Home = () => {
         technician_id: user?.id.toString(),
         city_id: user?.city_id.toString()
       };
-      const response = await getDeshBoardCount(payload);
+      // const response = await getDeshBoardCount(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.dashboardCount;
       const data = response?.data;
       if (data?.success) setCount(data);
     } catch (error) {

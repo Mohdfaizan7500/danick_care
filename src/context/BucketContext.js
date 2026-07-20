@@ -1,7 +1,8 @@
 // context/BucketContext.js
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
-import { getPartCount } from '../lib/api';
+// import { getPartCount } from '../lib/api';
 import { useAuth } from './AuthContext';
+import dummyData from '../lib/dummyData';
 
 const BucketContext = createContext();
 
@@ -48,17 +49,19 @@ export const BucketProvider = ({ children }) => {
       };
       
       console.log('Fetching bucket counts with payload:', payload);
-      const response = await getPartCount(payload);
+      // Using dummy data
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = dummyData.bucketPartCount;
       console.log('Bucket counts response:', response);
 
-      if (response?.data?.success) {
+      if (response) {
         setBucketCounts({
-          all: response.data.all || 0,
-          admin: response.data.admin || 0,
-          technician: response.data.technician || 0,
-          market: response.data.market || 0,
-          transfered: response.data.transfered || 0,
-          received: response.data.received || 0,
+          all: response.total || 0,
+          admin: response.admin || 0,
+          technician: response.technician || 0,
+          market: response.market || 0,
+          transfered: response.transfered || 0,
+          received: response.received || 0,
         });
       } else {
         if (!silent) {

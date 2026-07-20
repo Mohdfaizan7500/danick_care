@@ -15,7 +15,8 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import { useAuth } from '../../../context/AuthContext';
-import { fetchPartsForComplaint, AttechPartWithComplaints } from '../../../lib/api';
+// import { fetchPartsForComplaint, AttechPartWithComplaints } from '../../../lib/api';
+import dummyData from '../../../lib/dummyData';
 
 // Helper function to display N/A for missing values
 const getDisplayValue = (value) => {
@@ -81,7 +82,9 @@ const AddPartBilling = () => {
                 service_id: complaintData.service_id?.toString() || complaintData.id?.toString()
             };
 
-            const response = await fetchPartsForComplaint(payload);
+            // const response = await fetchPartsForComplaint(payload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.fetchPartsForReplaced;
 
             // Check for error in response
             if (response?.data?.success === false) {
@@ -214,7 +217,9 @@ const AddPartBilling = () => {
                 status: newStatus
             };
 
-            const response = await AttechPartWithComplaints(payload);
+            // const response = await AttechPartWithComplaints(payload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.partTransfer;
 
             // Check for error in response
             if (response?.data?.success === false) {
@@ -492,6 +497,12 @@ const AddPartBilling = () => {
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                         />
+                        <TouchableOpacity
+                            onPress={() => setSearchQuery('2')}
+                            className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+                        >
+                            <Text className="text-xs font-bold text-white">Demo</Text>
+                        </TouchableOpacity>
                         {searchQuery.length > 0 && (
                             <TouchableOpacity onPress={() => setSearchQuery('')}>
                                 <Icon name="close-circle" size={20} color="#666" />

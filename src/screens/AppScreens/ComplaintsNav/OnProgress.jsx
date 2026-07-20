@@ -1,10 +1,11 @@
 import { StyleSheet, Text, View, FlatList, ActivityIndicator } from 'react-native'
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import Complaintscard from '../../../components/Complaintscard';
-import { getComplaints } from '../../../lib/api';
+// import { getComplaints } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import DialogBox from '../../../components/Dialog'; // adjust path if needed
+import dummyData from '../../../lib/dummyData';
 
 
 const OnProgress = () => {
@@ -12,7 +13,7 @@ const OnProgress = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
   
   // Dialog state
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -22,32 +23,45 @@ const OnProgress = () => {
   const { user } = useAuth();
   const technicianId = user?.id;
 
+  const fetchIdRef = useRef(0);
+
   const fetchComplaints = async (pageNum = 1, isRefresh = false) => {
-    // ... unchanged
+    const fetchId = ++fetchIdRef.current;
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const response = await getComplaints(technicianId, 'onworking', pageNum);
+      // const response = await getComplaints(technicianId, 'onworking', pageNum);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (fetchId !== fetchIdRef.current) return;
+      const response = dummyData.complaintsList;
       if (response?.data?.success && response?.data?.result) {
         const newComplaints = response.data.result;
+        if (fetchId !== fetchIdRef.current) return;
         const limit = response.data.limit || 10;
         if (isRefresh) {
           setComplaints(newComplaints);
           setPage(1);
         } else {
-          setComplaints(prev => [...prev, ...newComplaints]);
+          setComplaints(prev => {
+            const existingIds = new Set(prev.map(item => item?.id));
+            const unique = newComplaints.filter(item => !existingIds.has(item.id));
+            return [...prev, ...unique];
+          });
           setPage(pageNum);
         }
         setHasMore(newComplaints.length === limit);
       } else {
+        if (fetchId !== fetchIdRef.current) return;
         if (isRefresh) setComplaints([]);
         setHasMore(false);
       }
     } catch (error) {
+      if (fetchId !== fetchIdRef.current) return;
       console.error('Error fetching on-progress complaints:', error);
       if (isRefresh) setComplaints([]);
     } finally {
+      if (fetchId !== fetchIdRef.current) return;
       setLoading(false);
       setRefreshing(false);
     }
@@ -69,10 +83,6 @@ const OnProgress = () => {
     navigation.navigate('ComplaintDetail', { complaint });
   };
 
-  useEffect(() => {
-    fetchComplaints(1, true);
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
       fetchComplaints(1, true);
@@ -88,7 +98,7 @@ const OnProgress = () => {
       <FlatList
         data={complaints}
         renderItem={renderComplaintCard}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => `${item.id}_${index}`}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 16, flexGrow: 1 }}
         ListEmptyComponent={() => (

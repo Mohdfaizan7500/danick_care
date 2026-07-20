@@ -3,12 +3,13 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import { useAuth } from '../../../context/AuthContext'
-import { AssignQRCodeList } from '../../../lib/api'
+// import { AssignQRCodeList } from '../../../lib/api'
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { FlashList } from "@shopify/flash-list";
 import QRCodeCard from '../../../components/QRCodeCard'; // Import the card component
+import dummyData from '../../../lib/dummyData';
 
 // Skeleton component for loading state
 const SkeletonCard = () => (
@@ -33,6 +34,14 @@ const AllQRCodes = ({ route }) => {
     console.log('name', name);
 
     const { user, imagUrl } = useAuth();
+
+    const buildImageUrl = (imagePath, baseUrl) => {
+        if (!imagePath) return null;
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
+        const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
+        const base = baseUrl?.endsWith('/') ? baseUrl : `${baseUrl}/`;
+        return `${base}${cleanPath}`;
+    };
     const navigation = useNavigation();
     const [qrCodes, setQrCodes] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -74,7 +83,9 @@ const AllQRCodes = ({ route }) => {
             };
 
             console.log('Fetching QR codes with payload:', payload);
-            const response = await AssignQRCodeList(payload);
+            // const response = await AssignQRCodeList(payload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.qrCodeList;
             console.log('AssignQRCodeList response:', response);
 
             if (response?.data?.success && response?.data?.data && isMounted.current) {
@@ -90,7 +101,7 @@ const AllQRCodes = ({ route }) => {
                             qrCodeNumber: item.qr_id,
                             complaintId: item.complaint_id || null,
                             status: item.complaint_id ? 'used' : 'fresh',
-                            imageUrl: item.qr_img ? `${imagUrl}${item.qr_img}` : null,
+                            imageUrl: buildImageUrl(item.qr_img, imagUrl),
                             qr_img: item.qr_img,
                             isUsed: !!item.complaint_id,
                             partName: item.part_name || 'Spare Part',
@@ -100,7 +111,15 @@ const AllQRCodes = ({ route }) => {
                     }
                 });
 
-                setQrCodes(uniqueQRCodes);
+                // Client-side filter by status (for dummy data)
+                const statusFilter = getStatus(name);
+                let filtered = uniqueQRCodes;
+                if (statusFilter === "1") {
+                    filtered = uniqueQRCodes.filter(qr => qr.isUsed);
+                } else if (statusFilter === "0") {
+                    filtered = uniqueQRCodes.filter(qr => !qr.isUsed);
+                }
+                setQrCodes(filtered);
             }
             else if (response?.data?.success === false) {
                 // Check for "No Assign QR Code Found" message - treat as empty data, not an error
@@ -206,8 +225,7 @@ const AllQRCodes = ({ route }) => {
     // Get image URL
     const getImageUrl = (item) => {
         if (item.imageUrl) return item.imageUrl;
-        if (item.qr_img) return `${imagUrl}${item.qr_img}`;
-        return null;
+        return buildImageUrl(item.qr_img, imagUrl);
     };
 
     // Render each QR code item using the QRCodeCard component
@@ -302,6 +320,12 @@ const AllQRCodes = ({ route }) => {
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
+                    <TouchableOpacity
+                        onPress={() => setSearchQuery('QR001')}
+                        className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+                    >
+                        <Text className="text-xs font-bold text-white">Demo</Text>
+                    </TouchableOpacity>
                     {searchQuery.length > 0 && (
                         <TouchableOpacity onPress={() => setSearchQuery('')}>
                             <Icon name="close-circle" size={20} color="#999999" />
@@ -362,13 +386,16 @@ const AllQRCodes = ({ route }) => {
                     activeOpacity={1}
                     onPress={() => setModalVisible(false)}
                 >
-                    <View className="w-10/12 h-3/6 bg-white rounded-xl overflow-hidden">
-                        {selectedImage && (
+                    <View className="w-10/12 h-3/6 bg-white rounded-xl overflow-hidden items-center justify-center">
+                        {selectedImage ? (
                             <Image
                                 source={{ uri: selectedImage }}
                                 className="w-full h-full"
                                 resizeMode="contain"
+                                onError={() => setSelectedImage(null)}
                             />
+                        ) : (
+                            <Icon name="image-outline" size={60} color="#ccc" />
                         )}
                     </View>
                     <TouchableOpacity

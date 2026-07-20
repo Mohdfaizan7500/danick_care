@@ -13,10 +13,11 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PERMISSIONS, request, check, RESULTS, openSettings } from 'react-native-permissions';
 import { requestContactsPermissionAndFetch } from '../../../hooks/contectPermission';
-import { ContactImport } from '../../../lib/api';
+// import { ContactImport } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import DialogBox from '../../../components/Dialog'; // adjust path if needed
+import dummyData from '../../../lib/dummyData';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -225,7 +226,9 @@ const PermissionScreen = ({ navigation }) => {
           };
           console.log('payload:',payload)
 
-          const response = await ContactImport(payload);
+          // const response = await ContactImport(payload);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const response = dummyData.contactImport;
           const msg = response?.data?.msg;
 
           if (response?.data?.success) {

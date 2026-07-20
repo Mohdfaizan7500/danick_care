@@ -16,8 +16,9 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import Header from '../../../components/Header';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import { CheckProceedAMC } from '../../../lib/api';
+// import { CheckProceedAMC } from '../../../lib/api';
 import ToggleSwitch from 'toggle-switch-react-native';
+import dummyData from '../../../lib/dummyData';
 
 const ConetToAMCScreen = () => {
     const navigation = useNavigation();
@@ -79,7 +80,9 @@ const ConetToAMCScreen = () => {
                 complaint_id: complaintData?.id?.toString() || '',
                 technician_id: complaintData?.technician_id?.toString() || '62'
             };
-            const response = await CheckProceedAMC(payload);
+            // const response = await CheckProceedAMC(payload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.proceedAMC;
             if (response?.data?.success) {
                 const status = response.data.status;
                 if (status === '1') {

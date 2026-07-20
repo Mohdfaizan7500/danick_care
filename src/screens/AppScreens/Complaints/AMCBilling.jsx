@@ -5,12 +5,13 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import DialogBox from '../../../components/DilaogBox';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
-import { AMCBilling as AMCBillingAPI } from '../../../lib/api';
+// import { AMCBilling as AMCBillingAPI } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { check, request, RESULTS, PERMISSIONS, openSettings } from 'react-native-permissions';
 import Geolocation from '@react-native-community/geolocation';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
+import dummyData from '../../../lib/dummyData';
 
 const AMCBilling = () => {
   const [discount, setDiscount] = useState('');

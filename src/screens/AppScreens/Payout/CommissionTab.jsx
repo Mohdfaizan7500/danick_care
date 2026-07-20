@@ -13,12 +13,13 @@ import {
 import { Calendar } from 'react-native-calendars';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
-import { CommissionPayout } from '../../../lib/api';
+// import { CommissionPayout } from '../../../lib/api';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import { ComplaintsIcon, UserIcon } from '../../../assets/svgIcons/SVGIcons';
 import { BrickWallIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import dummyData from '../../../lib/dummyData';
 
 const SkeletonCommissionCard = () => {
   const opacity = useRef(new Animated.Value(0.3)).current;
@@ -97,7 +98,9 @@ const CommissionTab = ({
       };
 
       console.log('Fetching Commission Payout with payload:', payload);
-      const response = await CommissionPayout(payload);
+      // const response = await CommissionPayout(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.payoutCommission;
       console.log('Commission Payout Response:', response);
 
       if (response?.data?.success) {
@@ -176,7 +179,9 @@ const CommissionTab = ({
       };
 
       console.log('Filtering Commission with payload:', payload);
-      const response = await CommissionPayout(payload);
+      // const response = await CommissionPayout(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.payoutCommission;
       console.log('Filtered Commission Response:', response);
 
       if (response?.data?.success) {

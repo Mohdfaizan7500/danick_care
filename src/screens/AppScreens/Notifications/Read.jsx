@@ -3,8 +3,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import { useAuth } from '../../../context/AuthContext'
-import { FetchNotification } from '../../../lib/api'
+// import { FetchNotification } from '../../../lib/api'
 import { CommonActions } from '@react-navigation/native'
+import dummyData from '../../../lib/dummyData';
 
 const AllNotification = ({ route }) => {
   const { refreshCounts } = route?.params || {};
@@ -150,7 +151,9 @@ const AllNotification = ({ route }) => {
       };
       
       console.log('Fetching all notifications with payload:', payload);
-      const response = await FetchNotification(payload);
+      // const response = await FetchNotification(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.notifications;
       console.log('FetchNotification response:', response);
 
       if (response?.data?.success && response?.data?.data && isMounted.current) {

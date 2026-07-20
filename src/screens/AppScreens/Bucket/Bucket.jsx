@@ -21,15 +21,16 @@ import { toast, Toaster } from 'sonner-native';
 import DialogBox from '../../../components/DilaogBox';
 import { useAuth } from '../../../context/AuthContext';
 import Clipboard from '@react-native-clipboard/clipboard';
-import {
-  getPartCount,
-  technicianAssignPart,
-  partTransferCancel,
-  partTransferReceive
-} from '../../../lib/api';
+// import {
+//   getPartCount,
+//   technicianAssignPart,
+//   partTransferCancel,
+//   partTransferReceive
+// } from '../../../lib/api';
 import StatusMessage from '../../../components/StatusMessage';
 import NetInfo from '@react-native-community/netinfo';
 import NoInternet from '../../NoInternet';
+import dummyData from '../../../lib/dummyData';
 
 // Tabs
 const TABS = ['All', 'Technician', 'Market', 'Admin', 'Transferred', 'Received'];
@@ -207,7 +208,9 @@ const Bucket = () => {
       };
 
       console.log('Fetch parts payload:', payload);
-      const response = await technicianAssignPart(payload);
+      // const response = await technicianAssignPart(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.partTransfer;
       console.log('API Response:', response?.data);
 
       // Handle API response
@@ -269,7 +272,9 @@ const Bucket = () => {
       const payload = {
         technician_id: technician_id?.toString(),
       };
-      const response = await getPartCount(payload);
+      // const response = await getPartCount(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.bucketPartCount;
       console.log('Part count response:', response?.data);
       const data = response?.data || {};
 
@@ -481,7 +486,9 @@ const Bucket = () => {
           };
 
           console.log(`${confirmAction} payload:`, cancelPayload);
-          response = await partTransferCancel(cancelPayload);
+          // response = await partTransferCancel(cancelPayload);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          response = dummyData.partTransfer;
           console.log(`${confirmAction} response:`, response?.data);
 
           // Check if the API call was successful
@@ -509,7 +516,9 @@ const Bucket = () => {
           };
 
           console.log('Accept transfer payload:', acceptPayload);
-          response = await partTransferReceive(acceptPayload);
+          // response = await partTransferReceive(acceptPayload);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          response = dummyData.partTransfer;
           console.log('Accept transfer response:', response?.data);
 
           // Check if the API call was successful
@@ -831,6 +840,12 @@ const Bucket = () => {
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setIsSearchFocused(false)}
             />
+            <TouchableOpacity
+                onPress={() => setSearchQuery('RO Membrane')}
+                className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+            >
+                <Text className="text-xs font-bold text-white">Demo</Text>
+            </TouchableOpacity>
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
                 <Icon name="close-circle" size={20} color="#999999" />
@@ -935,6 +950,12 @@ const Bucket = () => {
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
           />
+          <TouchableOpacity
+              onPress={() => setSearchQuery('RO Membrane')}
+              className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+          >
+              <Text className="text-xs font-bold text-white">Demo</Text>
+          </TouchableOpacity>
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
               <Icon name="close-circle" size={20} color="#999999" />

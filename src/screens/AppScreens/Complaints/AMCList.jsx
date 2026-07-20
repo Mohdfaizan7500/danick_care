@@ -4,11 +4,12 @@ import Header from '../../../components/Header'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import Icon from 'react-native-vector-icons/Ionicons';
-import { AMCConvertList, ProceedAMC } from '../../../lib/api'
+// import { AMCConvertList, ProceedAMC } from '../../../lib/api'
 import DialogBox from '../../../components/DilaogBox'
 import { useAuth } from '../../../context/AuthContext'
 import { toast } from 'sonner-native'
 import StatusMessage from '../../../components/StatusMessage'
+import dummyData from '../../../lib/dummyData';
 
 const AMCList = () => {
     const navigation = useNavigation();
@@ -41,7 +42,9 @@ const AMCList = () => {
                 city_id: cityId,
                 service_name: serviceName
             }
-            const response = await AMCConvertList(payload)
+            // const response = await AMCConvertList(payload)
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.amcList;
             console.log('AMC List response:', response)
 
             if (response?.data?.success) {
@@ -101,7 +104,9 @@ const AMCList = () => {
 
             console.log('ProceedAMC payload:', payload)
 
-            const response = await ProceedAMC(payload)
+            // const response = await ProceedAMC(payload)
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.proceedAMC;
             console.log('ProceedAMC response:', response)
 
             // Check if response is successful
@@ -188,7 +193,7 @@ const AMCList = () => {
 
     const renderItem = ({ item, index }) => {
         const features = parseFeatures(item.content)
-        const imageUrl = item.image1 ? `https://dainikcare.com/dainik_care_admin/${item.image1}` : null
+        const imageUrl = item.image1 ? (item.image1.startsWith('http') ? item.image1 : `https://dainikcare.com/dainik_care_admin/${item.image1}`) : null
 
         // Generate a unique key for features using index
         const getFeatureKey = (feature, featureIndex) => `${item.id}_feature_${featureIndex}_${feature.substring(0, 10)}`

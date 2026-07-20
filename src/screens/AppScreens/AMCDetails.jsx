@@ -12,6 +12,12 @@ const AMCDetails = () => {
     const insets = useSafeAreaInsets();
     const { imagUrl } = useAuth();
 
+    const getImageSrc = (img) => {
+        if (!img) return null;
+        if (img.startsWith('http')) return { uri: img };
+        return { uri: imagUrl + img };
+    };
+
     console.log('service:', service)
 
     // Format price
@@ -83,7 +89,7 @@ const AMCDetails = () => {
                 <View className="w-full h-[370px] bg-primary-sage/10 mb-4">
                     {service?.image1 ? (
                         <Image
-                            source={{ uri: imagUrl + service.image1 }}
+                            source={getImageSrc(service.image1)}
                             className="w-full h-full"
                             resizeMode="contain"
                         />

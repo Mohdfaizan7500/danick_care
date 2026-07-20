@@ -3,7 +3,8 @@ import React, { useState, useCallback, useRef, useEffect } from 'react'
 import Header from '../../components/Header'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/Feather'
-import { TermsSupport } from '../../lib/api' // Import the API function
+// import { TermsSupport } from '../../lib/api' // Import the API function
+import dummyData from '../../lib/dummyData';
 
 const TermsConditions = () => {
   const [activeTab, setActiveTab] = useState('terms')
@@ -27,7 +28,9 @@ const TermsConditions = () => {
   const fetchTermsData = async () => {
     setLoading(true)
     try {
-      const response = await TermsSupport()
+      // const response = await TermsSupport()
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.termsData;
       console.log('TermsSupport api response:', response)
 
       if (response.data?.success && response.data?.data?.length > 0) {

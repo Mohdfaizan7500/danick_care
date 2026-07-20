@@ -6,15 +6,22 @@ import Header from '../../components/Header'
 import { Search } from 'lucide-react-native'
 
 import { useAuth } from '../../context/AuthContext'
-import { getAMCList } from '../../lib/api'
+// import { getAMCList } from '../../lib/api'
 import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import { toast, Toaster } from 'sonner-native'
 import StatusMessage from '../../components/StatusMessage'
 import { useInternetStatus } from '../../hooks/useInternetStatus'
 import NoInternet from '../NoInternet'
+import dummyData from '../../lib/dummyData';
 
 const AMC = () => {
   const { user, imagUrl } = useAuth();
+
+  const getImageSrc = (img) => {
+    if (!img) return null;
+    if (img.startsWith('http')) return { uri: img };
+    return { uri: imagUrl + img };
+  };
   const city_id = user?.city_id;
   const navigation = useNavigation();
 
@@ -43,7 +50,9 @@ const AMC = () => {
       if (!isRefresh) {
         setLoading(true)
       }
-      const response = await getAMCList(payload);
+      // const response = await getAMCList(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.amcList;
       const data = response?.data?.data || []
       setAmcServices(data)
 
@@ -203,6 +212,12 @@ const AMC = () => {
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
+            <TouchableOpacity
+                onPress={() => setSearchQuery('AMC Test')}
+                className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+            >
+                <Text className="text-xs font-bold text-white">Demo</Text>
+            </TouchableOpacity>
           </View>
         </View>
         
@@ -273,6 +288,12 @@ const AMC = () => {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+          <TouchableOpacity
+              onPress={() => setSearchQuery('AMC Customer')}
+              className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+          >
+              <Text className="text-xs font-bold text-white">Demo</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -313,7 +334,7 @@ const AMC = () => {
                 <View className="w-full h-[140px] rounded-lg bg-primary-sage/20 mb-2 overflow-hidden">
                   {!imageErrors[service.id] && service.image1 ? (
                     <Image
-                      source={{ uri: imagUrl + service.image1 }}
+                      source={getImageSrc(service.image1)}
                       className="w-full h-full"
                       resizeMode="cover"
                       onError={() => handleImageError(service.id)}

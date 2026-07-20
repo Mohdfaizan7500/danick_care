@@ -1,7 +1,8 @@
 // context/NotificationContext.js
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { FetchNotification } from '../lib/api';
+// import { FetchNotification } from '../lib/api';
 import { useAuth } from './AuthContext';
+import dummyData from '../lib/dummyData';
 
 const NotificationContext = createContext();
 
@@ -105,11 +106,13 @@ export const NotificationProvider = ({ children }) => {
       const payload = {
         technician_id: user?.id || "1"
       };
-      const response = await FetchNotification(payload);
+      // Using dummy data
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = dummyData.notifications;
       console.log("Fetch Notification response:", response);
 
-      if (response?.data?.success && response?.data?.data) {
-        const transformedData = response.data.data.map(item => ({
+      if (response?.data?.success && response?.data?.result) {
+        const transformedData = response.data.result.map(item => ({
           id: item.id.toString(),
           type: mapStatusToType(item.status),
           title: getTitleFromMessage(item.message),

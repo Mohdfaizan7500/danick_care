@@ -9,12 +9,13 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { PurchaseMarketPart, GetPartDetailQRCode } from '../../lib/api';
+// import { PurchaseMarketPart, GetPartDetailQRCode } from '../../lib/api';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import { request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../components/StatusMessage';
 import DialogBox from '../../components/DilaogBox';
+import dummyData from '../../lib/dummyData';
 
 const PartDetails = () => {
   const route = useRoute();
@@ -215,7 +216,9 @@ const PartDetails = () => {
       });
 
       // Using the API function from api.js
-      const response = await PurchaseMarketPart(formData);
+      // const response = await PurchaseMarketPart(formData);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.purchaseMarketPart;
 
       console.log('Purchase response:', response);
 
@@ -321,7 +324,9 @@ const PartDetails = () => {
       const payload = {
         QRCode: qrCodeValue
       };
-      const response = await GetPartDetailQRCode(payload);
+      // const response = await GetPartDetailQRCode(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.getPartDetailQRCode;
       console.log('QR Code Details Response:', response);
 
       if (response?.data?.success && response?.data?.data?.length > 0) {
@@ -471,10 +476,9 @@ const PartDetails = () => {
 
   // Helper to get full image URL
   const getImageUrl = () => {
-    if (currentPart.part_image) {
-      return imagUrl + currentPart.part_image;
-    }
-    return 'https://via.placeholder.com/400x400?text=No+Image';
+    if (!currentPart.part_image) return 'https://via.placeholder.com/400x400?text=No+Image';
+    if (currentPart.part_image.startsWith('http')) return currentPart.part_image;
+    return imagUrl + currentPart.part_image;
   };
 
   return (
@@ -839,9 +843,15 @@ const PartDetails = () => {
               />
               {qrCode.length > 0 && (
                 <TouchableOpacity onPress={clearQrCode} className="ml-2 p-1">
-                  <Icon name="close-circle-outline" size={20} color="#999" />
+                    <Icon name="close-circle-outline" size={20} color="#999" />
                 </TouchableOpacity>
               )}
+              <TouchableOpacity
+                onPress={() => setQrCode('CSN001')}
+                className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+              >
+                <Text className="text-xs font-bold text-white">Demo</Text>
+              </TouchableOpacity>
             </View>
             <TouchableOpacity
               onPress={handleScanQR}

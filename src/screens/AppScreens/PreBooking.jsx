@@ -18,7 +18,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { CalenderIcon } from '../../assets/svgIcons/SVGIcons';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
-import { getAttendanceApi, MarkAttandance } from '../../lib/api';
+// import { getAttendanceApi, MarkAttandance } from '../../lib/api';
+import dummyData from '../../lib/dummyData';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -116,7 +117,9 @@ const PreBooking = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getAttendanceApi(user.id, monthStr);
+      // const response = await getAttendanceApi(user.id, monthStr);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.attendanceData;
       console.log('Fetched Attendance:', response);
 
       // Response structure: response.data.data is an array of objects with 'date' property
@@ -340,12 +343,14 @@ const PreBooking = () => {
     setLoadingDates(prev => new Set(prev).add(dateString));
 
     try {
-      const response = await MarkAttandance(cityId, techId, dateString, month);
+      // const response = await MarkAttandance(cityId, techId, dateString, month);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.markAttendance;
       console.log('MarkAttendance response:', response);
-      // Refresh the attendance list after successful API call
-      await fetchAttendance();
 
+      // Directly update selectedDates state (no API refresh needed with dummy data)
       if (isSelected) {
+        setSelectedDates(prev => prev.filter(d => d !== dateString));
         toast.custom(
           <View className="bg-blue-50 border border-blue-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
             <Icon name="calendar-outline" size={24} color="#3b82f6" />
@@ -357,6 +362,7 @@ const PreBooking = () => {
           { duration: 2000 }
         );
       } else {
+        setSelectedDates(prev => [...prev, dateString]);
         toast.custom(
           <View className="bg-green-50 border border-green-500 flex-row items-center gap-2 p-4 rounded-xl shadow-lg mx-4">
             <Icon name="checkmark-circle" size={24} color="#22c55e" />

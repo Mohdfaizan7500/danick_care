@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Header from '../../components/Header'
-import { TermsSupport } from '../../lib/api' // Import the API function directly
+// import { TermsSupport } from '../../lib/api' // Import the API function directly
+import dummyData from '../../lib/dummyData';
 
 const Support = () => {
   const [supportData, setSupportData] = useState({
@@ -24,7 +25,9 @@ const Support = () => {
   const fetchSupportData = async () => {
     setLoading(true)
     try {
-      const response = await TermsSupport() // Call the imported API function directly
+      // const response = await TermsSupport() // Call the imported API function directly
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.termsData;
       console.log('TermsSupport api response:', response)
 
       if (response.data?.success && response.data?.data?.length > 0) {

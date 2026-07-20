@@ -25,17 +25,18 @@ import { request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permis
 import StatusMessage from '../../../components/StatusMessage';
 import { BucketIcon, LinkQrCodeIcon } from '../../../assets/svgIcons/SVGIcons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import {
-  AMCQRCodeInsertPart,
-  AMCQRCodeRemove,
-  FetchPartsForReplaced,
-  AMCPartQRCodeUpdatePart,
-  RemoveAMCPart,
-  AMCComplaintDetails,
-  DeletAMCRecordWithParts
-} from '../../../lib/api';
+// import {
+//   AMCQRCodeInsertPart,
+//   AMCQRCodeRemove,
+//   FetchPartsForReplaced,
+//   AMCPartQRCodeUpdatePart,
+//   RemoveAMCPart,
+//   AMCComplaintDetails,
+//   DeletAMCRecordWithParts
+// } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import DialogBox from '../../../components/DilaogBox';
+import dummyData from '../../../lib/dummyData';
 
 const AMCDetails = () => {
   const { user } = useAuth();
@@ -456,7 +457,9 @@ const AMCDetails = () => {
       };
 
       console.log('Fetching replacement parts with payload:', payload);
-      const response = await FetchPartsForReplaced(payload);
+      // const response = await FetchPartsForReplaced(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.fetchPartsForReplaced;
       console.log('FetchPartsForReplaced response:', response);
 
       if (response?.data?.success && response?.data?.data) {

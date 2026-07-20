@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { getProfile, TermsSupport, logoutApi } from '../../lib/api';
+// import { getProfile, TermsSupport, logoutApi } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import DialogBox from '../../components/DilaogBox';
 import { LogOut } from 'lucide-react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../components/StatusMessage';
+import dummyData from '../../lib/dummyData';
 
 const OffLineScreen = ({ navigation }) => {
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -41,7 +42,9 @@ const OffLineScreen = ({ navigation }) => {
         try {
             setLoadingNumber(true);
             console.log('Fetching support details in OfflineScreen...');
-            const response = await TermsSupport();
+            // const response = await TermsSupport();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.termsData;
             console.log('TermsSupport response:', response);
             
             if (response?.data?.success && response?.data?.data?.[0]) {
@@ -85,7 +88,9 @@ const OffLineScreen = ({ navigation }) => {
                 return;
             }
 
-            const response = await getProfile(technicianId);
+            // const response = await getProfile(technicianId);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.profileData;
             console.log('Profile refresh response:', response);
 
             const responseData = response?.data?.data?.[0] || response?.data?.data || response?.data;
@@ -170,7 +175,9 @@ const OffLineScreen = ({ navigation }) => {
                 throw new Error('User ID not found');
             }
 
-            const response = await logoutApi({ technician_id: technicianId });
+            // const response = await logoutApi({ technician_id: technicianId });
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.logoutResponse;
             console.log('Logout response:', response);
 
             if (response?.data?.success) {

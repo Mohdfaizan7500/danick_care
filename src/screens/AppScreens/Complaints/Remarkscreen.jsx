@@ -22,16 +22,17 @@ import Header from '../../../components/Header';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import DialogBox from '../../../components/DilaogBox';
-import {
-    UploadComplaintImage,
-    deletComplaintImage,
-    getComplaintImage,
-    UpdateRemark,
-    ComplaintBilling,
-    AMCBilling as AMCBillingAPI,
-} from '../../../lib/api';
+// import {
+//     UploadComplaintImage,
+//     deletComplaintImage,
+//     getComplaintImage,
+//     UpdateRemark,
+//     ComplaintBilling,
+//     AMCBilling as AMCBillingAPI,
+// } from '../../../lib/api';
 import RNFS from 'react-native-fs';
 import ImageResizer from 'react-native-image-resizer';
+import dummyData from '../../../lib/dummyData';
 
 // Camera Modal Component (unchanged)
 const CustomCameraModal = ({ visible, onClose, onCapture }) => {
@@ -180,9 +181,13 @@ const Remarkscreen = () => {
         setLoadingImages(true);
         try {
             const beforePayload = { complaint_id: complaintData.id.toString(), status: '2' };
-            const beforeResponse = await getComplaintImage(beforePayload);
+            // const beforeResponse = await getComplaintImage(beforePayload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const beforeResponse = dummyData.getComplaintImages;
             const afterPayload = { complaint_id: complaintData.id.toString(), status: '3' };
-            const afterResponse = await getComplaintImage(afterPayload);
+            // const afterResponse = await getComplaintImage(afterPayload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const afterResponse = dummyData.getComplaintImages;
             if (beforeResponse?.data?.success && beforeResponse.data.result?.length > 0) {
                 const beforeImage = beforeResponse.data.result[0];
                 setImage1Uri(beforeImage.image);
@@ -249,7 +254,9 @@ const Remarkscreen = () => {
             if (imageNumber === 1) setDeletingImage1(true);
             else setDeletingImage2(true);
             const payload = { id: imageId.toString() };
-            const response = await deletComplaintImage(payload);
+            // const response = await deletComplaintImage(payload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.deleteImage;
             if (response && response.data && response.data.success) {
                 toast.custom(<StatusMessage type="success" title={`Image ${imageNumber} deleted successfully!`} className="mx-4 mb-6" />, { duration: 3000 });
                 return true;
@@ -347,7 +354,9 @@ const Remarkscreen = () => {
             formData.append('image_type', imageType);
             formData.append('status', status);
             console.log('Uploading image with params:', { complaint_id: complaintData?.id, image_type: imageType, status, fileName, imageNumber });
-            const response = await UploadComplaintImage(formData);
+            // const response = await UploadComplaintImage(formData);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.uploadImage;
             if (response && response.data && response.data.success) {
                 const imageId = response.data.id;
                 if (imageNumber === 1) {
@@ -418,7 +427,9 @@ const Remarkscreen = () => {
                 remark: remark,
                 review: selectedCustomerType,
             };
-            const response = await UpdateRemark(payload);
+            // const response = await UpdateRemark(payload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.updateRemark;
             if (!response?.data?.success) {
                 throw new Error(response?.data?.msg || 'Failed to update remark');
             }
@@ -474,7 +485,9 @@ const Remarkscreen = () => {
                     remark: remark,
                 };
                 console.log('Complaint Billing Payload:', billingPayload);
-                const response = await ComplaintBilling(billingPayload);
+                // const response = await ComplaintBilling(billingPayload);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const response = dummyData.complaintBilling;
                 if (response?.data?.success) {
                     toast.custom(<StatusMessage type="success" title="Bill submitted successfully!" className="mx-4 mb-6" />, { duration: 2000 });
                     navigation.reset({
@@ -542,7 +555,9 @@ const Remarkscreen = () => {
                 remark: remark,
                 review: selectedCustomerType,
             };
-            const response = await UpdateRemark(payload);
+            // const response = await UpdateRemark(payload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.updateRemark;
             if (response?.data?.success) {
                 toast.custom(<StatusMessage type="success" title={response.data.msg || "Remark updated successfully!"} className="mx-4 mb-6" />, { duration: 2000 });
                 setTimeout(() => {

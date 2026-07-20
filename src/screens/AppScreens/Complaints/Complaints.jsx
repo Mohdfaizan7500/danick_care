@@ -15,7 +15,8 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import { useAuth } from '../../../context/AuthContext';
-import { getComplaints, getDeshBoardCount } from '../../../lib/api';
+// import { getComplaints, getDeshBoardCount } from '../../../lib/api';
+import dummyData from '../../../lib/dummyData';
 
 // Tabs: All, Assigned, On Progress, Complete, Cancel
 const TABS = ['All', 'Assigned', 'On Progress', 'Complete', 'Cancel'];
@@ -140,7 +141,9 @@ const Complaints = () => {
     }
 
     try {
-      const response = await getComplaints(technicianId, apiStatus, page);
+      // const response = await getComplaints(technicianId, apiStatus, page);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.complaintsList;
       console.log('API Response for', tab, 'page', page, ':', response);
 
       // Handle response structure based on your API
@@ -292,7 +295,9 @@ const Complaints = () => {
       const payload = {
         technician_id: user?.id.toString(),
       };
-      const response = await getDeshBoardCount(payload);
+      // const response = await getDeshBoardCount(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.dashboardCount;
 
       if (response?.data?.success) {
         const data = response.data;

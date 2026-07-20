@@ -7,7 +7,8 @@ import { toast, Toaster } from 'sonner-native';
 import NetInfo from '@react-native-community/netinfo';
 import NoInternet from '../../NoInternet';
 import { useAuth } from '../../../context/AuthContext';
-import { getAllSparePartcategories } from '../../../lib/api';
+import dummyData from '../../../lib/dummyData';
+// import { getAllSparePartcategories } from '../../../lib/api';
 
 const { width: screenWidth } = Dimensions.get('window');
 const numColumns = 3;
@@ -70,7 +71,9 @@ const Parts = () => {
     try {
       setIsLoading(true);
       const cityId = user?.city_id || '1';
-      const response = await getAllSparePartcategories(cityId);
+      // const response = await getAllSparePartcategories(cityId);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.sparePartCategories;
       console.log('Fetched spare part categories:', response);
 
       const fetchedData = response?.data?.data;
@@ -78,7 +81,7 @@ const Parts = () => {
         const mappedCategories = fetchedData.map(item => ({
           id: item.id,
           name: item.service_name,
-          imageUrl: `${imagUrl}${item.image}`,
+          imageUrl: item.image?.startsWith('http') ? item.image : `${imagUrl}${item.image}`,
         }));
         setCategories(mappedCategories);
         console.log('Mapped categories:', mappedCategories);

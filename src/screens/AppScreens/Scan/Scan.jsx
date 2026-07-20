@@ -22,11 +22,12 @@ import Header from '../../../components/Header';
 import { Camera, useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import { request, PERMISSIONS, RESULTS, openSettings } from 'react-native-permissions';
 
-import { GetPartDetailQRCode } from '../../../lib/api';
+// import { GetPartDetailQRCode } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import StatusMessage from '../../../components/StatusMessage';
 import NoInternet from '../../NoInternet';
+import dummyData from '../../../lib/dummyData';
 
 const Scan = () => {
   const insets = useSafeAreaInsets();
@@ -40,6 +41,14 @@ const Scan = () => {
   const [imageLoading, setImageLoading] = useState(false);
   const { imagUrl } = useAuth();
   const navigation = useNavigation();
+
+  const getFullImageUrl = (img) => {
+    if (!img) return null;
+    if (img.startsWith('http')) return img;
+    const clean = img.startsWith('/') ? img.slice(1) : img;
+    const base = imagUrl?.endsWith('/') ? imagUrl : `${imagUrl}/`;
+    return `${base}${clean}`;
+  };
 
   const device = useCameraDevice('back');
 
@@ -122,7 +131,9 @@ const Scan = () => {
     setImageLoading(false);
     try {
       const payload = { QRCode: qrCode };
-      const response = await GetPartDetailQRCode(payload);
+      // const response = await GetPartDetailQRCode(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.getPartDetailQRCode;
       console.log('API Response:', response);
 
       if (response?.data?.success) {
@@ -152,7 +163,7 @@ const Scan = () => {
 
           // Handle "amc_blank_qr" type (blank QR codes)
           if (qrType === 'amc_blank_qr') {
-            fullImageUrl = item.qr_img ? `${imagUrl}${item.qr_img.replace(/^\//, '')}` : null;
+            fullImageUrl = getFullImageUrl(item.qr_img);
             productName = `QR Code: ${item.qr_id || qrCode}`;
             productPartNumber = item.qr_id || '';
             productDescription = `Assigned to technician: ${item.technician_name || 'Unassigned'}`;
@@ -161,7 +172,7 @@ const Scan = () => {
           }
           // Handle regular part details
           else {
-            fullImageUrl = item.part_image ? `${imagUrl}${item.part_image.replace(/^\//, '')}` : null;
+            fullImageUrl = getFullImageUrl(item.part_image);
             productName = item.part_name || '';
             productPartNumber = item.id?.toString() || '';
             productPrice = item.part_price || '0';
@@ -335,6 +346,12 @@ const Scan = () => {
               onSubmitEditing={handleSearch}
               editable={!loading}
             />
+            <TouchableOpacity
+                onPress={() => setSearchText('CSN001')}
+                className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+            >
+                <Text className="text-xs font-bold text-white">Demo</Text>
+            </TouchableOpacity>
             {searchText.length > 0 && (
               <TouchableOpacity onPress={handleClear} className="ml-2">
                 <Icon name="close-circle-outline" size={20} color="#999" />

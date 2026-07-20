@@ -16,8 +16,9 @@ import { toast, Toaster } from 'sonner-native';
 import Header from '../../../components/Header';
 import DialogBox from '../../../components/DilaogBox';
 import StatusMessage from '../../../components/StatusMessage';
-import { getAllTechnician, partTransferToTechnician } from '../../../lib/api';
+// import { getAllTechnician, partTransferToTechnician } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
+import dummyData from '../../../lib/dummyData';
 const BucketpartDetails = () => {
   
   const navigation = useNavigation();
@@ -50,7 +51,15 @@ const BucketpartDetails = () => {
   const addedDate = item.addedDate || (item.created_at ? new Date(item.created_at).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'));
   const partName = item.name || item.part_name || 'Part Name';
   const partPrice = item.price || item.part_price || '0';
-  const partImage = item.imageUrl || (item.part_image ? `https://dainikcare.com/dainik_care_admin/${item.part_image}` : null);
+  const getImageUrl = (imagePath, baseUrl) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
+    const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
+    const base = baseUrl?.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    return `${base}${cleanPath}`;
+  };
+  const { imagUrl } = useAuth();
+  const partImage = item.imageUrl || getImageUrl(item.part_image, imagUrl);
   const parentType = item.parentType || item.transfer_by || 'Unknown';
   const parentName = item.parentName || (item.transfer_by === 'market' ? 'Market' :
     item.transfer_by === 'partner' ? 'Partner' :
@@ -92,7 +101,9 @@ const BucketpartDetails = () => {
 
       }
       console.log("payload for fatch all partnesrs :",payload)
-      const response = await getAllTechnician(payload);
+      // const response = await getAllTechnician(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.technicianParts;
       console.log('Technicians response:', response);
 
       // Handle API response
@@ -151,7 +162,9 @@ const BucketpartDetails = () => {
       };
 
       console.log('Transfer payload:', payload);
-      const response = await partTransferToTechnician(payload);
+      // const response = await partTransferToTechnician(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.partTransfer;
       console.log('Transfer response:', response);
 
       // Show success toast
@@ -392,6 +405,12 @@ const BucketpartDetails = () => {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+          <TouchableOpacity
+              onPress={() => setSearchQuery('5')}
+              className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+          >
+              <Text className="text-xs font-bold text-white">Demo</Text>
+          </TouchableOpacity>
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
               <Icon name="close-circle" size={20} color="#999999" />

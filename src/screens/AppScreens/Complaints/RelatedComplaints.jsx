@@ -13,8 +13,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import { CSNComplaints } from '../../../lib/api';
+// import { CSNComplaints } from '../../../lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import dummyData from '../../../lib/dummyData';
 
 const RelatedComplaints = () => {
     const navigation = useNavigation();
@@ -43,7 +44,9 @@ const RelatedComplaints = () => {
         setError(null);
 
         try {
-            const response = await CSNComplaints({ csn: currentComplaintCsn });
+            // const response = await CSNComplaints({ csn: currentComplaintCsn });
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.complaintsList;
             console.log('CSNComplaints response:', response);
 
             if (response?.data?.success) {

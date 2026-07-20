@@ -12,23 +12,24 @@ import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import DialogBox from '../../components/DilaogBox';
-import { loginApi } from '../../lib/api';
+// import { loginApi } from '../../lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../components/StatusMessage';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import messaging from '@react-native-firebase/messaging'
-import { getFCMToken } from '../../service/getToken';
-import { requestUserPermissions } from '../../permissions/ReqNotification';
-import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
+// import messaging from '@react-native-firebase/messaging'
+// import { getFCMToken } from '../../service/getToken';
+// import { requestUserPermissions } from '../../permissions/ReqNotification';
+// import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
+import dummyData from '../../lib/dummyData';
 
 const Login = ({ navigation }) => {
 
 
 
-    useEffect(() => {
+    /* useEffect(() => {
         requestUserPermissions();
-    }, [])
+    }, []) */
 
     const testNotification = async () => {
         await notifee.displayNotification({
@@ -60,7 +61,7 @@ const Login = ({ navigation }) => {
 
 
 
-    // Get FCM token when component mounts
+    /* // Get FCM token when component mounts
     useEffect(() => {
         const getToken = async () => {
             try {
@@ -74,7 +75,7 @@ const Login = ({ navigation }) => {
             }
         };
         getToken();
-    }, []);
+    }, []); */
 
     const showDialog = (type, title, message, onConfirm = null) => {
         setDialogConfig({ type, title, message, onConfirm });
@@ -89,13 +90,9 @@ const Login = ({ navigation }) => {
 
         setIsLoading(true);
         try {
-            // Get fresh FCM token before login
-            const fcmToken = await getFCMToken();
-            console.log('📤 Sending FCM Token with login:', fcmToken);
-
-            // Call login API with fcm token
-            const result = await loginApi(email, password, fcmToken);
-            console.log('📥 Login API response:', result);
+            // Using dummy data for login
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const result = dummyData.loginResponse;
 
             if (!result || result.success === false) {
                 const errorMsg = result?.data?.msg || result?.error || 'Login failed. Please try again.';
@@ -120,8 +117,6 @@ const Login = ({ navigation }) => {
                 technician_id: userData.technician_id,
                 ...userData,
             };
-
-            console.log('👤 User:', user);
 
             await setAuthData(user, accessToken, refreshToken);
             const isOnline = userData?.login_status === 'Online';
@@ -151,6 +146,8 @@ const Login = ({ navigation }) => {
             { duration: 300 }
         );
     };
+
+    const DEMO_CREDENTIALS = { username: '25863', password: '0000' };
 
     const successFooter = (
         <TouchableOpacity
@@ -259,6 +256,13 @@ const Login = ({ navigation }) => {
                                 autoCorrect={false}
                                 editable={!isLoading}
                             />
+                            <TouchableOpacity
+                                onPress={() => setEmail(DEMO_CREDENTIALS.username)}
+                                className="bg-amber-400 px-2 py-1 rounded-md"
+                                disabled={isLoading}
+                            >
+                                <Text className="text-xs font-bold text-white">Demo</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -285,6 +289,13 @@ const Login = ({ navigation }) => {
                                     <EyeOff width={16} height={16} stroke="gray" />
                                 )}
                             </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setPassword(DEMO_CREDENTIALS.password)}
+                                className="bg-amber-400 px-2 py-1 rounded-md"
+                                disabled={isLoading}
+                            >
+                                <Text className="text-xs font-bold text-white">Demo</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -300,7 +311,7 @@ const Login = ({ navigation }) => {
                         )}
                     </TouchableOpacity>
 
-                    {/* <TouchableOpacity
+                    <TouchableOpacity
                         className="bg-[#FFEDD4] mt-5 px-4 py-2 rounded-xl border border-[#FFB86A]"
                         onPress={fillDemoAccount}
                         disabled={isLoading}
@@ -308,7 +319,7 @@ const Login = ({ navigation }) => {
                         <Text className="font-bold text-sm text-gray-800 mb-2">Demo Account (Click to fill)</Text>
                         <Text className="font-normal text-xs text-gray-500">Username: 25863</Text>
                         <Text className="font-normal text-xs text-gray-500">Password: 0000</Text>
-                    </TouchableOpacity> */}
+                    </TouchableOpacity>
                 </View>
 
                 <DialogBox

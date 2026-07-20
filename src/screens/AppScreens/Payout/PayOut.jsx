@@ -5,8 +5,9 @@ import SalaryTab from './SalaryTab';
 import CommissionTab from './CommissionTab';
 import Header from '../../../components/Header';
 import { useAuth } from '../../../context/AuthContext';
-import { CommissionPayout } from '../../../lib/api';
+// import { CommissionPayout } from '../../../lib/api';
 import { Toaster } from 'sonner-native';
+import dummyData from '../../../lib/dummyData';
 
 // ---------- Dummy Data ----------
 const salaryData = [

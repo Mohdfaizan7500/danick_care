@@ -1,10 +1,11 @@
 import { StyleSheet, Text, View, FlatList, ActivityIndicator } from 'react-native'
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import Complaintscard from '../../../components/Complaintscard';
-import { getComplaints } from '../../../lib/api';
+// import { getComplaints } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import DialogBox from '../../../components/Dialog';
+import dummyData from '../../../lib/dummyData';
 
 
 const Assigned = () => {
@@ -12,7 +13,7 @@ const Assigned = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
   
   // Dialog state
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -22,34 +23,47 @@ const Assigned = () => {
   const { user } = useAuth();
   const technicianId = user?.id;
 
+  const fetchIdRef = useRef(0);
+
   const fetchComplaints = async (pageNum = 1, isRefresh = false) => {
-    // ... unchanged
+    const fetchId = ++fetchIdRef.current;
     try {
       if (!technicianId) return;
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const response = await getComplaints(technicianId, 'assign', pageNum);
+      // const response = await getComplaints(technicianId, 'assign', pageNum);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (fetchId !== fetchIdRef.current) return;
+      const response = dummyData.complaintsList;
       if (response?.data?.success && response?.data?.result) {
         const newComplaints = response.data.result;
+        if (fetchId !== fetchIdRef.current) return;
         const currentPage = parseInt(response.data.page) || pageNum;
         const limit = response.data.limit || 10;
         if (isRefresh) {
           setComplaints(newComplaints);
           setPage(1);
         } else {
-          setComplaints(prev => [...prev, ...newComplaints]);
+          setComplaints(prev => {
+            const existingIds = new Set(prev.map(item => item?.id));
+            const unique = newComplaints.filter(item => !existingIds.has(item.id));
+            return [...prev, ...unique];
+          });
           setPage(currentPage);
         }
         setHasMore(newComplaints.length === limit);
       } else {
+        if (fetchId !== fetchIdRef.current) return;
         if (isRefresh) setComplaints([]);
         setHasMore(false);
       }
     } catch (error) {
+      if (fetchId !== fetchIdRef.current) return;
       console.error('Error fetching assigned complaints:', error);
       if (isRefresh) setComplaints([]);
     } finally {
+      if (fetchId !== fetchIdRef.current) return;
       setLoading(false);
       setRefreshing(false);
     }
@@ -70,10 +84,6 @@ const Assigned = () => {
     navigation.navigate('ComplaintDetail', { complaint });
   };
 
-  useEffect(() => {
-    if (technicianId) fetchComplaints(1, true);
-  }, [technicianId]);
-
   useFocusEffect(
     useCallback(() => {
       if (technicianId) fetchComplaints(1, true);
@@ -90,7 +100,7 @@ const Assigned = () => {
     return <View className="py-4"><ActivityIndicator size="small" color="#059669" /></View>;
   };
 
-  const getKey = (item, index) => item?.id ? String(item.id) : `fallback-${index}`;
+  const getKey = (item, index) => item?.id ? `${item.id}_${index}` : `fallback-${index}`;
 
   return (
     <View className="flex-1 bg-gray-50">

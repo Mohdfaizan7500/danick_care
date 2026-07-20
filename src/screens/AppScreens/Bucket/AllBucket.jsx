@@ -2,7 +2,7 @@ import { View, Text, ActivityIndicator, FlatList, Image, TouchableOpacity, Refre
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Clipboard } from 'react-native'
 import Icon from 'react-native-vector-icons/Ionicons'
-import { technicianAssignPart } from '../../../lib/api'
+// import { technicianAssignPart } from '../../../lib/api'
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native'
 import { useAuth } from '../../../context/AuthContext'
 import { useBucket } from '../../../context/BucketContext'
@@ -10,7 +10,8 @@ import NetInfo from '@react-native-community/netinfo';
 import NoInternet from '../../NoInternet';
 import DialogBox from '../../../components/DilaogBox';
 import Dialog from '../../../components/Dialog';
-import { partTransferCancel, partTransferReceive } from '../../../lib/api';
+// import { partTransferCancel, partTransferReceive } from '../../../lib/api';
+import dummyData from '../../../lib/dummyData';
 
 const AllBucket = ({ route }) => {
   // Get params from navigation
@@ -33,6 +34,7 @@ const AllBucket = ({ route }) => {
   const [loadingItemId, setLoadingItemId] = useState(null);
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
+  const [imageErrors, setImageErrors] = useState({});
   const [shouldAutoRefresh, setShouldAutoRefresh] = useState(false);
   const autoRefreshTimerRef = useRef(null);
   const isFirstLoadRef = useRef(true);
@@ -123,7 +125,9 @@ const AllBucket = ({ route }) => {
         transfer_by: getStatus(name),
       };
       console.log('Fetch parts payload:', payload);
-      const response = await technicianAssignPart(payload);
+      // const response = await technicianAssignPart(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.bucketParts;
 
       if (response?.data?.success) {
         setAllPartsData(response.data.data);
@@ -234,7 +238,9 @@ const AllBucket = ({ route }) => {
         case 'cancelReceived':
           const cancelPayload = { part_id: confirmItem.id.toString() };
           console.log(`${confirmAction} payload:`, cancelPayload);
-          response = await partTransferCancel(cancelPayload);
+          // response = await partTransferCancel(cancelPayload);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          response = dummyData.partTransfer;
           if (response?.data?.status === 'success' || response?.data?.success) {
             successMessage = response?.data?.msg || (confirmAction === 'cancelTransfer' ? 'Transfer cancelled' : 'Rejected');
             removeItem(confirmItem.id);
@@ -243,7 +249,9 @@ const AllBucket = ({ route }) => {
           break;
         case 'acceptReceived':
           const acceptPayload = { technician_id: user?.id?.toString() || "1", part_id: confirmItem.id.toString() };
-          response = await partTransferReceive(acceptPayload);
+          // response = await partTransferReceive(acceptPayload);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          response = dummyData.partTransfer;
           if (response?.data?.status === 'success' || response?.data?.success) {
             successMessage = response?.data?.msg || 'Part accepted';
             removeItem(confirmItem.id);
@@ -362,11 +370,16 @@ const AllBucket = ({ route }) => {
         <TouchableOpacity disabled={disabled} onPress={() => handleCardPress(item)} className="flex-row items-center justify-between">
           <View className="flex-row items-center flex-1">
             <TouchableOpacity onPress={() => openImageModal(item.part_image)}>
-              <View className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
-                {item.part_image ? (
-                  <Image source={{ uri: getImageUrl(item.imageUrl || item.part_image, imagUrl) }} className="w-full h-full" resizeMode="cover" />
+              <View className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 items-center justify-center">
+                {item.part_image && !imageErrors[item.id] ? (
+                  <Image
+                    source={{ uri: getImageUrl(item.imageUrl || item.part_image, imagUrl) }}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                    onError={() => setImageErrors(prev => ({ ...prev, [item.id]: true }))}
+                  />
                 ) : (
-                  <View className="w-full h-full items-center justify-center"><Icon name="image-outline" size={30} color="#999" /></View>
+                  <Icon name="image-outline" size={30} color="#999" />
                 )}
               </View>
             </TouchableOpacity>
@@ -419,6 +432,12 @@ const AllBucket = ({ route }) => {
       <View className={`flex-row items-center bg-white rounded-2xl px-3 py-0 border ${isSearchFocused ? 'border-teal-500' : 'border-gray-300'}`}>
         <Icon name="search-outline" size={20} color="#999" />
         <TextInput className="flex-1 ml-2 text-base text-gray-800" placeholder="Search by name, ID, type, price, or QR code..." placeholderTextColor="#999" value={searchQuery} onChangeText={setSearchQuery} onFocus={() => setIsSearchFocused(true)} onBlur={() => setIsSearchFocused(false)} />
+        <TouchableOpacity
+            onPress={() => setSearchQuery('RO')}
+            className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+        >
+            <Text className="text-xs font-bold text-white">Demo</Text>
+        </TouchableOpacity>
         {searchQuery.length > 0 && <TouchableOpacity onPress={() => setSearchQuery('')}><Icon name="close-circle" size={20} color="#999" /></TouchableOpacity>}
       </View>
       {searchQuery.length > 0 && <Text className="text-xs text-gray-500 mt-1 ml-1">Found {searchedData.length} result(s) for "{searchQuery}"</Text>}
@@ -495,8 +514,17 @@ const AllBucket = ({ route }) => {
       {/* Image Modal */}
       {imageModalVisible && (
         <TouchableOpacity activeOpacity={1} onPress={() => setImageModalVisible(false)} className="absolute inset-0 bg-black/80 justify-center items-center z-50">
-          <View className="w-11/12 h-5/6 bg-white rounded-xl overflow-hidden">
-            {selectedImage && <Image source={{ uri: selectedImage }} className="w-full h-full" resizeMode="contain" />}
+          <View className="w-11/12 h-5/6 bg-white rounded-xl overflow-hidden items-center justify-center">
+            {selectedImage ? (
+              <Image
+                source={{ uri: selectedImage }}
+                className="w-full h-full"
+                resizeMode="contain"
+                onError={() => setSelectedImage('')}
+              />
+            ) : (
+              <Icon name="image-outline" size={60} color="#ccc" />
+            )}
           </View>
         </TouchableOpacity>
       )}

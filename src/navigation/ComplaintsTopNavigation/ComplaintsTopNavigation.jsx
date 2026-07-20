@@ -20,9 +20,10 @@ import Assigned from '../../screens/AppScreens/ComplaintsNav/Assigned';
 import OnProgress from '../../screens/AppScreens/ComplaintsNav/OnProgress';
 import Complete from '../../screens/AppScreens/ComplaintsNav/Complete';
 import Cancel from '../../screens/AppScreens/ComplaintsNav/Cancel';
-import { getDeshBoardCount } from '../../lib/api';
+// import { getDeshBoardCount } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useDashboard } from '../../context/DashboardContext';
+import dummyData from '../../lib/dummyData';
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -228,7 +229,9 @@ const ComplaintsTopNavigation = () => {
 
       console.log('Fetching dashboard counts with payload:', payload);
 
-      const response = await getDeshBoardCount(payload);
+      // Using dummy data
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = dummyData.dashboardCount;
       console.log('Dashboard counts response:', response);
 
       if (response?.data?.success) {

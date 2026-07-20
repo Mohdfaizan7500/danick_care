@@ -4,10 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import Header from '../../components/Header'
 import { Filter, Search, Clock, MapPin, User, Wrench, ChevronDown, RotateCcw } from 'lucide-react-native'
-import { getComplaints, getDeshBoardCount } from '../../lib/api'
+// import { getComplaints, getDeshBoardCount } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 import { toast, Toaster } from 'sonner-native'
 import StatusMessage from '../../components/StatusMessage'
+import dummyData from '../../lib/dummyData';
 
 // Filter options as a constant object
 const FILTER_PERIODS = {
@@ -85,7 +86,9 @@ const MyComplaints = () => {
       }
 
       console.log('Fetching Dashboard Counts API...')
-      const response = await getDeshBoardCount(payload)
+      // const response = await getDeshBoardCount(payload)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.dashboardCount;
       console.log('Dashboard Counts Response:', response?.data)
 
       if (response?.data?.success) {
@@ -140,7 +143,9 @@ const MyComplaints = () => {
 
       console.log(`Fetching Complaints API - Page: ${page}, Refresh: ${isRefresh}`)
       // Always fetch with status 'success'
-      const response = await getComplaints(technicianId, 'success', page)
+      // const response = await getComplaints(technicianId, 'success', page)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.complaintsList;
       console.log('Complaints API Response:', response?.data)
 
       if (response?.data?.success && response?.data?.result) {
@@ -560,6 +565,12 @@ const MyComplaints = () => {
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
+            <TouchableOpacity
+                onPress={() => setSearchQuery('test')}
+                className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+            >
+                <Text className="text-xs font-bold text-white">Demo</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -657,6 +668,12 @@ const MyComplaints = () => {
                   onChangeText={setSelectedDate}
                   placeholderTextColor="#999999"
                 />
+                <TouchableOpacity
+                    onPress={() => setSelectedDate('2026-03-13')}
+                    className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+                >
+                    <Text className="text-xs font-bold text-white">Demo</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setShowDatePicker(false)}
                   className="ml-2 px-4 py-2 bg-primary-sage rounded-lg"

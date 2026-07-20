@@ -6,11 +6,12 @@ import Header from '../../../components/Header';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import { GetComplaintsDetails } from '../../../lib/api';
+// import { GetComplaintsDetails } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { DownloadIcon, ImageIcon, NoImage } from '../../../assets/svgIcons/SVGIcons';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import DialogBox from '../../../components/DilaogBox';
+import dummyData from '../../../lib/dummyData';
 
 // Helper function to get warranty status
 const getWarrantyStatus = (complaintType, days) => {
@@ -200,7 +201,9 @@ const QRCodeDetails = () => {
       if (!skipLoading) setLoading(true);
       const payload = { complaint_id: complaint_id.toString() };
       console.log('Fetch complaint details payload:', payload);
-      const response = await GetComplaintsDetails(payload);
+      // const response = await GetComplaintsDetails(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.complaintDetail;
       console.log('Complaint Details Response:', response?.data);
 
       if (response?.data?.success && response?.data?.result) {

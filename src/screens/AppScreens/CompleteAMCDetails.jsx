@@ -2,7 +2,7 @@ import { Text, View, ScrollView, ActivityIndicator, TouchableOpacity, Linking, I
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { GetAMCDetails } from '../../lib/api'
+// import { GetAMCDetails } from '../../lib/api'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 import Header from '../../components/Header'
@@ -13,6 +13,7 @@ import DialogBox from '../../components/DilaogBox';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useAuth } from '../../context/AuthContext'
 import { UserIcon } from '../../assets/svgIcons/SVGIcons'
+import dummyData from '../../lib/dummyData';
 
 const { width, height } = Dimensions.get('window')
 
@@ -338,7 +339,9 @@ const CompleteAMCDetails = () => {
             setError(null);
             const payload = { id: id };
             console.log('Fetching AMC details with payload:', payload);
-            const response = await GetAMCDetails(payload);
+            // const response = await GetAMCDetails(payload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.amcDetails;
             console.log('AMC Details Response:', response?.data);
             if (response?.data?.success && response?.data?.result) {
                 setAmcDetails(response.data.result);

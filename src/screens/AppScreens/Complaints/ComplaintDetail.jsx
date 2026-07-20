@@ -23,7 +23,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import { sendOTP, verifyOTP, UploadComplaintImage, ReverseComplaint } from '../../../lib/api';
+// import { sendOTP, verifyOTP, UploadComplaintImage, ReverseComplaint } from '../../../lib/api';
 import { check, request, RESULTS, PERMISSIONS, openSettings } from 'react-native-permissions';
 import Geolocation from '@amrshbib/react-native-geolocation';
 import { useDashboard } from '../../../context/DashboardContext';
@@ -31,6 +31,7 @@ import { Camera, useCameraDevice, useCameraPermission } from 'react-native-visio
 import { MapIcon } from '../../../assets/svgIcons/SVGIcons';
 import RNFS from 'react-native-fs';
 import ImageResizer from 'react-native-image-resizer';
+import dummyData from '../../../lib/dummyData';
 
 // --- Custom Header Component ---
 const CustomHeader = ({
@@ -626,7 +627,9 @@ const ComplaintDetail = () => {
                     remark: reasonText.trim(),
                     type: timerExpired ? 'no' : 'yes',
                 };
-                const response = await ReverseComplaint(payload);
+                // const response = await ReverseComplaint(payload);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const response = dummyData.reverseComplaint;
                 if (response?.data?.success) {
                     toast.custom(<StatusMessage type="success" title={response.data.msg || "Complaint reversed successfully"} className="mx-4 mb-6" />, { duration: 2000 });
                     await triggerRefresh();
@@ -681,7 +684,9 @@ const ComplaintDetail = () => {
         const payload = { complaint_id: complaint.id, mobile: complaint.customer_mobile };
         setSendingOTP(true);
         try {
-            const response = await sendOTP(payload);
+            // const response = await sendOTP(payload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.sendOTP;
             if (response?.data?.success) {
                 if (response.data.otp) setGeneratedOTP(response.data.otp);
                 setJobStarted(true);
@@ -763,7 +768,9 @@ const ComplaintDetail = () => {
                 latitude: location.latitude,
                 longitude: location.longitude,
             };
-            const response = await verifyOTP(payload);
+            // const response = await verifyOTP(payload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.verifyOTP;
             if (response?.data?.success) {
                 setOtpResponseData(response.data.result);
                 setVerified(true);
@@ -863,7 +870,9 @@ const ComplaintDetail = () => {
             formData.append('complaint_id', complaintData.id.toString());
             formData.append('image_type', 'before working');
             formData.append('status', '1');
-            const response = await UploadComplaintImage(formData);
+            // const response = await UploadComplaintImage(formData);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.uploadImage;
             if (response?.data?.success) {
                 toast.custom(<StatusMessage type="success" title={response.data.msg || "Photo uploaded successfully!"} className="mx-4 mb-6" />, { duration: 3000 });
                 navigation.replace('ConetToAMCScreen', {

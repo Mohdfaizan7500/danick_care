@@ -20,7 +20,8 @@ import { useNavigation } from '@react-navigation/native';
 import NetInfo from '@react-native-community/netinfo';
 import NoInternet from '../NoInternet';
 import { useAuth } from '../../context/AuthContext';
-import { getProfile, apiClient, changePassword } from '../../lib/api';
+import dummyData from '../../lib/dummyData';
+// import { getProfile, apiClient, changePassword } from '../../lib/api';
 
 const Password = () => {
   const navigation = useNavigation();
@@ -54,7 +55,9 @@ const Password = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await getProfile(tech_id);
+      // const response = await getProfile(tech_id);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.profileData;
       const data = response?.data?.data[0];
       console.log('response:', data);
       console.log("image url :", imagUrl + data?.profile_photo);
@@ -162,7 +165,9 @@ const handleSave = async () => {
 
     console.log('Changing password with payload:', payload);
 
-    const response = await changePassword(payload);
+    // const response = await changePassword(payload);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const response = dummyData.changePassword;
     console.log('Password change response:', response);
 
     // Check the success flag from the response data

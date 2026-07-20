@@ -5,9 +5,10 @@ import Header from '../../components/Header'
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs'
 import AllQRCodes from '../../screens/AppScreens/QRCodes/AllQRCodes';
 
-import { getDeshBoardCount } from '../../lib/api';
+// import { getDeshBoardCount } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useRoute } from '@react-navigation/native'
+import dummyData from '../../lib/dummyData';
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -155,14 +156,17 @@ const QRCodeNavigation = () => {
       };
       
       console.log('Fetching dashboard counts with payload:', payload);
-      const response = await getDeshBoardCount(payload);
+      // Using dummy data
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = dummyData.dashboardCount;
       console.log('Dashboard counts response:', response);
 
       if (response?.data?.success) {
+        const data = response.data;
         setQrCounts({
-          allQr: response.data.allQr || 0,
-          usedQr: response.data.usedQr || 0,
-          unusedQr: response.data.unusedQr || 0,
+          allQr: data.allQr || 0,
+          usedQr: data.usedQr || 0,
+          unusedQr: data.unusedQr || 0,
         });
       } else {
         setError(response?.data?.message || 'Failed to fetch QR counts');

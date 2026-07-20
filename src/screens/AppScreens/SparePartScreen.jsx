@@ -4,8 +4,9 @@ import Header from '../../components/Header'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { Search } from 'lucide-react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { getAllSparePart } from '../../lib/api'
+// import { getAllSparePart } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
+import dummyData from '../../lib/dummyData';
 
 const { width: screenWidth } = Dimensions.get('window')
 
@@ -36,6 +37,14 @@ const SparePartScreen = () => {
     const navigation = useNavigation();
     const { user, imagUrl } = useAuth();
 
+    const getImageSrc = (img) => {
+        if (!img) return null;
+        if (img.startsWith('http')) return { uri: img };
+        const base = imagUrl?.endsWith('/') ? imagUrl : `${imagUrl}/`;
+        const clean = img.startsWith('/') ? img.slice(1) : img;
+        return { uri: `${base}${clean}` };
+    };
+
     const device = Platform.OS;
     console.log('device:', device)
 
@@ -45,7 +54,9 @@ const SparePartScreen = () => {
                 setLoading(true);
             }
             setError(null);
-            const response = await getAllSparePart(product_id);
+            // const response = await getAllSparePart(product_id);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.spareParts;
             console.log('API Response:', response);
             const data = response?.data?.data || [];
             setPartsData(data);
@@ -94,7 +105,7 @@ const SparePartScreen = () => {
         >
             <View className='bg-white w-24 h-24 rounded-3xl'>
                 <Image
-                    source={{ uri: imagUrl + item.part_image }}
+                    source={getImageSrc(item.part_image)}
                     className="w-full h-full rounded-2xl bg-zinc-100"
                     resizeMode="cover"
                     onError={(e) => console.log('Image load error for', item.part_name, e.nativeEvent.error)}
@@ -179,6 +190,12 @@ const SparePartScreen = () => {
                         value={searchQuery}
                         onChangeText={handleSearch}
                     />
+                    <TouchableOpacity
+                        onPress={() => setSearchQuery('RO Membrane')}
+                        className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+                    >
+                        <Text className="text-xs font-bold text-white">Demo</Text>
+                    </TouchableOpacity>
                     {searchQuery.length > 0 && (
                         <TouchableOpacity onPress={() => handleSearch('')}>
                             <Text className="text-gray-500 font-medium">Clear</Text>

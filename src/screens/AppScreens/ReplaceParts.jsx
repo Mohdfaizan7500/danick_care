@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Header from '../../components/Header'
 import { Search, Package, Wrench, Hash, Camera, RefreshCw, Filter, ChevronDown } from 'lucide-react-native'
 import { useAuth } from '../../context/AuthContext'
-import { ReplacePartsCount, TechnicianReplacePart } from '../../lib/api'
+// import { ReplacePartsCount, TechnicianReplacePart } from '../../lib/api'
+import dummyData from '../../lib/dummyData';
 
 const ReplaceParts = () => {
   const { user } = useAuth();
@@ -45,7 +46,9 @@ const ReplaceParts = () => {
   const loadCounts = useCallback(async () => {
     try {
       const payload = { technician_id: technicianId }
-      const response = await ReplacePartsCount(payload)
+      // const response = await ReplacePartsCount(payload)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.replacePartsCount;
       console.log('Counts response:', response)
       if (response?.data?.success) {
         setCounts({
@@ -74,7 +77,9 @@ const ReplaceParts = () => {
         technician_id: technicianId,
         accept: accept || ''
       }
-      const response = await TechnicianReplacePart(payload)
+      // const response = await TechnicianReplacePart(payload)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.technicianReplacePart;
       console.log('Parts response:', response)
       if (response?.data?.success) {
         setParts(response.data.data || [])
@@ -326,6 +331,12 @@ const ReplaceParts = () => {
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
+              <TouchableOpacity
+                  onPress={() => setSearchQuery('Old RO Membrane')}
+                  className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+              >
+                  <Text className="text-xs font-bold text-white">Demo</Text>
+              </TouchableOpacity>
             </View>
           </View>
 

@@ -15,8 +15,9 @@ import React, { useState, useEffect, useRef } from 'react'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 import Toast from 'react-native-toast-message'
 import { useNavigation, useRoute } from '@react-navigation/native'
-import { RescheduleComplaint } from '../../../lib/api'
+// import { RescheduleComplaint } from '../../../lib/api'
 import { useAuth } from '../../../context/AuthContext'
+import dummyData from '../../../lib/dummyData';
 
 const { width } = Dimensions.get('window')
 
@@ -223,7 +224,9 @@ const Reschedule = () => {
 
         setIsLoading(true)
         try {
-            const response = await RescheduleComplaint(payload)
+            // const response = await RescheduleComplaint(payload)
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.rescheduleComplaint;
 
             if (response?.data?.success) {
                 Toast.show({
@@ -431,6 +434,12 @@ const Reschedule = () => {
                         numberOfLines={4}
                         textAlignVertical="top"
                     />
+                    <TouchableOpacity
+                        onPress={() => setRemark('Rescheduled to 2024-01-15')}
+                        className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+                    >
+                        <Text className="text-xs font-bold text-white">Demo</Text>
+                    </TouchableOpacity>
                     <Text style={styles.remarkCount}>
                         {remark.length}/200
                     </Text>

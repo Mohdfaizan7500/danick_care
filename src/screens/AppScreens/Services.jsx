@@ -4,8 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../../context/AuthContext';
-import { TechnicianServices } from '../../lib/api';
+// import { TechnicianServices } from '../../lib/api';
 import { CheckCircleIcon, CrossCircleIcon } from '../../assets/svgIcons/SVGIcons';
+import dummyData from '../../lib/dummyData';
 // Fix the import - make sure the path is correct
 
 const Services = () => {
@@ -24,12 +25,6 @@ const Services = () => {
             setLoading(true);
             setError(null);
 
-            // Add null check for TechnicianServices
-            if (!TechnicianServices || typeof TechnicianServices !== 'function') {
-                console.error('TechnicianServices is not a function. Available:', TechnicianServices);
-                throw new Error('API function not available');
-            }
-
             const payload = {
                 technician_id: user?.id?.toString() || "1",
                 city_id: user?.city_id?.toString() || "1"
@@ -37,7 +32,9 @@ const Services = () => {
 
             console.log('Fetching services with payload:', payload);
 
-            const response = await TechnicianServices(payload);
+            // const response = await TechnicianServices(payload);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.services;
             console.log('Full API response:', response);
 
             // Handle different response structures
@@ -95,7 +92,9 @@ const Services = () => {
             'Geyser': 'Water heater service and repair',
             'Chimney': 'Chimney service and repair',
             'TV': 'Television service and repair',
-            'Computer': 'Computer and laptop service'
+            'Computer': 'Computer and laptop service',
+            'Water Pump': 'Water pump service and repair',
+            'Inverter': 'Inverter service and repair'
         };
         return descriptions[serviceName] || `${serviceName} service and support`;
     };

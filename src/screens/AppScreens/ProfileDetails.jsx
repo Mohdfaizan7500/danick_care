@@ -1,7 +1,7 @@
 import { Text, View, ActivityIndicator, ScrollView, Image, TouchableOpacity, Modal, Alert } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { getProfile } from '../../lib/api';
+// import { getProfile } from '../../lib/api';
 import {
   User,
   Phone,
@@ -30,6 +30,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import { NodocumentIcon, UserIcon } from '../../assets/svgIcons/SVGIcons';
+import dummyData from '../../lib/dummyData';
 
 const ProfileDetails = () => {
   const { user, imagUrl } = useAuth();
@@ -57,7 +58,9 @@ const ProfileDetails = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await getProfile(id);
+      // const response = await getProfile(id);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.profileData;
       console.log('Profile data fetched:', response);
 
       if (response?.data?.success && response?.data?.data?.[0]) {

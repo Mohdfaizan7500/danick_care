@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { PendingComplaintCount } from '../lib/api';
+// import { PendingComplaintCount } from '../lib/api';
 import { useAuth } from './AuthContext';
+import dummyData from '../lib/dummyData';
 
 const OrderContext = createContext();
 
@@ -17,7 +18,9 @@ export const OrderProvider = ({ children }) => {
         city_id: user?.city_id?.toString() || "1",
         technician_id: user?.id?.toString() || "1"
       };
-      const response = await PendingComplaintCount(payload);
+      // Using dummy data
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = dummyData.pendingComplaintCount;
       const count = response?.data?.success ? response.data.Pendingcomplaints :
                     response?.success ? response.Pendingcomplaints : 0;
       setOrderCount(count);

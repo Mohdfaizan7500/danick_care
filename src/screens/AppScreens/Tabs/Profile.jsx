@@ -10,7 +10,8 @@ import DialogBox from '../../../components/DilaogBox';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
 import NetInfo from '@react-native-community/netinfo';
-import { logoutApi } from '../../../lib/api';
+// import { logoutApi } from '../../../lib/api';
+import dummyData from '../../../lib/dummyData';
 
 const Profile = () => {
   const insets = useSafeAreaInsets();
@@ -116,7 +117,9 @@ const Profile = () => {
       const payload = {
         technician_id: tech_id
       };
-      const response = await logoutApi(payload);
+      // const response = await logoutApi(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.logoutResponse;
       console.log('Logout response:', response);
 
       if (response?.data?.success) {

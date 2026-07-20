@@ -3,11 +3,12 @@ import React, { useState, useCallback } from 'react'
 import { SafeAreaView, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
 import Header from '../../../components/Header'
-import { AcceptComplaint, PendingComplaints, PendingComplaintCount } from '../../../lib/api'
+// import { AcceptComplaint, PendingComplaints, PendingComplaintCount } from '../../../lib/api'
 import DialogBox from '../../../components/DilaogBox'
 import { useAuth } from '../../../context/AuthContext'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import { useOrder } from '../../../context/OrderContext'
+import dummyData from '../../../lib/dummyData';
 
 const Orders = ({ route }) => {
     const insets = useSafeAreaInsets();
@@ -42,7 +43,9 @@ const Orders = ({ route }) => {
                 city_id: city_id?.toString() || "1",
                 technician_id: technician_id?.toString() || "1"
             }
-            const response = await PendingComplaintCount(payload)
+            // const response = await PendingComplaintCount(payload)
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.pendingComplaintCount;
             console.log("fetch pending complaint response :", response)
 
             if (response?.data?.success) {
@@ -74,7 +77,9 @@ const Orders = ({ route }) => {
                 city_id: city_id?.toString() || "1",
                 technician_id: technician_id?.toString() || "1"
             }
-            const response = await PendingComplaints(payload)
+            // const response = await PendingComplaints(payload)
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.pendingComplaints;
 
             if (response?.data?.success) {
                 const complaintsData = response.data.result || []
@@ -142,7 +147,9 @@ const Orders = ({ route }) => {
                 complaint_id: selectedComplaint.complaintId.toString()
             }
 
-            const response = await AcceptComplaint(payload)
+            // const response = await AcceptComplaint(payload)
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const response = dummyData.acceptComplaint;
 
             if (response?.data?.success || response?.success) {
                 // Update local state

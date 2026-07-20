@@ -24,16 +24,17 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
 import { toast, Toaster } from 'sonner-native';
 import StatusMessage from '../../../components/StatusMessage';
-import {
-  FetchPartForComplaints,
-  AttechPartWithComplaints,
-  RecomplaitAttechPart,
-  FetchPartsForReplaced,
-  ReplacedPartManagement,
-  ComplaintBilling
-} from '../../../lib/api';
+// import {
+//   FetchPartForComplaints,
+//   AttechPartWithComplaints,
+//   RecomplaitAttechPart,
+//   FetchPartsForReplaced,
+//   ReplacedPartManagement,
+//   ComplaintBilling
+// } from '../../../lib/api';
 import { PlusIcon } from 'lucide-react-native';
 import EventEmitter from '../../../utils/eventBus';
+import dummyData from '../../../lib/dummyData';
 
 // Helper: Truncate number to two decimal places (no rounding)
 const truncateToTwoDecimals = (num) => {
@@ -165,8 +166,12 @@ const Billing = () => {
       if (isAMCComplaint && complaintData.amc_complaint_id) {
         const payload = { oldcomp_id: "", amc_complaint_id: complaintData.amc_complaint_id?.toString() || "" };
         const payload_for_new = { technician_id: user?.id?.toString() || '1', complaint_id: complaintData.id?.toString() };
-        response = await RecomplaitAttechPart(payload);
-        const response2 = await FetchPartForComplaints(payload_for_new);
+        // response = await RecomplaitAttechPart(payload);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        response = dummyData.partTransfer;
+        // const response2 = await FetchPartForComplaints(payload_for_new);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const response2 = dummyData.fetchPartsForReplaced;
         let recomplaintParts = [], newParts = [];
         if (response?.data?.data && Array.isArray(response.data.data)) recomplaintParts = response.data.data;
         else if (response?.data?.result && Array.isArray(response.data.result)) recomplaintParts = response.data.result;
@@ -184,8 +189,12 @@ const Billing = () => {
       else if (isRecomplaint && complaintData.oldcomp_id) {
         const payload = { oldcomp_id: complaintData.oldcomp_id?.toString() || "", amc_complaint_id: "" };
         const payload_for_new = { technician_id: user?.id?.toString() || '1', complaint_id: complaintData.id?.toString() };
-        response = await RecomplaitAttechPart(payload);
-        const response2 = await FetchPartForComplaints(payload_for_new);
+        // response = await RecomplaitAttechPart(payload);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        response = dummyData.partTransfer;
+        // const response2 = await FetchPartForComplaints(payload_for_new);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const response2 = dummyData.fetchPartsForReplaced;
         let recomplaintParts = [], newParts = [];
         if (response?.data?.data && Array.isArray(response.data.data)) recomplaintParts = response.data.data;
         else if (response?.data?.result && Array.isArray(response.data.result)) recomplaintParts = response.data.result;
@@ -202,7 +211,9 @@ const Billing = () => {
       }
       else {
         const payload = { technician_id: user?.id?.toString() || '1', complaint_id: complaintData.id?.toString(), amc_type: complaintData?.amc_type?.toString() || '' };
-        response = await FetchPartForComplaints(payload);
+        // response = await FetchPartForComplaints(payload);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        response = dummyData.fetchPartsForReplaced;
         if (response?.data?.data && Array.isArray(response.data.data)) partsData = response.data.data;
         else if (response?.data?.result && Array.isArray(response.data.result)) partsData = response.data.result;
         else if (Array.isArray(response?.data)) partsData = response.data;
@@ -264,7 +275,9 @@ const Billing = () => {
         discount: truncateToTwoDecimals(discount),
       };
       console.log('Submitting billing with payload:', payload);
-      const response = await ComplaintBilling(payload);
+      // const response = await ComplaintBilling(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.complaintBilling;
       if (response?.data?.success) {
         setShowSuccess(true);
         toast.custom(<StatusMessage type='success' title="Bill submitted successfully!" />, { duration: 2000 });
@@ -310,7 +323,9 @@ const Billing = () => {
       setRemovingPartId(partToRemove);
       try {
         const payload = { complaint_id: complaintData?.id?.toString(), part_id: partToRemove, status: "0" };
-        const response = await AttechPartWithComplaints(payload);
+        // const response = await AttechPartWithComplaints(payload);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const response = dummyData.partTransfer;
         if (response?.data?.success) {
           const updatedParts = parts.filter((p) => p.id !== partToRemove);
           setParts(updatedParts);
@@ -370,7 +385,9 @@ const Billing = () => {
     setLoadingPartsList(true);
     try {
       const payload = { technician_id: user?.id?.toString() || '1', part_name: partName.trim() };
-      const response = await FetchPartsForReplaced(payload);
+      // const response = await FetchPartsForReplaced(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.fetchPartsForReplaced;
       let partsData = [];
       if (response?.data?.data && Array.isArray(response.data.data)) partsData = response.data.data;
       else if (response?.data?.result && Array.isArray(response.data.result)) partsData = response.data.result;
@@ -440,7 +457,9 @@ const Billing = () => {
           status: "0",
           part_type: complaintData?.amc_complaint_id === null ? 'Complaint' : 'AMC'
         };
-        response = await ReplacedPartManagement(payload);
+        // response = await ReplacedPartManagement(payload);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        response = dummyData.partTransfer;
       } else {
         const payload = {
           complaint_id: complaintData?.id?.toString(),
@@ -448,7 +467,9 @@ const Billing = () => {
           new_part_id: selectedReplacePart.id?.toString(),
           status: "0"
         };
-        response = await AttechPartWithComplaints(payload);
+        // response = await AttechPartWithComplaints(payload);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        response = dummyData.partTransfer;
       }
 
       if (response?.data?.success) {
@@ -509,7 +530,9 @@ const Billing = () => {
         new_part_id: replacementPartToRemove.id?.toString(),
         status: "1"
       };
-      const response = await ReplacedPartManagement(payload);
+      // const response = await ReplacedPartManagement(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.partTransfer;
       if (response?.data?.success) {
         const updatedParts = parts.filter((p) => p.id !== replacementPartToRemove.id);
         setParts(updatedParts);
@@ -863,6 +886,12 @@ const Billing = () => {
                       onChangeText={handleDiscountChange}
                       placeholderTextColor="#999"
                     />
+                    <TouchableOpacity
+                        onPress={() => handleDiscountChange('100')}
+                        className="bg-amber-400 px-2 py-1 rounded-md ml-2"
+                    >
+                        <Text className="text-xs font-bold text-white">Demo</Text>
+                    </TouchableOpacity>
                   </View>
                   {discountError && <Text className="text-red-500 text-[10px] text-right mt-0.5">{discountError}</Text>}
                 </View>

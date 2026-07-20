@@ -17,8 +17,9 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import Header from '../../../components/Header';
 import StatusMessage from '../../../components/StatusMessage';
 import { toast, Toaster } from 'sonner-native';
-import { GetComplaintsDetails } from '../../../lib/api';
+// import { GetComplaintsDetails } from '../../../lib/api';
 import Toast from 'react-native-toast-message';
+import dummyData from '../../../lib/dummyData';
 
 const ProductDetails = () => {
   const route = useRoute();
@@ -43,7 +44,9 @@ const ProductDetails = () => {
     setLoadingComplaint(true);
     try {
       const payload = { complaint_id: complaintId };
-      const response = await GetComplaintsDetails(payload);
+      // const response = await GetComplaintsDetails(payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = dummyData.complaintDetail;
       console.log('Complaint Details Response:', response);
 
       if (response?.data?.success && response?.data?.result) {
