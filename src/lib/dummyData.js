@@ -399,10 +399,17 @@ const dummyData = {
   notifications: {
     data: {
       success: true,
-      result: [
-        { id: 1, title: 'New Complaint Assigned', message: 'You have a new complaint at MG Road', type: 'complaint', created_at: '2024-01-20 10:00:00', is_read: '0' },
-        { id: 2, title: 'Payment Received', message: 'Your payment of ₹500 has been credited', type: 'payment', created_at: '2024-01-19 14:00:00', is_read: '0' },
-        { id: 3, title: 'AMC Reminder', message: 'AMC renewal due for customer Priya Patel', type: 'reminder', created_at: '2024-01-18 09:00:00', is_read: '1' },
+      data: [
+        { id: 1, message: 'Your complaint CSN: 1001 has been assigned to technician Rahul', complaint_id: 'CMP-1001', date_time: '2026-07-15 10:30:00', date: '2026-07-15', day: '15', month: '07', year: '2026', read_status: 'Unread', status: 'assigned', notification_status: 'New' },
+        { id: 2, message: 'Payment of ₹500 has been received for complaint CSN: 1002', complaint_id: 'CMP-1002', date_time: '2026-07-15 09:15:00', date: '2026-07-15', day: '15', month: '07', year: '2026', read_status: 'Unread', status: 'payment', notification_status: 'New' },
+        { id: 3, message: 'CSN: 1003 — AC service completed successfully. Please review.', complaint_id: 'CMP-1003', date_time: '2026-07-14 16:45:00', date: '2026-07-14', day: '14', month: '07', year: '2026', read_status: 'Read', status: 'completed', notification_status: 'Resolved' },
+        { id: 4, message: 'AMC renewal reminder for customer Priya Patel (AMC-042)', complaint_id: null, date_time: '2026-07-14 11:00:00', date: '2026-07-14', day: '14', month: '07', year: '2026', read_status: 'Unread', status: 'reminder', notification_status: 'New' },
+        { id: 5, message: 'Technician Vikram has started work on CSN: 1004', complaint_id: 'CMP-1004', date_time: '2026-07-13 08:20:00', date: '2026-07-13', day: '13', month: '07', year: '2026', read_status: 'Read', status: 'onworking', notification_status: 'In Progress' },
+        { id: 6, message: 'CSN: 1005 — Part RO Membrane has been delivered for replacement', complaint_id: 'CMP-1005', date_time: '2026-07-12 14:10:00', date: '2026-07-12', day: '12', month: '07', year: '2026', read_status: 'Unread', status: 'part_delivered', notification_status: 'New' },
+        { id: 7, message: 'Invoice generated for CSN: 1006 — ₹2,500 due', complaint_id: 'CMP-1006', date_time: '2026-07-11 17:30:00', date: '2026-07-11', day: '11', month: '07', year: '2026', read_status: 'Read', status: 'invoice', notification_status: 'Resolved' },
+        { id: 8, message: 'CSN: 1007 has been cancelled by customer', complaint_id: 'CMP-1007', date_time: '2026-07-10 12:00:00', date: '2026-07-10', day: '10', month: '07', year: '2026', read_status: 'Read', status: 'cancelled', notification_status: 'Resolved' },
+        { id: 9, message: 'New complaint registered — CSN: 1008 at Sector 12, Noida', complaint_id: 'CMP-1008', date_time: '2026-07-09 09:45:00', date: '2026-07-09', day: '09', month: '07', year: '2026', read_status: 'Unread', status: 'new', notification_status: 'New' },
+        { id: 10, message: 'CSN: 1009 — Payment of ₹1,200 has been verified', complaint_id: 'CMP-1009', date_time: '2026-07-08 15:20:00', date: '2026-07-08', day: '08', month: '07', year: '2026', read_status: 'Read', status: 'payment_verified', notification_status: 'Resolved' },
       ]
     }
   },
