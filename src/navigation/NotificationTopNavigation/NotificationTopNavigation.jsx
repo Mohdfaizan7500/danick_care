@@ -94,7 +94,6 @@ const NotificationTopNavigation = () => {
   // Simple refresh function that can be passed to children
   const refreshCounts = useCallback(() => {
     // This function can be used by children to trigger refreshes if needed
-    console.log('Refresh triggered');
   }, []);
 
   return (

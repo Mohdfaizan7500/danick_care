@@ -46,7 +46,6 @@ const Orders = ({ route }) => {
             // const response = await PendingComplaintCount(payload)
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.pendingComplaintCount;
-            console.log("fetch pending complaint response :", response)
 
             if (response?.data?.success) {
                 const count = response?.data?.Pendingcomplaints || 0
@@ -61,11 +60,9 @@ const Orders = ({ route }) => {
                     refreshOrderCount(count)
                 }
             } else {
-                console.log('Unexpected count response structure:', response)
                 setPendingCount(0)
             }
         } catch (error) {
-            console.error('Error fetching pending complaint count:', error)
             setPendingCount(0)
         }
     }
@@ -90,12 +87,10 @@ const Orders = ({ route }) => {
                 setComplaints(complaintsData)
                 setFilteredComplaints(complaintsData)
             } else {
-                console.log('Unexpected response structure:', response)
                 setComplaints([])
                 setFilteredComplaints([])
             }
         } catch (error) {
-            console.error('Error fetching complaints:', error)
             setDialogVisible(true)
             setSelectedComplaint({
                 type: 'error',
@@ -181,7 +176,6 @@ const Orders = ({ route }) => {
                 setDialogVisible(true)
             }
         } catch (error) {
-            console.error('Error accepting complaint:', error)
             setSelectedComplaint({
                 type: 'error',
                 title: 'Error',

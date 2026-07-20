@@ -92,11 +92,6 @@ const BottomTabs = () => {
   const initialScreen = route.params?.screen || 'Home';
   const screenParams = route.params?.params || {};
 
-  console.log("BottomTabs - initialScreen:", initialScreen);
-  console.log("BottomTabs - screenParams:", screenParams);
-  console.log("Android Version:", getAndroidVersion());
-  console.log("Android API Level:", getAndroidApiLevel());
-  console.log("Platform Version:", Platform.Version);
 
   const { IsOnline } = useAuth();
   const insets = useSafeAreaInsets();

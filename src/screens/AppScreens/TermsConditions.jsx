@@ -31,7 +31,6 @@ const TermsConditions = () => {
       // const response = await TermsSupport()
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.termsData;
-      console.log('TermsSupport api response:', response)
 
       if (response.data?.success && response.data?.data?.length > 0) {
         const data = response.data.data[0]
@@ -48,7 +47,6 @@ const TermsConditions = () => {
         setDefaultContent()
       }
     } catch (error) {
-      console.error('Error fetching terms data:', error)
       setDefaultContent()
     } finally {
       setLoading(false)
@@ -233,9 +231,7 @@ const TermsConditions = () => {
 
     try {
       await fetchTermsData()
-      console.log('Terms & Conditions refreshed')
     } catch (error) {
-      console.error('Error refreshing:', error)
     } finally {
       setRefreshing(false)
     }

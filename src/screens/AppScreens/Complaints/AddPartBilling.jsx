@@ -129,7 +129,6 @@ const AddPartBilling = () => {
             }
 
         } catch (err) {
-            console.error('Error fetching parts:', err);
             const errorMsg = err?.response?.data?.error?.sqlMessage || 
                             err?.response?.data?.message || 
                             err?.message || 
@@ -253,7 +252,6 @@ const AddPartBilling = () => {
                 throw new Error(response?.data?.message || 'Failed to update part');
             }
         } catch (err) {
-            console.error('Error attaching/detaching part:', err);
             const errorMsg = err?.response?.data?.error?.sqlMessage || 
                             err?.response?.data?.message || 
                             err?.message || 
@@ -293,7 +291,6 @@ const AddPartBilling = () => {
                         source={{ uri: item.imageUrl }}
                         className="w-12 h-12 rounded-lg bg-gray-200"
                         resizeMode="contain"
-                        onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
                     />
                 ) : (
                     <View className="w-12 h-12 rounded-lg bg-green-100 items-center justify-center">

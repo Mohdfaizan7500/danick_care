@@ -34,7 +34,6 @@ class SimpleEventEmitter {
       try {
         callback(data);
       } catch (error) {
-        console.error('Error in event listener:', error);
       }
     });
   }
@@ -73,7 +72,6 @@ async function createNotificationChannels() {
         sound: channel.sound || 'notification', // use custom sound if defined
       });
     }
-    console.log('✅ Notification channels created');
   }
 }
 
@@ -137,7 +135,6 @@ const NotificationHandler = () => {
   useEffect(() => {
     if (isListenerSetup.current) return;
     isListenerSetup.current = true;
-    console.log('🔧 Setting up notification listeners...');
 
     let unsubscribeForeground = null;
     let unsubscribeNotifeeEvent = null;
@@ -148,16 +145,13 @@ const NotificationHandler = () => {
 
         // Foreground messages
         unsubscribeForeground = messaging().onMessage(async (remoteMessage) => {
-          console.log('📱 Foreground message:', remoteMessage);
           const title = remoteMessage.notification?.title || '';
           const status = remoteMessage.data?.status;
 
           if (title === 'offline' || status === 'Offline' || status === 'offline') {
-            console.log('📴 Setting IsOnline = false');
             setIsOnline(false);
             navigate('BottomTabs', { screen: 'Home' });
           } else if (title === 'online' || status === 'Online' || status === 'online') {
-            console.log('📶 Setting IsOnline = true');
             setIsOnline(true);
             // Optional: navigate to a specific screen for online notification
             // navigate('OnlineScreen');
@@ -180,7 +174,6 @@ const NotificationHandler = () => {
           }
         });
       } catch (error) {
-        console.error('❌ Error setting up notifications:', error);
       }
     };
 

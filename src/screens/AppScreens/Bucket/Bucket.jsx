@@ -207,11 +207,9 @@ const Bucket = () => {
         transfer_by: transfer_by
       };
 
-      console.log('Fetch parts payload:', payload);
       // const response = await technicianAssignPart(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.partTransfer;
-      console.log('API Response:', response?.data);
 
       // Handle API response
       const data = response?.data?.data || [];
@@ -249,8 +247,6 @@ const Bucket = () => {
         );
       }
     } catch (error) {
-      console.log('fetch part error:', error);
-      console.error('fetch part error:', error);
       if (!isRefresh) {
         toast.custom(
           <StatusMessage type='error' title='Failed to load items' />,
@@ -275,7 +271,6 @@ const Bucket = () => {
       // const response = await getPartCount(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.bucketPartCount;
-      console.log('Part count response:', response?.data);
       const data = response?.data || {};
 
       setPartCounts({
@@ -287,8 +282,6 @@ const Bucket = () => {
         received: data.received || 0
       });
     } catch (error) {
-      console.log('fetch part count error:', error);
-      console.error('fetch part count error:', error);
     }
   };
 
@@ -425,7 +418,6 @@ const Bucket = () => {
   const handleCardPress = (item) => {
     if (!isConnected) return;
 
-    console.log(item);
     if (item?.part_accept == 0) {
       toast.custom(<StatusMessage type='warning' title={'Information'} message={`This part is transferred to ${item.technician_name} technician. Please cancel first for use.`} />);
     } else {
@@ -485,11 +477,9 @@ const Bucket = () => {
             part_id: confirmItem.id.toString()
           };
 
-          console.log(`${confirmAction} payload:`, cancelPayload);
           // response = await partTransferCancel(cancelPayload);
           await new Promise(resolve => setTimeout(resolve, 500));
           response = dummyData.partTransfer;
-          console.log(`${confirmAction} response:`, response?.data);
 
           // Check if the API call was successful
           if (response?.data?.status === 'success' || response?.data?.success) {
@@ -515,11 +505,9 @@ const Bucket = () => {
             part_id: confirmItem.id.toString()
           };
 
-          console.log('Accept transfer payload:', acceptPayload);
           // response = await partTransferReceive(acceptPayload);
           await new Promise(resolve => setTimeout(resolve, 500));
           response = dummyData.partTransfer;
-          console.log('Accept transfer response:', response?.data);
 
           // Check if the API call was successful
           if (response?.data?.status === 'success' || response?.data?.success) {
@@ -550,7 +538,6 @@ const Bucket = () => {
       }
 
     } catch (error) {
-      console.log(`${confirmAction} error:`, error);
       
       // Extract the error message from the backend response
       const errorMessage = getErrorMessage(error);

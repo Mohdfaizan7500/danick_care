@@ -97,11 +97,9 @@ const CommissionTab = ({
         technician_id: profileData?.id || profileData?.technician_id,
       };
 
-      console.log('Fetching Commission Payout with payload:', payload);
       // const response = await CommissionPayout(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.payoutCommission;
-      console.log('Commission Payout Response:', response);
 
       if (response?.data?.success) {
         // Set commission data from API response
@@ -135,7 +133,6 @@ const CommissionTab = ({
             { duration: 500, dismissible: true }
           );
         } else if (isRefresh) {
-          console.log('Commission data refreshed successfully');
         }
       } else {
         if (isRefresh && showToast) {
@@ -148,10 +145,8 @@ const CommissionTab = ({
             { duration: 2000 }
           );
         }
-        console.error('API returned success: false', response?.data);
       }
     } catch (error) {
-      console.error('Error fetching payout data:', error);
       if (isRefresh && showToast) {
         toast.custom(
           <StatusMessage
@@ -178,11 +173,9 @@ const CommissionTab = ({
         end_date: endDate,
       };
 
-      console.log('Filtering Commission with payload:', payload);
       // const response = await CommissionPayout(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.payoutCommission;
-      console.log('Filtered Commission Response:', response);
 
       if (response?.data?.success) {
         const apiData = response.data.data || [];
@@ -223,7 +216,6 @@ const CommissionTab = ({
         );
       }
     } catch (error) {
-      console.error('Error filtering commission data:', error);
       toast.custom(
         <StatusMessage
           type='error'

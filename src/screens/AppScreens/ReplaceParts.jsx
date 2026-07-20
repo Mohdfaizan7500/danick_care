@@ -9,7 +9,6 @@ import dummyData from '../../lib/dummyData';
 
 const ReplaceParts = () => {
   const { user } = useAuth();
-  console.log('Authenticated user:', user);
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('all')
@@ -49,7 +48,6 @@ const ReplaceParts = () => {
       // const response = await ReplacePartsCount(payload)
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.replacePartsCount;
-      console.log('Counts response:', response)
       if (response?.data?.success) {
         setCounts({
           AllPart: response.data.AllPart || 0,
@@ -58,7 +56,6 @@ const ReplaceParts = () => {
         })
       }
     } catch (error) {
-      console.error('Error loading counts:', error)
     }
   }, [technicianId])
 
@@ -66,7 +63,6 @@ const ReplaceParts = () => {
   const loadParts = useCallback(async (accept, isInitial = false) => {
     // Prevent multiple simultaneous calls
     if (isLoadingRef.current) {
-      console.log('Load parts already in progress, skipping...')
       return
     }
 
@@ -80,7 +76,6 @@ const ReplaceParts = () => {
       // const response = await TechnicianReplacePart(payload)
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.technicianReplacePart;
-      console.log('Parts response:', response)
       if (response?.data?.success) {
         setParts(response.data.data || [])
         if (!isInitial) {
@@ -88,7 +83,6 @@ const ReplaceParts = () => {
         }
       }
     } catch (error) {
-      console.error('Error loading parts:', error)
     } finally {
       isLoadingRef.current = false
     }
@@ -107,7 +101,6 @@ const ReplaceParts = () => {
         
       isInitialLoadDone.current = true
     } catch (error) {
-      console.error('Error loading initial data:', error)
     } finally {
       setLoading(false)
     }
@@ -122,7 +115,6 @@ const ReplaceParts = () => {
   const onRefresh = useCallback(async () => {
     // Prevent multiple refreshes
     if (isRefreshingRef.current || isLoadingRef.current) {
-      console.log('Refresh or load already in progress, skipping...')
       return
     }
     
@@ -139,7 +131,6 @@ const ReplaceParts = () => {
         loadParts(currentFilter)
       ])
     } catch (error) {
-      console.error('Error refreshing data:', error)
     } finally {
       setRefreshing(false)
       isRefreshingRef.current = false
@@ -371,7 +362,6 @@ const ReplaceParts = () => {
                         source={{ uri: part.part_image || 'https://via.placeholder.com/100' }}
                         className="w-20 h-20 rounded-lg bg-gray-50"
                         resizeMode="cover"
-                        onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
                       />
                     </View>
 
@@ -446,7 +436,6 @@ const ReplaceParts = () => {
               source={{ uri: selectedPart.part_image || 'https://via.placeholder.com/300' }}
               className="w-full h-80 bg-gray-100 rounded-xl"
               resizeMode="contain"
-              onError={(e) => console.log('Modal image error:', e.nativeEvent.error)}
             />
 
             <View className="bg-white rounded-lg p-4 mt-4">

@@ -77,7 +77,7 @@ const Home = () => {
     isActive: profileData?.login_status !== 'Online',
     notificationCount: 3,
     technician_id: profileData?.technician_id,
-    walletBalance: '₹2,500',
+
   };
 
   const fetchProfile = async () => {
@@ -94,7 +94,6 @@ const Home = () => {
         await setIsOnline(isOnline);
       }
     } catch (error) {
-      console.log('Fetch profile error:', error);
     } finally {
       setLoadingProfile(false);
     }
@@ -113,7 +112,6 @@ const Home = () => {
       const data = response?.data;
       if (data?.success) setCount(data);
     } catch (error) {
-      console.log('Fetch dashboard error:', error);
     }
   };
 
@@ -150,7 +148,6 @@ const Home = () => {
   // Add notification listener for refresh
   useEffect(() => {
     const refreshListener = () => {
-      console.log('🔄 Notification received, refreshing Home data...');
       refreshAllData(true, true);
     };
 
@@ -214,7 +211,6 @@ const Home = () => {
   }, [user?.id, isInitialLoad]);
 
   useEffect(() => {
-    console.log("FCM token", getFCMToken());
   }, []);
 
   useEffect(() => {
@@ -270,7 +266,7 @@ const Home = () => {
       });
       return;
     }
-    navigation.navigate('Wallet');
+    navigation.navigate('PayOut');
   };
 
   const handleCardPress = cardName => {
@@ -334,7 +330,6 @@ const Home = () => {
                 <Image
                   source={userProfile.profileImage}
                   className="w-12 h-12 rounded-full border-2 border-white"
-                  onError={(error) => console.log('Profile image loading error:', error.nativeEvent.error)}
                 />
               ) : (
                 <View className="items-center justify-center w-14 h-14 bg-gray-200 rounded-full">
@@ -435,7 +430,6 @@ const Home = () => {
                   <Image
                     source={userProfile.profileImage}
                     className="w-12 h-12 rounded-full border-2 border-white"
-                    onError={(error) => console.log('Profile image loading error:', error.nativeEvent.error)}
                   />
                 ) : (
                   <View className="items-center justify-center w-14 h-14 bg-gray-200 rounded-full">
@@ -522,6 +516,24 @@ const Home = () => {
                   <Text className="text-xs text-gray-500 text-center">Complete</Text>
                 </Pressable>
               </View>
+            </View>
+
+            {/* Wallet Balance */}
+            <View className="mb-6">
+              <TouchableOpacity onPress={() => handleWalletPress()} className="bg-emerald-50 rounded-2xl p-5 shadow-sm border border-emerald-200">
+                <View className="flex-row items-center justify-between">
+                  <View>
+                    <Text className="text-gray-600 text-xs font-medium uppercase tracking-wider">Wallet Balance</Text>
+                    <Text className="text-3xl font-bold text-gray-800 mt-1">
+                      ₹{count?.wallet_balance?.toLocaleString() || '0'}
+                    </Text>
+                    <Text className="text-gray-500 text-xs mt-1">Tap to view details</Text>
+                  </View>
+                  <View className="bg-emerald-100 p-3 rounded-full">
+                    <Wallet size={28} color="#10b981" />
+                  </View>
+                </View>
+              </TouchableOpacity>
             </View>
 
             {/* Business Metrics */}

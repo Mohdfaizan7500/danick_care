@@ -16,16 +16,13 @@ import dummyData from '../../../lib/dummyData';
 const Profile = () => {
   const insets = useSafeAreaInsets();
   const { user, logout, profileData, imagUrl, setAuthData, setIsOnline } = useAuth();
-  console.log("profileData:", profileData)
   const tech_id = user?.id;
-  console.log('id:', tech_id);
   const navigation = useNavigation();
   const [isDialogLoggingOut, setIsDialogLoggingOut] = useState(false);
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
 
   const device = Platform.OS === 'ios';
-  console.log('device:', device);
 
   // Monitor internet connection
   useEffect(() => {
@@ -120,7 +117,6 @@ const Profile = () => {
       // const response = await logoutApi(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.logoutResponse;
-      console.log('Logout response:', response);
 
       if (response?.data?.success) {
         // Call logout function from context to clear all data
@@ -143,7 +139,6 @@ const Profile = () => {
         throw new Error(response?.data?.msg || 'Logout failed');
       }
     } catch (error) {
-      console.error('Logout error:', error);
       toast.custom(<StatusMessage type='error' title={error.message || 'Failed to logout. Please try again.'} />, { duration: 300 });
     } finally {
       setIsDialogLoggingOut(false);

@@ -34,13 +34,11 @@ export const requestContactsPermissionAndFetch = async () => {
         const result = await request(PERMISSIONS.IOS.CONTACTS);
         granted = result === RESULTS.GRANTED;
       } else if (status === RESULTS.BLOCKED) {
-        console.log('Contacts permission blocked. Please enable in settings.');
         granted = false;
       }
     }
 
     if (!granted) {
-      console.log('Contacts permission denied');
       return [];
     }
 
@@ -54,14 +52,11 @@ export const requestContactsPermissionAndFetch = async () => {
     contactsArray.forEach((contact, index) => {
       const fullName = `${contact.givenName || ''} ${contact.familyName || ''}`.trim() || 'No name';
       const phoneNumbers = contact.phoneNumbers.map(pn => pn.number).join(', ');
-      console.log(`${index + 1}. Name: ${fullName} | Phones: ${phoneNumbers}`);
     });
     
-    console.log(`Total contacts fetched: ${contactsArray.length}`);
     return contactsArray;
     
   } catch (error) {
-    console.error('Error fetching contacts:', error);
     return [];
   }
 };

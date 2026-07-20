@@ -41,23 +41,18 @@ const OffLineScreen = ({ navigation }) => {
     const fetchSupportDetails = async () => {
         try {
             setLoadingNumber(true);
-            console.log('Fetching support details in OfflineScreen...');
             // const response = await TermsSupport();
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.termsData;
-            console.log('TermsSupport response:', response);
             
             if (response?.data?.success && response?.data?.data?.[0]) {
                 const supportData = response.data.data[0];
                 const mobile = supportData.mobile || supportData.mobile2 || '1800-123-4567';
                 setServiceNumber(mobile);
-                console.log('Service number set to:', mobile);
             } else {
-                console.log('No support data found, using default number');
                 setServiceNumber('1800-123-4567');
             }
         } catch (error) {
-            console.log('Error fetching support details:', error);
             setServiceNumber('1800-123-4567');
         } finally {
             setLoadingNumber(false);
@@ -80,8 +75,6 @@ const OffLineScreen = ({ navigation }) => {
         try {
             const technicianId = user?.id;
 
-            console.log('User object:', user);
-            console.log('Using technician ID:', technicianId);
 
             if (!technicianId) {
                 showDialog('error', 'User information not found. Please login again.');
@@ -91,10 +84,8 @@ const OffLineScreen = ({ navigation }) => {
             // const response = await getProfile(technicianId);
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.profileData;
-            console.log('Profile refresh response:', response);
 
             const responseData = response?.data?.data?.[0] || response?.data?.data || response?.data;
-            console.log('Extracted response data:', responseData);
 
             if (response?.data?.success === false) {
                 showDialog('error', responseData?.msg || 'Failed to refresh status');
@@ -139,7 +130,6 @@ const OffLineScreen = ({ navigation }) => {
             }
 
         } catch (error) {
-            console.error('Refresh error:', error);
             showDialog('error', error.message || 'Failed to refresh status. Please try again.');
         } finally {
             setIsRefreshing(false);
@@ -178,7 +168,6 @@ const OffLineScreen = ({ navigation }) => {
             // const response = await logoutApi({ technician_id: technicianId });
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.logoutResponse;
-            console.log('Logout response:', response);
 
             if (response?.data?.success) {
                 await logout();
@@ -199,7 +188,6 @@ const OffLineScreen = ({ navigation }) => {
                 throw new Error(response?.data?.msg || 'Logout failed');
             }
         } catch (error) {
-            console.error('Logout error:', error);
             toast.custom(
                 <StatusMessage type="error" title={error.message || 'Logout failed. Please try again.'} />,
                 { duration: 3000 }

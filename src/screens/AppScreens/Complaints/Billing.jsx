@@ -56,7 +56,6 @@ const Billing = () => {
   const [previewImageVisible, setPreviewImageVisible] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
 
-  console.log('Complaint Data in Billing:', complaintData);
 
   const baseAmount = parseFloat(complaintData?.tot_amt) || 0;
   const platformFee = (complaintData?.platform_fee) || 0;
@@ -93,7 +92,6 @@ const Billing = () => {
   const footerAnimatedHeight = useRef(new Animated.Value(0)).current;
 
   const isRecomplaint = complaintData?.recomplaint === 'Yes';
-  console.log("isRecomplaint:", isRecomplaint)
   const isAMCComplaint = complaintData?.complaint_type === 'AMC';
 
   const totalPartsPrice = parts?.reduce((sum, part) => sum + part.price, 0) || 0;
@@ -139,7 +137,6 @@ const Billing = () => {
 
   useEffect(() => {
     const handleRemarkSubmit = (data) => {
-      console.log('Received remark data via event:', data);
       setPendingRemarkData(data);
       setIsRemarkCompleted(true);
     };
@@ -250,7 +247,6 @@ const Billing = () => {
         ToastAndroid.show("refreshed...", ToastAndroid.SHORT, ToastAndroid.TOP);
       }
     } catch (err) {
-      console.error('Error fetching parts:', err);
       setError(err.message || 'Failed to fetch parts');
       setParts([]);
       setPartSource({});
@@ -274,7 +270,6 @@ const Billing = () => {
         final_amount: truncateToTwoDecimals(totalPayable),
         discount: truncateToTwoDecimals(discount),
       };
-      console.log('Submitting billing with payload:', payload);
       // const response = await ComplaintBilling(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.complaintBilling;
@@ -285,7 +280,6 @@ const Billing = () => {
         throw new Error(response?.data?.message || 'Failed to submit bill');
       }
     } catch (err) {
-      console.error('Error submitting billing:', err);
       setBillingError(err.message);
       toast.custom(<StatusMessage type='error' title={err.message || 'Failed to submit bill'} />, { duration: 3000 });
     } finally {
@@ -514,7 +508,6 @@ const Billing = () => {
         throw new Error(response?.data?.message || 'Failed to replace part');
       }
     } catch (err) {
-      console.error('Error replacing part:', err);
       toast.custom(<StatusMessage type='error' title={err.message || 'Failed to replace part'} />, { duration: 2000 });
     } finally {
       setReplacingPart(false);

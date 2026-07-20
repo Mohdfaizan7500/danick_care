@@ -58,7 +58,6 @@ const AllComplaints = () => {
       }
     } catch (error) {
       if (fetchId !== fetchIdRef.current) return;
-      console.error('Error fetching complaints:', error);
       if (isRefresh) setComplaints([]);
     } finally {
       if (fetchId !== fetchIdRef.current) return;
@@ -80,7 +79,6 @@ const AllComplaints = () => {
     }
 
     if (complaint?.status === 'cancel') {
-      console.log('Complaint is cancelled - no navigation');
       return;
     }
     if (complaint?.status === 'success' || complaint?.status === 'complete') {

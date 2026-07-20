@@ -134,7 +134,6 @@ const Scan = () => {
       // const response = await GetPartDetailQRCode(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.getPartDetailQRCode;
-      console.log('API Response:', response);
 
       if (response?.data?.success) {
         // Extract the actual data - could be array or object
@@ -220,7 +219,6 @@ const Scan = () => {
         setSearchedProduct(null);
       }
     } catch (error) {
-      console.error('Error fetching part details:', error);
       toast.custom(
         <StatusMessage type='error' title='Failed to fetch product details' />,
         { duration: 2000 }
@@ -276,7 +274,6 @@ const Scan = () => {
   };
 
   const handleProductPress = (product) => {
-    console.log(product);
     // Block navigation for blank QR codes
     if (product.type === "amc_blank_qr") {
       toast.custom(
@@ -428,7 +425,6 @@ const Scan = () => {
                     onLoadStart={() => setImageLoading(true)}
                     onLoadEnd={() => setImageLoading(false)}
                     onError={(e) => {
-                      console.log('Image load error:', e.nativeEvent.error);
                       setImageLoading(false);
                     }}
                   />

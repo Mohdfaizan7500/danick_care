@@ -32,7 +32,6 @@ apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
         if (error.response && error.response.status === 401) {
-            console.error("Authentication error: Token may be expired or invalid");
             await AsyncStorage.removeItem('accessToken');
             await AsyncStorage.removeItem('refreshToken');
             // For React Native, we don't have window.location; use navigation or redirect logic elsewhere
@@ -51,9 +50,6 @@ const getErrorMessage = (error) => {
 
 // Login function for React Native
 export const loginApi = async (username, password, fcmToken) => {
-    console.log('technician id:', username, typeof (username));
-    console.log('Password:', password, typeof (password));
-    console.log('fcm token :', fcmToken)
 
     try {
         const response = await apiClient.post("TechnicianAPI/Login", {
@@ -62,8 +58,6 @@ export const loginApi = async (username, password, fcmToken) => {
             fcmToken: fcmToken,
             expiresInMins: 30, // optional
         });
-        console.log('responce:', response)
-        // console.log('data:',response.data)
         if (response.data.success) {
             return {
                 success: response.data.success,
@@ -84,7 +78,6 @@ export const loginApi = async (username, password, fcmToken) => {
 
 
     } catch (error) {
-        console.error('API error in loginApi:', error);
         const errorMessage = getErrorMessage(error);
         return {
             success: false,
@@ -100,11 +93,9 @@ export const getAllSparePartcategories = async (cityId) => {
         const response = await apiClient.post("TechnicianAPI/Services", {
             city_id: cityId
         });
-        console.log('Spare part categories response:', response);
         // Return the full response (or only data) so the caller can handle it
         return response; // or response.data depending on what you need
     } catch (error) {
-        console.error('API error in getAllSparePartcategories:', error);
         const errorMessage = getErrorMessage(error);
         // Throw an error so the calling component can catch it
         throw new Error(errorMessage);
@@ -112,16 +103,13 @@ export const getAllSparePartcategories = async (cityId) => {
 };
 
 export const getAllSparePart = async (product_id) => {
-    console.log('payload:', product_id)
     try {
         const response = await apiClient.post("TechnicianAPI/PartPriceList", {
             id: product_id
         });
-        console.log('Spare part  response:', response);
         // Return the full response (or only data) so the caller can handle it
         return response; // or response.data depending on what you need
     } catch (error) {
-        console.error('API error in getAllSparePart:', error);
         const errorMessage = getErrorMessage(error);
         // Throw an error so the calling component can catch it
         throw new Error(errorMessage);
@@ -130,23 +118,19 @@ export const getAllSparePart = async (product_id) => {
 
 
 export const getAttendanceApi = async (id, month) => {
-    console.log('getAttendanceApi called with id:', id, 'month:', month);
     try {
         const response = await apiClient.post('TechnicianAPI/TechnicianAttendenceList', {
             technician_id: id,
             month: month
         });
-        // console.log('get all attendance response:', response);
         return response;
     } catch (error) {
-        console.error('API error in getAttendanceApi:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const MarkAttandance = async (city_id, id, slot_date, month) => {
-    console.log('MarkAttandance called with city id :', city_id, 'tech id:', id, "slot_date:", slot_date, "month:", month);
     try {
         const response = await apiClient.post('TechnicianAPI/TechnicianAttendence', {
             city_id: city_id,
@@ -154,10 +138,8 @@ export const MarkAttandance = async (city_id, id, slot_date, month) => {
             slot_date: slot_date,
             month: month
         });
-        console.log('MarkAttandance response:', response);
         return response;
     } catch (error) {
-        console.error('API error in MarkAttandance:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -175,7 +157,6 @@ export const getComplaints = async (id, status, page = 1) => {
         });
         return response;
     } catch (error) {
-        console.error('API error in getComplaints:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -184,15 +165,12 @@ export const getProfile = async (id) => {
     const payload = {
         id: id,
     }
-    console.log("payload:", payload)
     try {
         const response = await apiClient.post('TechnicianAPI/TechnicianProfile', {
             technician_id: id,
         });
-        console.log('Get profile response:', response);
         return response;
     } catch (error) {
-        console.error('API error in getProfile:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -202,62 +180,48 @@ export const getProfile = async (id) => {
 export const changePassword = async (payload) => {
     try {
         const response = await apiClient.post('TechnicianAPI/ChangePassword', payload);
-        console.log('Change password response:', response);
         return response;
     } catch (error) {
-        console.error('API error in changePassword:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const getAMCList = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AMCList', payload);
-        console.log('Get AMC List response:', response);
         return response;
     } catch (error) {
-        console.error('API error in getAMCList:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const AMCConvertList = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AMCConvertList', payload);
-        console.log('Get AMC Convert List response:', response);
         return response;
     } catch (error) {
-        console.error('API error in AMCConvertList:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const AMCQRCodeInsertPart = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AMCQRCodeInsertPart', payload);
-        console.log('Get AMC QR Code Insert Part response:', response);
         return response;
     } catch (error) {
-        console.error('API error in AMCQRCodeInsertPart:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const AMCQRCodeRemove = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/RemoveAMCQRCode', payload);
-        console.log('RemoveAMCQRCode Part response:', response);
         return response;
     } catch (error) {
-        console.error('API error in RemoveAMCQRCode:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -265,13 +229,10 @@ export const AMCQRCodeRemove = async (payload) => {
 
 
 export const technicianAssignPart = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/TechnicianAssignPart', payload);
-        console.log('technicianAssignPart response:', response);
         return response;
     } catch (error) {
-        console.error('API error in technicianAssignPart:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -280,89 +241,68 @@ export const technicianAssignPart = async (payload) => {
 
 
 export const getAllTechnician = async (payload) => {
-    // console.log('payload',payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AllTechnician', payload);
-        console.log('getAllTechnician response:', response);
         return response;
     } catch (error) {
-        console.error('API error in getAllTechnician:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const getPartCount = async (payload) => {
-    // console.log('payload',payload)
     try {
         const response = await apiClient.post('TechnicianAPI/TechnicianPartCount', payload);
-        console.log('getPartCount response:', response);
         return response;
     } catch (error) {
-        console.error('API error in getPartCount:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const partTransferToTechnician = async (payload) => {
-    // console.log('payload',payload)
     try {
         const response = await apiClient.post('TechnicianAPI/PartTransferTechnician', payload);
-        console.log('partTransferToTechnician response:', response);
         return response;
     } catch (error) {
-        console.error('API error in partTransferToTechnician:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 export const partTransferCancel = async (payload) => {
-    // console.log('payload',payload)
     try {
         const response = await apiClient.post('TechnicianAPI/PartTransferCancel', payload);
-        console.log('partTransferCancel response:', response);
         return response;
     } catch (error) {
-        console.error('API error in partTransferCancel:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const partTransferReceive = async (payload) => {
-    // console.log('payload',payload)
     try {
         const response = await apiClient.post('TechnicianAPI/PartTransferReceive', payload);
-        console.log('partTransferReceive response:', response);
         return response;
     } catch (error) {
-        console.error('API error in partTransferReceive:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const sendOTP = async (payload) => {
-    // console.log('payload',payload)
     try {
         const response = await apiClient.post('TechnicianAPI/OTPSent', payload);
-        console.log('sendOTP api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in sendOTP:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 export const verifyOTP = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/OTPVerification', payload);
-        console.log('OTPVerify api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in OTPVerify:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -370,7 +310,6 @@ export const verifyOTP = async (payload) => {
 
 // api.js - Update the UploadComplaintImage function
 export const UploadComplaintImage = async (formData) => {
-    console.log('Uploading image with formData');
 
     try {
         const response = await apiClient.post('/TechnicianAPI/UploadComplaintImage', formData, {
@@ -379,62 +318,48 @@ export const UploadComplaintImage = async (formData) => {
                 'Accept': 'application/json',
             },
         });
-        console.log('UploadComplaintImage api response:', response);
         return response;
     } catch (error) {
-        console.error('API error in UploadComplaintImage:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const GetComplaintImage = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/GetComplaintImage', payload);
-        console.log('GetComplaintImage api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in GetComplaintImage:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const deletComplaintImage = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/DeleteComplaintImage', payload);
-        console.log('deletComplaintImage api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in deletComplaintImage:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const getComplaintImage = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/GetComplaintImage', payload);
-        console.log('getComplaintImage api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in getComplaintImage:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const getDeshBoardCount = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/DashboardCount', payload);
-        console.log('getDeshBoardCount api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in getDeshBoardCount:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -445,105 +370,82 @@ export const fetchPartsForComplaint = async (payload) => {
         const response = await apiClient.post('TechnicianAPI/FetchPartForComplaints', payload);
         return response;
     } catch (error) {
-        console.error('API error in fetchPartsForComplaint:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const AttechPartWithComplaints = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AttachedPartWithComplaints', payload);
-        console.log('AttechPartWithComplaints api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in AttechPartWithComplaints:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const FetchPartForComplaints = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/FetchComplaintsParts', payload);
-        console.log('FetchPartForComplaints api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in FetchPartForComplaints:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const RecomplaitAttechPart = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/FetchRecomplaintAttachedPart', payload);
-        console.log('RecomplaitAttechPart api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in RecomplaitAttechPart:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const FetchPartsForReplaced = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/FetchPartsForReplaced', payload);
-        console.log('FetchPartsForReplaced api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in FetchPartsForReplaced:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const ReplacedPartManagement = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/ReplacedPartManagement', payload);
-        console.log('ReplacedPartManagement api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in ReplacedPartManagement:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const UpdateRemark = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/UpdateRemark', payload);
-        console.log('UpdateRemark api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in UpdateRemark:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const GetPartDetailQRCode = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/GetPartDetailQRCode', payload);
-        console.log('GetPartDetailQRCode api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in GetPartDetailQRCode:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const PurchaseMarketPart = async (formData) => {
-    console.log('formData', formData)
     try {
         const response = await apiClient.post('TechnicianAPI/PurchaseMarketPart', formData, {
             headers: {
@@ -551,49 +453,38 @@ export const PurchaseMarketPart = async (formData) => {
                 'Accept': 'application/json',
             },
         });
-        console.log('PurchaseMarketPart api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in PurchaseMarketPart:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const GetComplaintsDetails = async (payload) => {
-    console.log('payload for fatch compliant', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/GetComplaintsDetails', payload);
-        console.log('GetComplaintsDetails api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in GetComplaintsDetails:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const AssignQRCodeList = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AssignQRCodeList', payload);
-        console.log('AssignQRCodeList api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in AssignQRCodeList:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const AssignQRCodeCount = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AssignQRCodeCount', payload);
-        console.log('AssignQRCodeCount api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in AssignQRCodeCount:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -601,117 +492,90 @@ export const AssignQRCodeCount = async (payload) => {
 
 
 export const ComplaintBilling = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/ComplaintBilling', payload);
-        console.log('ComplaintBilling api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in ComplaintBilling:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const logoutApi = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/Logout', payload);
-        console.log('Logout api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in Logout:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const CommissionPayout = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/CommissionPayout', payload);
-        console.log('CommissionPayout api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in CommissionPayout:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const ReplacePartsCount = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/ReplacePartsCount', payload);
-        console.log('ReplacePartsCount api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in ReplacePartsCount:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const TechnicianReplacePart = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/TechnicianReplacePart', payload);
-        console.log('TechnicianReplacePart api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in TechnicianReplacePart:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const AMCPartQRCodeUpdatePart = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AMCPartQRCodeUpdatePart', payload);
-        console.log('AMCPartQRCodeUpdatePart api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in AMCPartQRCodeUpdatePart:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const RemoveAMCPart = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/RemoveAMCPart', payload);
-        console.log('RemoveAMCPart api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in RemoveAMCPart:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const PendingComplaints = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/PendingComplaints', payload);
-        console.log('PendingComplaints api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in PendingComplaints:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const AcceptComplaint = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AcceptComplaint', payload);
-        console.log('AcceptComplaint api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in AcceptComplaint:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -722,84 +586,65 @@ export const PendingComplaintCount = async (payload) => {
         const response = await apiClient.post('TechnicianAPI/PendingComplaintCount', payload);
         return response;
     } catch (error) {
-        console.error('API error in PendingComplaintCount:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const TechnicianServices = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/TechnicianServices', payload);
-        console.log('TechnicianServices api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in TechnicianServices:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const ProceedAMC = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/ProceedAMC', payload);
-        console.log('ProceedAMC api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in ProceedAMC:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const CheckProceedAMC = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/CheckProceedAMC', payload);
-        console.log('CheckProceedAMC api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in CheckProceedAMC:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const AMCComplaintDetails = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AMCComplaintDetails', payload);
-        console.log('AMCComplaintDetails api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in AMCComplaintDetails:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 export const DeletAMCRecordWithParts = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/DeleteAMCRecordWithParts', payload);
-        console.log('DeletAMCRecordWithParts api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in DeletAMCRecordWithParts:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const AMCBilling = async (payload) => {
-    console.log('AMC billingpayload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/AMCBilling', payload);
-        console.log('AMCBilling api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in AMCBilling:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -808,8 +653,6 @@ export const AMCBilling = async (payload) => {
 // Update your api.js file
 // api.js - This is already correct
 export const TechnicianAMC = async (payload, params = {}) => {
-    console.log('payload', payload)
-    console.log('params', params)
     try {
         // If params are provided, append them to the URL
         let url = 'TechnicianAPI/TechnicianAMC';
@@ -819,22 +662,17 @@ export const TechnicianAMC = async (payload, params = {}) => {
         }
 
         const response = await apiClient.post(url, payload);
-        console.log('TechnicianAMC api response:', response);
         return response;
     } catch (error) {
-        console.error('API error in TechnicianAMC:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 export const GetAMCDetails = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/GetAMCDetails', payload);
-        console.log('GetAMCDetails api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in GetAMCDetails:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -842,13 +680,10 @@ export const GetAMCDetails = async (payload) => {
 
 
 export const FetchNotification = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/FetchNotification', payload);
-        console.log('FetchNotification api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in FetchNotification:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -856,13 +691,10 @@ export const FetchNotification = async (payload) => {
 
 
 export const ReadNotification = async (payload) => {
-    console.log('payload', payload)
     try {
         const response = await apiClient.post('TechnicianAPI/ReadNotification', payload);
-        console.log('ReadNotification api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in ReadNotification:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -871,10 +703,8 @@ export const ReadNotification = async (payload) => {
 export const TermsSupport = async () => {
     try {
         const response = await apiClient.post('TechnicianAPI/TermsSupport');
-        console.log('TermsSupport api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in TermsSupport:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -883,10 +713,8 @@ export const TermsSupport = async () => {
 export const ReverseComplaint = async (payload) => {
     try {
         const response = await apiClient.post('TechnicianAPI/ReverseComplaint', payload);
-        console.log('ReverseComplaint api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in ReverseComplaint:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -895,23 +723,18 @@ export const ReverseComplaint = async (payload) => {
 export const ContactImport = async (payload) => {
     try {
         const response = await apiClient.post('TechnicianAPI/ContactImport', payload);
-        console.log('ReverseComplaint api  response:', response);
         return response;
     } catch (error) {
-        console.error('API error in ReverseComplaint:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
 };
 
 export const RescheduleComplaint = async (payload) => {
-    console.log('RescheduleComplaint payload:', payload);
     try {
         const response = await apiClient.post('TechnicianAPI/RescheduleComplaint', payload);
-        console.log('RescheduleComplaint api response:', response);
         return response;
     } catch (error) {
-        console.error('API error in RescheduleComplaint:', error);
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }
@@ -922,7 +745,6 @@ export const RescheduleComplaint = async (payload) => {
 // Get CSN Complaints
 // Get CSN Complaints - FIXED with query parameter
 export const CSNComplaints = async (payload) => {
-    console.log('CSNComplaints payload:', payload);
     try {
         // Send csn as query parameter, not in body
         const response = await apiClient.post('/TechnicianAPI/CSNComplaints', null, {
@@ -930,10 +752,8 @@ export const CSNComplaints = async (payload) => {
                 csn: payload.csn
             }
         });
-        console.log('CSNComplaints response:', response);
         return response;
     } catch (error) {
-        console.error('CSNComplaints error:', error);
         if (error.message === 'Network Error') {
             throw new Error('Network error: Please check your internet connection and try again.');
         }

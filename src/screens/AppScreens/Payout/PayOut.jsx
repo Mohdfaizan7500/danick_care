@@ -10,65 +10,43 @@ import { Toaster } from 'sonner-native';
 import dummyData from '../../../lib/dummyData';
 
 // ---------- Dummy Data ----------
-const salaryData = [
-  { id: '1', login: '09:00', logout: '18:00', hours: 9, amount: 900, datetime: '2025-03-14 09:00' },
-  { id: '2', login: '08:30', logout: '17:30', hours: 9, amount: 900, datetime: '2025-03-13 08:30' },
-  { id: '3', login: '10:00', logout: '19:00', hours: 9, amount: 900, datetime: '2025-03-12 10:00' },
-  { id: '4', login: '09:15', logout: '18:15', hours: 9, amount: 900, datetime: '2025-03-11 09:15' },
-  { id: '5', login: '08:45', logout: '17:45', hours: 9, amount: 900, datetime: '2025-03-10 08:45' },
-  { id: '6', login: '09:30', logout: '18:30', hours: 9, amount: 900, datetime: '2025-03-09 09:30' },
-  { id: '7', login: '08:00', logout: '17:00', hours: 9, amount: 900, datetime: '2025-03-08 08:00' },
-  { id: '8', login: '09:45', logout: '18:45', hours: 9, amount: 900, datetime: '2025-03-07 09:45' },
-  { id: '9', login: '08:15', logout: '17:15', hours: 9, amount: 900, datetime: '2025-03-06 08:15' },
-  { id: '10', login: '09:00', logout: '18:00', hours: 9, amount: 900, datetime: '2025-03-05 09:00' },
-];
-
-const commissionData = [
-  { id: '1', csn: 'C001 - John Doe', total: 1500, tech: 900, admin: 600, status: 'credit', date: '2025-03-14' },
-  { id: '2', csn: 'C002 - Jane Smith', total: 2000, tech: 1200, admin: 800, status: 'debit', date: '2025-03-13' },
-  { id: '3', csn: 'C003 - Bob Johnson', total: 1200, tech: 720, admin: 480, status: 'credit', date: '2025-03-12' },
-  { id: '4', csn: 'C004 - Alice Brown', total: 1800, tech: 1080, admin: 720, status: 'credit', date: '2025-03-11' },
-  { id: '5', csn: 'C005 - Mike Wilson', total: 2200, tech: 1320, admin: 880, status: 'debit', date: '2025-03-10' },
-  { id: '6', csn: 'C006 - Sarah Lee', total: 1700, tech: 1020, admin: 680, status: 'credit', date: '2025-03-09' },
-  { id: '7', csn: 'C007 - David Kim', total: 1900, tech: 1140, admin: 760, status: 'credit', date: '2025-03-08' },
-  { id: '8', csn: 'C008 - Emily Chen', total: 2100, tech: 1260, admin: 840, status: 'debit', date: '2025-03-07' },
+const salaryData = dummyData.payoutSalary?.data?.result || [
+  { id: '1', login: '09:00', logout: '18:00', hours: 9, amount: 900, datetime: '2026-07-14 09:00' },
+  { id: '2', login: '08:30', logout: '17:30', hours: 9, amount: 900, datetime: '2026-07-13 08:30' },
+  { id: '3', login: '10:00', logout: '19:00', hours: 9, amount: 900, datetime: '2026-07-12 10:00' },
+  { id: '4', login: '09:15', logout: '18:15', hours: 9, amount: 900, datetime: '2026-07-11 09:15' },
+  { id: '5', login: '08:45', logout: '17:45', hours: 9, amount: 900, datetime: '2026-07-10 08:45' },
+  { id: '6', login: '09:30', logout: '18:30', hours: 9, amount: 900, datetime: '2026-07-09 09:30' },
+  { id: '7', login: '08:00', logout: '17:00', hours: 9, amount: 900, datetime: '2026-07-08 08:00' },
+  { id: '8', login: '09:45', logout: '18:45', hours: 9, amount: 900, datetime: '2026-07-07 09:45' },
+  { id: '9', login: '08:15', logout: '17:15', hours: 9, amount: 900, datetime: '2026-07-06 08:15' },
+  { id: '10', login: '09:00', logout: '18:00', hours: 9, amount: 900, datetime: '2026-07-05 09:00' },
+  { id: '11', login: '10:30', logout: '19:30', hours: 9, amount: 900, datetime: '2026-07-04 10:30' },
 ];
 
 const formatCurrency = (amount) => `₹${amount.toLocaleString()}`;
 
 const PayOut = () => {
-  const [title, setTitle] = useState('Payout fff');
+  const [title, setTitle] = useState('Payout');
   const [activeTab, setActiveTab] = useState('salary');
   const { profileData } = useAuth();
-  console.log('Authenticated User in PayOut:', profileData);
 
   // Get technician type from profile data
   const technicianType = profileData?.technician_type || '';
-  console.log('Technician Type:', technicianType);
 
   // Normalize technician type for comparison (handle case sensitivity and spelling variations)
   const normalizedType = technicianType.toLowerCase().trim();
 
   // Determine which tabs to show
-  const showSalaryTab =
-    normalizedType === 'salary' ||
-    normalizedType === 'sallary' || // Handle common misspelling
-    normalizedType === 'sallary+commission' ||
-    normalizedType === 'salary+commission' ||
-    normalizedType === '' ||
-    !technicianType;
+  const isSalaryOnly = normalizedType === 'salary' || normalizedType === 'sallary';
+  const isCommissionOnly = normalizedType === 'commission';
+  const isCombined = normalizedType === 'salary+commission' || normalizedType === 'sallary+commission';
 
-  const showCommissionTab =
-    normalizedType === 'commission' || // Handle common misspelling
-    normalizedType === 'sallary+commission' ||
-    normalizedType === 'salary+commission' ||
-    normalizedType === '' ||
-    !technicianType;
+  const showSalaryTab = isSalaryOnly || isCombined || (!isCommissionOnly);
+  const showCommissionTab = isCommissionOnly || isCombined || (!isSalaryOnly);
 
-  // Check if it's combined type
-  const isCombinedType =
-    normalizedType === 'sallary+commission' ||
-    normalizedType === 'salary+commission';
+  // Check if it's combined type (reuse the computed value)
+  const isCombinedType = isCombined;
 
 
   // Set initial active tab based on technician type
@@ -101,8 +79,7 @@ const PayOut = () => {
   const [isCommissionLoading, setIsCommissionLoading] = useState(false);
 
   // Summary (dummy)
-  const salarySummary = { total: 9000, paid: 4500, balance: 4500 };
-  const commissionSummary = { total: 14400, tech: 8640, admin: 5760, paid: 5000, balance: 9400 };
+  const salarySummary = { total: 9900, paid: 4500, balance: 5400 };
 
   const handleMonthYearConfirm = () => {
     setShowMonthYearModal(false);
@@ -197,23 +174,21 @@ const PayOut = () => {
       )}
 
       {showCommissionTab && (activeTab === 'commission' || !showSalaryTab) && (
-        <CommissionTab
-          startDate={startDate}
-          setStartDate={setStartDate}
-          endDate={endDate}
-          setEndDate={setEndDate}
-          showStartCalendar={showStartCalendar}
-          setShowStartCalendar={setShowStartCalendar}
-          showEndCalendar={showEndCalendar}
-          setShowEndCalendar={setShowEndCalendar}
-          isCommissionLoading={isCommissionLoading}
-          commissionSummary={commissionSummary}
-          commissionData={commissionData}
-          handleStartDateSelect={handleStartDateSelect}
-          handleEndDateSelect={handleEndDateSelect}
-          handleCommissionSubmit={handleCommissionSubmit}
-          formatCurrency={formatCurrency}
-        />
+          <CommissionTab
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+            showStartCalendar={showStartCalendar}
+            setShowStartCalendar={setShowStartCalendar}
+            showEndCalendar={showEndCalendar}
+            setShowEndCalendar={setShowEndCalendar}
+            isCommissionLoading={isCommissionLoading}
+            handleStartDateSelect={handleStartDateSelect}
+            handleEndDateSelect={handleEndDateSelect}
+            handleCommissionSubmit={handleCommissionSubmit}
+            formatCurrency={formatCurrency}
+          />
       )}
     </SafeAreaView>
   );

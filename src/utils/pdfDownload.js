@@ -64,7 +64,6 @@ export const downloadAndOpenPDF = async (pdfUrl, fileName = 'invoice.pdf') => {
       throw new Error('Download failed');
     }
   } catch (error) {
-    console.error('PDF Download Error:', error);
     Alert.alert('Download Failed', 'Unable to download PDF. Please try again.');
     return false;
   }
@@ -92,7 +91,6 @@ export const downloadAndOpenPDFExpo = async (pdfUrl, fileName = 'invoice.pdf') =
       return false;
     }
   } catch (error) {
-    console.error('PDF Download Error:', error);
     Alert.alert('Download Failed', 'Unable to download PDF. Please try again.');
     return false;
   }

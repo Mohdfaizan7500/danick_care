@@ -155,11 +155,9 @@ const QRCodeNavigation = () => {
         city_id: user?.city_id?.toString() || "1"
       };
       
-      console.log('Fetching dashboard counts with payload:', payload);
       // Using dummy data
       await new Promise(resolve => setTimeout(resolve, 300));
       const response = dummyData.dashboardCount;
-      console.log('Dashboard counts response:', response);
 
       if (response?.data?.success) {
         const data = response.data;
@@ -172,7 +170,6 @@ const QRCodeNavigation = () => {
         setError(response?.data?.message || 'Failed to fetch QR counts');
       }
     } catch (err) {
-      console.error('Error fetching dashboard counts:', err);
       setError(err.message || 'Network error. Please check your connection.');
     } finally {
       setLoading(false);

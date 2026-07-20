@@ -60,7 +60,6 @@ const Assigned = () => {
       }
     } catch (error) {
       if (fetchId !== fetchIdRef.current) return;
-      console.error('Error fetching assigned complaints:', error);
       if (isRefresh) setComplaints([]);
     } finally {
       if (fetchId !== fetchIdRef.current) return;
@@ -80,7 +79,6 @@ const Assigned = () => {
       setDialogVisible(true);
       return;
     }
-    console.log('Navigating to complaint detail from Assigned:', complaint);
     navigation.navigate('ComplaintDetail', { complaint });
   };
 

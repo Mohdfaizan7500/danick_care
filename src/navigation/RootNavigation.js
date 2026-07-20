@@ -7,6 +7,5 @@ export function navigate(name, params) {
   if (navigationRef.isReady()) {
     navigationRef.navigate(name, params);
   } else {
-    console.warn('Navigation not ready, cannot navigate');
   }
 }

@@ -25,7 +25,6 @@ export const OrderProvider = ({ children }) => {
                     response?.success ? response.Pendingcomplaints : 0;
       setOrderCount(count);
     } catch (error) {
-      console.error('Error fetching order count:', error);
     }
   };
 

@@ -18,7 +18,6 @@ const AMCDetails = () => {
         return { uri: imagUrl + img };
     };
 
-    console.log('service:', service)
 
     // Format price
     const formatPrice = (price) => {

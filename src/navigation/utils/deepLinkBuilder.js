@@ -5,10 +5,8 @@ export function buildDeepLinkFromNotificationData(title) {
   if (!title) return null;
 
   const navigationId = title.toLowerCase();
-  console.log('Building deep link for navigationId:', navigationId);
 
   if (!NAVIGATION_IDS.includes(navigationId)) {
-    console.warn('Unverified navigationId:', navigationId);
     return null;
   }
 
@@ -30,7 +28,6 @@ export function buildDeepLinkFromNotificationData(title) {
     case 'notifications':
       return 'partner://app/notifications';
     default:
-      console.warn('Missing valid navigationId');
       return null;
   }
 }

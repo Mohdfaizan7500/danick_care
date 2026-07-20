@@ -109,7 +109,6 @@ export const NotificationProvider = ({ children }) => {
       // Using dummy data
       await new Promise(resolve => setTimeout(resolve, 300));
       const response = dummyData.notifications;
-      console.log("Fetch Notification response:", response);
 
       if (response?.data?.success && response?.data?.result) {
         const transformedData = response.data.result.map(item => ({
@@ -141,7 +140,6 @@ export const NotificationProvider = ({ children }) => {
         setNotificationCounts({ all: 0, unread: 0, read: 0 });
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
       setAllNotifications([]);
     } finally {
       setLoading(false);

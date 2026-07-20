@@ -85,6 +85,7 @@ const dummyData = {
       bucket: 8,
       prebooking: 2,
       payout: 2500,
+      wallet_balance: 2500,
       allQr: 20,
       usedQr: 10,
       unusedQr: 10,
@@ -435,11 +436,17 @@ const dummyData = {
         { id: 3, fund: '1200', tech_fund: '720', admin_fund: '480', status: 'collect', csn: 'CSN003', name: 'Amit Singh', type: 'Service', comp_id: '103', date: '2026-07-13' },
         { id: 4, fund: '1800', tech_fund: '1080', admin_fund: '720', status: 'collect', csn: 'CSN004', name: 'Sneha Reddy', type: 'Service', comp_id: '104', date: '2026-07-12' },
         { id: 5, fund: '2200', tech_fund: '1320', admin_fund: '880', status: 'pending', csn: 'CSN005', name: 'Vikram Joshi', type: 'Repair', comp_id: '105', date: '2026-07-11' },
+        { id: 6, fund: '1600', tech_fund: '960', admin_fund: '640', status: 'collect', csn: 'CSN006', name: 'Ananya Verma', type: 'Service', comp_id: '106', date: '2026-07-10' },
+        { id: 7, fund: '2500', tech_fund: '1500', admin_fund: '1000', status: 'pending', csn: 'CSN007', name: 'Rohit Kumar', type: 'AMC', comp_id: '107', date: '2026-07-09' },
+        { id: 8, fund: '1100', tech_fund: '660', admin_fund: '440', status: 'collect', csn: 'CSN008', name: 'Neha Gupta', type: 'Repair', comp_id: '108', date: '2026-07-08' },
+        { id: 9, fund: '1900', tech_fund: '1140', admin_fund: '760', status: 'collect', csn: 'CSN009', name: 'Deepak Singh', type: 'Service', comp_id: '109', date: '2026-07-07' },
+        { id: 10, fund: '1400', tech_fund: '840', admin_fund: '560', status: 'pending', csn: 'CSN010', name: 'Kavita Sharma', type: 'Service', comp_id: '110', date: '2026-07-06' },
+        { id: 11, fund: '3000', tech_fund: '1800', admin_fund: '1200', status: 'collect', csn: 'CSN011', name: 'Manish Yadav', type: 'AMC', comp_id: '111', date: '2026-07-05' },
       ],
       totals: {
-        total_fund: 8700,
-        total_tech: 5220,
-        total_admin_fund: 3480,
+        total_fund: 21200,
+        total_tech: 12720,
+        total_admin_fund: 8480,
         debit_admin: 1200,
       }
     }
@@ -449,8 +456,17 @@ const dummyData = {
     data: {
       success: true,
       result: [
-        { id: 1, month: 'January', year: '2024', salary: 15000, paid: 15000, status: 'paid' },
-        { id: 2, month: 'February', year: '2024', salary: 15000, paid: 0, status: 'pending' },
+        { id: '1', login: '09:00', logout: '18:00', hours: 9, amount: 900, datetime: '2026-07-14 09:00' },
+        { id: '2', login: '08:30', logout: '17:30', hours: 9, amount: 900, datetime: '2026-07-13 08:30' },
+        { id: '3', login: '10:00', logout: '19:00', hours: 9, amount: 900, datetime: '2026-07-12 10:00' },
+        { id: '4', login: '09:15', logout: '18:15', hours: 9, amount: 900, datetime: '2026-07-11 09:15' },
+        { id: '5', login: '08:45', logout: '17:45', hours: 9, amount: 900, datetime: '2026-07-10 08:45' },
+        { id: '6', login: '09:30', logout: '18:30', hours: 9, amount: 900, datetime: '2026-07-09 09:30' },
+        { id: '7', login: '08:00', logout: '17:00', hours: 9, amount: 900, datetime: '2026-07-08 08:00' },
+        { id: '8', login: '09:45', logout: '18:45', hours: 9, amount: 900, datetime: '2026-07-07 09:45' },
+        { id: '9', login: '08:15', logout: '17:15', hours: 9, amount: 900, datetime: '2026-07-06 08:15' },
+        { id: '10', login: '09:00', logout: '18:00', hours: 9, amount: 900, datetime: '2026-07-05 09:00' },
+        { id: '11', login: '10:30', logout: '19:30', hours: 9, amount: 900, datetime: '2026-07-04 10:30' },
       ]
     }
   },

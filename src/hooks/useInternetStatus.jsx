@@ -34,7 +34,6 @@ export const useInternetStatus = () => {
       setIsInternetReachable(state.isInternetReachable ?? false);
       return state.isConnected ?? false;
     } catch (error) {
-      console.error('Error checking connection:', error);
       return false;
     } finally {
       setIsChecking(false);

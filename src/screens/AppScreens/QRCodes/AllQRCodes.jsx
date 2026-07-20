@@ -29,9 +29,7 @@ const SkeletonCard = () => (
 );
 
 const AllQRCodes = ({ route }) => {
-    console.log('route', route);
     const name = route.name;
-    console.log('name', name);
 
     const { user, imagUrl } = useAuth();
 
@@ -82,11 +80,9 @@ const AllQRCodes = ({ route }) => {
                 status: getStatus(name) // Empty string for all QR codes
             };
 
-            console.log('Fetching QR codes with payload:', payload);
             // const response = await AssignQRCodeList(payload);
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.qrCodeList;
-            console.log('AssignQRCodeList response:', response);
 
             if (response?.data?.success && response?.data?.data && isMounted.current) {
                 // Remove duplicates by qr_id
@@ -124,7 +120,6 @@ const AllQRCodes = ({ route }) => {
             else if (response?.data?.success === false) {
                 // Check for "No Assign QR Code Found" message - treat as empty data, not an error
                 if (response?.data?.msg === "No Assign QR Code Found") {
-                    console.log('No QR codes found, setting empty list');
                     setQrCodes([]);
                     // No error toast, just empty state
                 } else {
@@ -142,7 +137,6 @@ const AllQRCodes = ({ route }) => {
                 setQrCodes([]);
             }
         } catch (err) {
-            console.error('Error fetching QR codes:', err);
             const errorMessage = err.message || 'Network error. Please check your connection.';
             setError(errorMessage);
             toast.custom(
@@ -183,7 +177,6 @@ const AllQRCodes = ({ route }) => {
     };
 
     const handleQRCodePress = (item) => {
-        console.log('QR Code pressed:', item.qrCodeNumber);
         if (item.complaintId && item.complaintId !== 'N/A' && item.complaintId !== null) {
             navigation.navigate('QRCodeDetails', {
                 qrData: item,
@@ -230,7 +223,6 @@ const AllQRCodes = ({ route }) => {
 
     // Render each QR code item using the QRCodeCard component
     const renderQRCodeItem = ({ item, index }) => {
-        console.log("QR codes data:", item);
         return (
             <QRCodeCard
                 item={item}
@@ -268,7 +260,6 @@ const AllQRCodes = ({ route }) => {
     // Refresh on focus - only if not loading
     useFocusEffect(
         useCallback(() => {
-            console.log('AllQRCodes focused');
             if (!loading && !refreshing) {
                 fetchQRCodes(true);
             }

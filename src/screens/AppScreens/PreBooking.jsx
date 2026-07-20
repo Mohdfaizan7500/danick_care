@@ -120,19 +120,16 @@ const PreBooking = () => {
       // const response = await getAttendanceApi(user.id, monthStr);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.attendanceData;
-      console.log('Fetched Attendance:', response);
 
       // Response structure: response.data.data is an array of objects with 'date' property
       const datesArray = response?.data?.data || [];
       if (Array.isArray(datesArray)) {
         const dateStrings = datesArray.map(item => item.date).filter(Boolean);
-        console.log('Extracted date strings:', dateStrings);
         setSelectedDates(dateStrings);
       } else {
         setSelectedDates([]);
       }
     } catch (err) {
-      console.error('Error fetching attendance:', err);
       setError(err.message);
       toast.error('Failed to load attendance. Please try again.');
       setSelectedDates([]);
@@ -337,7 +334,6 @@ const PreBooking = () => {
     const cityId = user?.city_id || '1';
     const techId = user?.id || '1';
     const month = `${monthdata}-${year}`;
-    console.log("month on prebooking:", month);
 
     // Add to loading set (shows spinner on that day)
     setLoadingDates(prev => new Set(prev).add(dateString));
@@ -346,7 +342,6 @@ const PreBooking = () => {
       // const response = await MarkAttandance(cityId, techId, dateString, month);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.markAttendance;
-      console.log('MarkAttendance response:', response);
 
       // Directly update selectedDates state (no API refresh needed with dummy data)
       if (isSelected) {
@@ -375,7 +370,6 @@ const PreBooking = () => {
         );
       }
     } catch (error) {
-      console.error('Error marking attendance:', error);
       toast.error('Failed to update availability. Please try again.');
     } finally {
       // Remove from loading set (hides spinner)

@@ -49,7 +49,6 @@ const ProfileDetails = () => {
   const [documentsExpanded, setDocumentsExpanded] = useState(false);
 
   const id = user?.id || 'N/A';
-  console.log("user :", user, id);
 
   useEffect(() => {
     fetchProfile();
@@ -61,7 +60,6 @@ const ProfileDetails = () => {
       // const response = await getProfile(id);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.profileData;
-      console.log('Profile data fetched:', response);
 
       if (response?.data?.success && response?.data?.data?.[0]) {
         setProfileData(response.data.data[0]);
@@ -69,7 +67,6 @@ const ProfileDetails = () => {
         setError('No profile data found');
       }
     } catch (err) {
-      console.error('Error fetching profile:', err);
       setError(err.message || 'Failed to load profile');
     } finally {
       setLoading(false);

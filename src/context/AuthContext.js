@@ -17,7 +17,6 @@ export const AuthProvider = ({ children }) => {
   const [IsOnline, setIsOnline] = useState(true);
   const [importedPart, setImportedPart] = useState(null);
   const [imagUrl, setImageUrl] = useState('https://dainikcare.com/dainik_care_admin/');
-      console.log("FCm token",getFCMToken());
 
   const VibrationCount = 50;
   
@@ -35,13 +34,11 @@ export const AuthProvider = ({ children }) => {
       if (storedAccessToken && storedAccessToken !== 'undefined') {
         try {
           const decodedToken = jwtDecode(storedAccessToken);
-          console.log('decode data:', decodedToken);
           const userData = {
             id: decodedToken.id || decodedToken.sub,
             technician_id: decodedToken.technician_id,
             city_id: decodedToken?.city_id
           };
-          console.log('userdata from local storage :', userData);
           setAccessToken(storedAccessToken);
           setRefreshToken(storedRefreshToken);
           setUser(userData);
@@ -51,7 +48,6 @@ export const AuthProvider = ({ children }) => {
             setProfileData(JSON.parse(storedProfileData));
           }
         } catch (decodeError) {
-          console.error('Error decoding token:', decodeError);
           const storedUser = await AsyncStorage.getItem('userData');
           if (storedUser && storedUser !== 'undefined') {
             setAccessToken(storedAccessToken);
@@ -61,7 +57,6 @@ export const AuthProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      console.error('Error checking stored tokens:', error);
     } finally {
       setTimeout(() => setIsLoading(false), 2000);
     }
@@ -70,7 +65,6 @@ export const AuthProvider = ({ children }) => {
   // Set auth data after successful login
   const setAuthData = async (userData, userAccessToken, userRefreshToken = null) => {
     if (!userAccessToken) {
-      console.error('Invalid accessToken');
       return false;
     }
 
@@ -87,10 +81,8 @@ export const AuthProvider = ({ children }) => {
         await AsyncStorage.setItem('userData', JSON.stringify(userData));
       }
 
-      console.log('Auth data stored successfully');
       return true;
     } catch (error) {
-      console.error('Error storing auth data:', error);
       return false;
     }
   };
@@ -100,10 +92,8 @@ export const AuthProvider = ({ children }) => {
     try {
       setProfileData(data);
       await AsyncStorage.setItem('profileData', JSON.stringify(data));
-      console.log('Profile data stored successfully');
       return true;
     } catch (error) {
-      console.error('Error storing profile data:', error);
       return false;
     }
   };
@@ -121,10 +111,8 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.removeItem('userData');
       await AsyncStorage.removeItem('profileData');
 
-      console.log('Logout successful remove all data from strage ');
       return true;
     } catch (error) {
-      console.error('Error removing auth data:', error);
       return false;
     }
   };
@@ -136,7 +124,6 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
       return true;
     } catch (error) {
-      console.error('Error updating user data:', error);
       return false;
     }
   };
@@ -153,7 +140,6 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         return userData;
       } catch (error) {
-        console.error('Error refreshing user from token:', error);
       }
     }
     return null;

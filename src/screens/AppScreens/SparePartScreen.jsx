@@ -46,7 +46,6 @@ const SparePartScreen = () => {
     };
 
     const device = Platform.OS;
-    console.log('device:', device)
 
     const fetchSpareParts = async (isRefresh = false) => {
         try {
@@ -57,11 +56,9 @@ const SparePartScreen = () => {
             // const response = await getAllSparePart(product_id);
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.spareParts;
-            console.log('API Response:', response);
             const data = response?.data?.data || [];
             setPartsData(data);
         } catch (error) {
-            console.error('Error fetching spare Parts:', error);
             setError('Failed to load spare parts. Please try again.');
             setPartsData([]);
         } finally {
@@ -108,7 +105,6 @@ const SparePartScreen = () => {
                     source={getImageSrc(item.part_image)}
                     className="w-full h-full rounded-2xl bg-zinc-100"
                     resizeMode="cover"
-                    onError={(e) => console.log('Image load error for', item.part_name, e.nativeEvent.error)}
                     defaultSource={require('../../assets/images/imageplaceholder.png')}
                 />
             </View>

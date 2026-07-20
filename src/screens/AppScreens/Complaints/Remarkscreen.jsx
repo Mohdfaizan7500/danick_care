@@ -55,7 +55,6 @@ const CustomCameraModal = ({ visible, onClose, onCapture }) => {
             onCapture(uri);
             onClose();
         } catch (error) {
-            console.error('Failed to take photo:', error);
             toast.custom(<StatusMessage type="error" title="Could not take photo. Please try again." className="mx-4 mb-6" />, { duration: 3000 });
         }
     };
@@ -133,11 +132,6 @@ const Remarkscreen = () => {
         platformFee = 0,
     } = route.params || {};
 
-    console.log('Complaint Data in Remarkscreen:', complaintData);
-    console.log('Should submit on return:', shouldSubmitOnReturn);
-    console.log('Total Payable:', totalPayable);
-    console.log('Discount:', discount);
-    console.log('Billing Type:', billingType);
 
     // State for images
     const [image1Uri, setImage1Uri] = useState(null);
@@ -201,7 +195,6 @@ const Remarkscreen = () => {
                 setImage2Error(false);
             }
         } catch (error) {
-            console.error('Error fetching existing images:', error);
             toast.custom(<StatusMessage type="error" title="Failed to load existing images" className="mx-4 mb-6" />, { duration: 3000 });
         } finally {
             setLoadingImages(false);
@@ -226,7 +219,6 @@ const Remarkscreen = () => {
             if (complaintData?.review && complaintData.review !== '') setSelectedCustomerType(complaintData.review);
             toast.custom(<StatusMessage type="success" title="Refreshed" description="All data has been updated successfully" className="mx-4 mb-6" />, { duration: 2000 });
         } catch (error) {
-            console.error('Error refreshing:', error);
             toast.custom(<StatusMessage type="error" title="Refresh Failed" description={error.message || "Please try again"} className="mx-4 mb-6" />, { duration: 3000 });
         } finally {
             setRefreshing(false);
@@ -265,7 +257,6 @@ const Remarkscreen = () => {
                 return false;
             }
         } catch (error) {
-            console.error(`Error deleting image ${imageNumber}:`, error);
             toast.custom(<StatusMessage type="error" title={error.message || `Failed to delete image ${imageNumber}. Please try again.`} className="mx-4 mb-6" />, { duration: 3000 });
             return false;
         } finally {
@@ -281,7 +272,6 @@ const Remarkscreen = () => {
             const stat = await RNFS.stat(filePath);
             return stat.size;
         } catch (err) {
-            console.error('Could not get file size:', err);
             return 0;
         }
     };
@@ -298,7 +288,6 @@ const Remarkscreen = () => {
 
         try {
             const originalSize = await getFileSize(originalUri);
-            console.log(`📷 Image ${imageNumber} original size:`, (originalSize / 1024).toFixed(2), 'KB');
 
             const resizedImage = await ImageResizer.createResizedImage(
                 originalUri,
@@ -312,21 +301,17 @@ const Remarkscreen = () => {
             );
 
             const resizedUri = resizedImage.uri;
-            console.log('✅ Resized image URI:', resizedUri);
 
             const resizedSize = await getFileSize(resizedUri);
-            console.log(`📦 Image ${imageNumber} resized size:`, (resizedSize / 1024).toFixed(2), 'KB');
 
             if (imageNumber === 1) setImage1Uri(resizedUri);
             else setImage2Uri(resizedUri);
 
             await uploadImageToServer(resizedUri, imageNumber);
         } catch (error) {
-            console.error(`Resize failed for image ${imageNumber}:`, error);
             try {
                 await uploadImageToServer(originalUri, imageNumber);
             } catch (uploadErr) {
-                console.error('Upload of original also failed:', uploadErr);
                 if (imageNumber === 1) setImage1Uri(null);
                 else setImage2Uri(null);
                 toast.custom(<StatusMessage type="error" title="Failed to process image" className="mx-4 mb-6" />, { duration: 3000 });
@@ -353,7 +338,6 @@ const Remarkscreen = () => {
             formData.append('complaint_id', complaintData?.id?.toString() || '');
             formData.append('image_type', imageType);
             formData.append('status', status);
-            console.log('Uploading image with params:', { complaint_id: complaintData?.id, image_type: imageType, status, fileName, imageNumber });
             // const response = await UploadComplaintImage(formData);
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.uploadImage;
@@ -375,7 +359,6 @@ const Remarkscreen = () => {
                 return false;
             }
         } catch (error) {
-            console.error(`Error uploading image ${imageNumber}:`, error);
             if (imageNumber === 1) setImage1Uri(null);
             else setImage2Uri(null);
             toast.custom(<StatusMessage type="error" title={error.message || `Failed to upload image ${imageNumber}. Please try again.`} className="mx-4 mb-6" />, { duration: 3000 });
@@ -435,7 +418,6 @@ const Remarkscreen = () => {
             }
             return true;
         } catch (error) {
-            console.error('Error updating remark:', error);
             toast.custom(<StatusMessage type="error" title={error.message || 'Failed to update remark'} className="mx-4 mb-6" />, { duration: 3000 });
             return false;
         }
@@ -465,7 +447,6 @@ const Remarkscreen = () => {
                     latitude: location?.latitude || '',
                     longitude: location?.longitude || '',
                 };
-                console.log('AMC Billing Payload:', amcPayload);
                 const amcResponse = await AMCBillingAPI(amcPayload);
                 if (amcResponse?.data?.success) {
                     toast.custom(<StatusMessage type="success" title="AMC purchased successfully!" className="mx-4 mb-6" />, { duration: 2000 });
@@ -484,7 +465,6 @@ const Remarkscreen = () => {
                     review: selectedCustomerType,
                     remark: remark,
                 };
-                console.log('Complaint Billing Payload:', billingPayload);
                 // const response = await ComplaintBilling(billingPayload);
                 await new Promise(resolve => setTimeout(resolve, 500));
                 const response = dummyData.complaintBilling;
@@ -499,7 +479,6 @@ const Remarkscreen = () => {
                 }
             }
         } catch (error) {
-            console.error('Error submitting billing:', error);
             toast.custom(<StatusMessage type="error" title={error.message || 'Failed to submit billing'} className="mx-4 mb-6" />, { duration: 3000 });
         } finally {
             setSubmitting(false);
@@ -576,7 +555,6 @@ const Remarkscreen = () => {
                 throw new Error(response?.data?.msg || 'Failed to update remark');
             }
         } catch (error) {
-            console.error('Error updating remark:', error);
             toast.custom(<StatusMessage type="error" title={error.message || 'Failed to update remark. Please try again.'} className="mx-4 mb-6" />, { duration: 3000 });
         } finally {
             setSubmitting(false);

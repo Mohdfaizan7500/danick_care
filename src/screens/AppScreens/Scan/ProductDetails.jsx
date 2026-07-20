@@ -36,7 +36,6 @@ const ProductDetails = () => {
   const [partImageLoading, setPartImageLoading] = useState({});
   const [partImageError, setPartImageError] = useState({});
 
-  console.log('Received product data:', product);
 
   // Fetch complaint details when component mounts and product has complaintId and type is "Yes"
   const fetchComplaintDetails = async (complaintId) => {
@@ -47,7 +46,6 @@ const ProductDetails = () => {
       // const response = await GetComplaintsDetails(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.complaintDetail;
-      console.log('Complaint Details Response:', response);
 
       if (response?.data?.success && response?.data?.result) {
         setComplaintDetails(response.data.result);
@@ -60,7 +58,6 @@ const ProductDetails = () => {
         );
       }
     } catch (error) {
-      console.error('Error fetching complaint details:', error);
       toast.custom(
         <StatusMessage type="error" title="Error loading complaint details" />,
         { duration: 2000 }

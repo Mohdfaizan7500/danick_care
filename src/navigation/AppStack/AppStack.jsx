@@ -64,7 +64,6 @@ const LoadingScreen = ({ navigation }) => {
           navigation.replace('PermissionScreen');
         }
       } catch (error) {
-        console.error('Failed to check setup flag:', error);
         navigation.replace('PermissionScreen');
       }
     };

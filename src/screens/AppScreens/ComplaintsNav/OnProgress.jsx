@@ -58,7 +58,6 @@ const OnProgress = () => {
       }
     } catch (error) {
       if (fetchId !== fetchIdRef.current) return;
-      console.error('Error fetching on-progress complaints:', error);
       if (isRefresh) setComplaints([]);
     } finally {
       if (fetchId !== fetchIdRef.current) return;
@@ -79,7 +78,6 @@ const OnProgress = () => {
       setDialogVisible(true);
       return;
     }
-    console.log('Navigating to complaint detail from OnProgress:', complaint);
     navigation.navigate('ComplaintDetail', { complaint });
   };
 

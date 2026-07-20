@@ -130,7 +130,6 @@ const CustomCameraModal = ({ visible, onClose, onCapture }) => {
             onCapture(uri);
             onClose();
         } catch (error) {
-            console.error('Failed to take photo:', error);
             Alert.alert('Error', 'Could not take photo. Please try again.');
         }
     };
@@ -195,7 +194,6 @@ const ComplaintDetail = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { complaint } = route.params;
-    console.log("complaint:", complaint)
 
     // --- STABILISE COMPLAINT REFERENCE TO PREVENT RE-RENDERS ---
     const initialComplaintRef = useRef(complaint);
@@ -207,7 +205,6 @@ const ComplaintDetail = () => {
 
     // Log the complaint only once on mount
     useEffect(() => {
-        console.log('complaint on complaint details :', initialComplaint);
     }, []);
 
     const { triggerRefresh } = useDashboard();
@@ -271,11 +268,9 @@ const ComplaintDetail = () => {
 
         try {
             let dateTimeStr = initialComplaint.date_time;
-            console.log('Complaint date_time:', dateTimeStr);
 
             if (dateTimeStr.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/)) {
                 dateTimeStr = dateTimeStr + ':00';
-                console.log('Added seconds: ', dateTimeStr);
             }
 
             const [datePart, timePart] = dateTimeStr.split(' ');
@@ -285,16 +280,12 @@ const ComplaintDetail = () => {
             const complaintDate = new Date(year, month - 1, day, hours, minutes, seconds || 0);
 
             if (isNaN(complaintDate.getTime())) {
-                console.error('Invalid date created from:', dateTimeStr);
                 setTimerRemainingSeconds(0);
                 setTimerExpired(false);
                 return;
             }
 
             const targetDate = new Date(complaintDate.getTime() + TIMER_DURATION_MINUTES * 60 * 1000);
-            console.log('Complaint date:', complaintDate.toLocaleString());
-            console.log('Target date:', targetDate.toLocaleString());
-            console.log('Current time:', new Date().toLocaleString());
 
             const updateTimer = () => {
                 const now = new Date();
@@ -323,7 +314,6 @@ const ComplaintDetail = () => {
                 }
             };
         } catch (error) {
-            console.error('Error setting up timer:', error);
             setTimerRemainingSeconds(0);
             setTimerExpired(false);
             return () => {
@@ -379,7 +369,6 @@ const ComplaintDetail = () => {
                 return status;
             }
         } catch (error) {
-            console.log('Permission check error:', error);
             return RESULTS.UNAVAILABLE;
         }
     };
@@ -392,7 +381,6 @@ const ComplaintDetail = () => {
                 return await request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
             }
         } catch (error) {
-            console.log('Permission request error:', error);
             return RESULTS.UNAVAILABLE;
         }
     };
@@ -414,15 +402,12 @@ const ComplaintDetail = () => {
                     setIsGettingLocation(false);
                     setLocationError(null);
                     setIsLocationReady(true);
-                    console.log('✅ Location ready');
                     return true;
                 } catch (error) {
                     setIsGettingLocation(false);
                     setLocationError(error.message);
-                    console.log(`❌ Attempt ${attemptCount} failed:`, error.message);
 
                     if (attemptCount < MAX_LOCATION_ATTEMPTS) {
-                        console.log(`🔄 Retry ${attemptCount + 1}`);
                         await new Promise(resolve => setTimeout(resolve, 2000));
                         return initializeLocation(attemptCount + 1);
                     } else {
@@ -456,7 +441,6 @@ const ComplaintDetail = () => {
             }
             return false;
         } catch (error) {
-            console.error('Location error:', error);
             setLocationError('An unexpected error occurred');
             setIsLocationReady(false);
             return false;
@@ -492,9 +476,7 @@ const ComplaintDetail = () => {
     useEffect(() => {
         if (!isComplete && !isOtpAlreadyVerified && !verified) {
             const initLocation = async () => {
-                console.log('📍 Starting location...');
                 await initializeLocation(1);
-                console.log('📍 Location initialization completed');
             };
             initLocation();
         } else {
@@ -523,7 +505,6 @@ const ComplaintDetail = () => {
             !locationError
         ) {
             setAutoStartAttempted(true);
-            console.log('🚀 Auto-starting job...');
             handleStartJob(complaintData);
         }
     }, [
@@ -641,7 +622,6 @@ const ComplaintDetail = () => {
                     setReasonText('');
                 }
             } catch (error) {
-                console.error('Reverse error:', error);
                 toast.custom(<StatusMessage type="error" title="Failed to reverse complaint. Please try again." className="mx-4 mb-6" />, { duration: 3000 });
                 setSubmittingReverse(false);
             }
@@ -804,7 +784,6 @@ const ComplaintDetail = () => {
             const stat = await RNFS.stat(filePath);
             return stat.size;
         } catch (err) {
-            console.error('Could not get file size:', err);
             return 0;
         }
     };
@@ -814,7 +793,6 @@ const ComplaintDetail = () => {
         setResizing(true);
         try {
             const originalSize = await getFileSize(originalUri);
-            console.log('📷 Original size:', (originalSize / 1024).toFixed(2), 'KB');
 
             const resizedImage = await ImageResizer.createResizedImage(
                 originalUri,
@@ -828,15 +806,12 @@ const ComplaintDetail = () => {
             );
 
             const resizedUri = resizedImage.uri;
-            console.log('✅ Resized image URI:', resizedUri);
 
             const resizedSize = await getFileSize(resizedUri);
-            console.log('📦 Resized size:', (resizedSize / 1024).toFixed(2), 'KB');
 
             setOriginalPhotoUri(originalUri);
             setPhotoUri(resizedUri);
         } catch (error) {
-            console.error('Resize failed:', error);
             setPhotoUri(originalUri);
         } finally {
             setResizing(false);
@@ -887,7 +862,6 @@ const ComplaintDetail = () => {
                 setSendingPhoto(false);
             }
         } catch (error) {
-            console.error('Upload error:', error);
             toast.custom(<StatusMessage type="error" title="Failed to upload photo. Please try again." className="mx-4 mb-6" />, { duration: 3000 });
             setSendingPhoto(false);
         }

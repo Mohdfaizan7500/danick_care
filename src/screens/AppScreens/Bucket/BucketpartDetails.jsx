@@ -24,9 +24,7 @@ const BucketpartDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { item } = route.params;
-  console.log('item:', item)
   const {user} = useAuth();
-  console.log("user on bucket details :",user)
 
   // State for partner selection modal
   const [partnerModalVisible, setPartnerModalVisible] = useState(false);
@@ -100,18 +98,14 @@ const BucketpartDetails = () => {
         city_id:user?.city_id.toString(),
 
       }
-      console.log("payload for fatch all partnesrs :",payload)
       // const response = await getAllTechnician(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.technicianParts;
-      console.log('Technicians response:', response);
 
       // Handle API response
       const data = response?.data?.data || [];
       setTechnicians(data);
     } catch (error) {
-      console.log('fetchAllTechnicians error:', error);
-      console.error('fetchAllTechnicians error:', error);
       toast.error('Failed to load technicians');
       setTechnicians([]);
     } finally {
@@ -161,11 +155,9 @@ const BucketpartDetails = () => {
         part_id: partId
       };
 
-      console.log('Transfer payload:', payload);
       // const response = await partTransferToTechnician(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.partTransfer;
-      console.log('Transfer response:', response);
 
       // Show success toast
       toast.custom(
@@ -182,8 +174,6 @@ const BucketpartDetails = () => {
       }, 500);
 
     } catch (error) {
-      console.log('Failed to transfer:', error);
-      console.error('Failed to transfer:', error);
       toast.error('Transfer failed. Please try again.');
       setTransferLoading(false);
     }

@@ -76,7 +76,6 @@ const AMCDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
 
-  console.log('AMCDetails route params:', route.params);
 
   const { amc, complaintData, amcComplaintId } = route.params || {};
 
@@ -137,7 +136,6 @@ const AMCDetails = () => {
     const complaintId = amcComplaintId || complaintData?.id;
 
     if (!complaintId) {
-      console.log('No complaint ID available for AMCComplaintDetails');
       return;
     }
 
@@ -148,9 +146,7 @@ const AMCDetails = () => {
         technician_id: technicianId,
       };
 
-      console.log('Fetching AMC Complaint Details with payload:', payload);
       const response = await AMCComplaintDetails(payload);
-      console.log('AMCComplaintDetails response:', response);
 
       if (response?.data?.success) {
         const amcComplaintData = response.data.amc_complaint;
@@ -163,7 +159,6 @@ const AMCDetails = () => {
           setBillingId(amcComplaintData.billing_id);
         }
       } else {
-        console.error('Failed to load AMC complaint details:', response?.data);
         toast.custom(
           <StatusMessage
             type='warning'
@@ -174,7 +169,6 @@ const AMCDetails = () => {
         );
       }
     } catch (error) {
-      console.error('Error fetching AMC complaint details:', error);
       toast.custom(
         <StatusMessage
           type='error'
@@ -214,9 +208,7 @@ const AMCDetails = () => {
         billing_id: billingId,
       };
 
-      console.log('Deleting AMC record with payload:', payload);
       const response = await DeletAMCRecordWithParts(payload);
-      console.log('DeletAMCRecordWithParts response:', response);
 
       if (response?.data?.success) {
         toast.custom(
@@ -242,7 +234,6 @@ const AMCDetails = () => {
         );
       }
     } catch (error) {
-      console.error('Error deleting AMC record:', error);
       toast.custom(
         <StatusMessage
           type='error'
@@ -389,10 +380,8 @@ const AMCDetails = () => {
         qr_code: qrCode,
       };
 
-      console.log('Linking QR Code with payload:', payload);
 
       const response = await AMCQRCodeInsertPart(payload);
-      console.log('AMC QR Code Insert Part response:', response);
 
       if (response?.data?.success) {
         // Update UI immediately without reload
@@ -430,7 +419,6 @@ const AMCDetails = () => {
         );
       }
     } catch (error) {
-      console.error('Error linking QR code:', error);
       toast.custom(
         <StatusMessage
           type='error'
@@ -456,11 +444,9 @@ const AMCDetails = () => {
         part_name: partName,
       };
 
-      console.log('Fetching replacement parts with payload:', payload);
       // const response = await FetchPartsForReplaced(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.fetchPartsForReplaced;
-      console.log('FetchPartsForReplaced response:', response);
 
       if (response?.data?.success && response?.data?.data) {
         setAvailableParts(response.data.data);
@@ -486,7 +472,6 @@ const AMCDetails = () => {
         setShowReplaceModal(false);
       }
     } catch (error) {
-      console.error('Error fetching replacement parts:', error);
       toast.custom(
         <StatusMessage
           type='error'
@@ -532,9 +517,7 @@ const AMCDetails = () => {
         qr_code: selectedReplacementPart.qr_code,
       };
 
-      console.log('Updating part with replacement API payload:', payload);
       const response = await AMCPartQRCodeUpdatePart(payload);
-      console.log('AMCPartQRCodeUpdatePart response:', response);
 
       if (response?.data?.success) {
         // Update UI immediately without reload
@@ -601,7 +584,6 @@ const AMCDetails = () => {
         );
       }
     } catch (error) {
-      console.error('Error replacing part:', error);
       toast.custom(
         <StatusMessage
           type='error'
@@ -638,28 +620,22 @@ const AMCDetails = () => {
           qr_code: qrCode,
         };
 
-        console.log('Removing technician QR Code with RemoveAMCPart payload:', payload);
         response = await RemoveAMCPart(payload);
-        console.log('RemoveAMCPart response:', response);
       } else {
         const payload = {
           technician_id: technicianId,
           qr_code: qrCode,
         };
 
-        console.log('Removing QR Code with AMCQRCodeRemove payload:', payload);
         response = await AMCQRCodeRemove(payload);
-        console.log('AMC QR Code Remove response:', response);
       }
 
       if (response?.data?.success) {
-        console.log('QR Code removed successfully, updating UI...');
 
         // CRITICAL FIX: Update all states properly
         // 1. Remove from linkedItems
         setLinkedItems(prev => {
           const newLinkedItems = prev.filter(id => id !== partId);
-          console.log('Updated linkedItems:', newLinkedItems);
           return newLinkedItems;
         });
 
@@ -667,7 +643,6 @@ const AMCDetails = () => {
         setReplacedParts(prev => {
           const newReplacedParts = { ...prev };
           delete newReplacedParts[partId];
-          console.log('Updated replacedParts:', newReplacedParts);
           return newReplacedParts;
         });
 
@@ -675,7 +650,6 @@ const AMCDetails = () => {
         setQrCodeNumbers(prev => {
           const newQrCodeNumbers = { ...prev };
           delete newQrCodeNumbers[partId];
-          console.log('Updated qrCodeNumbers:', newQrCodeNumbers);
           return newQrCodeNumbers;
         });
 
@@ -685,7 +659,6 @@ const AMCDetails = () => {
             if (index === partIndex) {
               // Create a new part object without qr_code and replaced_with
               const { qr_code, replaced_with, ...rest } = part;
-              console.log('Removed qr_code from part:', rest);
               return rest;
             }
             return part;
@@ -715,7 +688,6 @@ const AMCDetails = () => {
         );
       }
     } catch (error) {
-      console.error('Error removing QR code:', error);
       toast.custom(
         <StatusMessage
           type='error'
@@ -744,9 +716,7 @@ const AMCDetails = () => {
         qr_code: replacedInfo.replacement_qr_code,
       };
 
-      console.log('Removing replacement part with payload:', payload);
       const response = await RemoveAMCPart(payload);
-      console.log('RemoveAMCPart response:', response);
 
       if (response?.data?.success) {
         // Update UI immediately without reload
@@ -795,7 +765,6 @@ const AMCDetails = () => {
         );
       }
     } catch (error) {
-      console.error('Error removing replacement:', error);
       toast.custom(
         <StatusMessage
           type='error'
@@ -1020,7 +989,6 @@ const AMCDetails = () => {
                 const replacedInfo = replacedParts[partId];
                 const isRemovingReplace = removeReplaceLoadingStates[partId];
 
-                console.log(`Part ${index}:`, { partId, isLinked, currentQrCode, qrType });
 
                 return (
                   <View key={partId} className="bg-white rounded-xl p-3 mb-3 shadow-sm">

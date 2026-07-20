@@ -15,7 +15,6 @@ const AMCList = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { complaintData } = route.params || {};
-    console.log('Received complaint data in AMCList:', complaintData);
 
     const [loading, setLoading] = useState(false)
     const [amcData, setAmcData] = useState([])
@@ -45,7 +44,6 @@ const AMCList = () => {
             // const response = await AMCConvertList(payload)
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.amcList;
-            console.log('AMC List response:', response)
 
             if (response?.data?.success) {
                 const data = response.data.data || []
@@ -53,10 +51,8 @@ const AMCList = () => {
                 const uniqueData = removeDuplicates(data)
                 setAmcData(uniqueData)
             } else {
-                console.error('Failed to load AMC list:', response?.data)
             }
         } catch (error) {
-            console.error('Error loading AMC list:', error)
         } finally {
             setLoading(false)
         }
@@ -68,7 +64,6 @@ const AMCList = () => {
         return data.filter(item => {
             const id = item.id?.toString()
             if (seen.has(id)) {
-                console.warn(`Duplicate item found with id: ${id}`)
                 return false
             }
             seen.add(id)
@@ -102,12 +97,10 @@ const AMCList = () => {
                 technician_id: user?.id?.toString()
             }
 
-            console.log('ProceedAMC payload:', payload)
 
             // const response = await ProceedAMC(payload)
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.proceedAMC;
-            console.log('ProceedAMC response:', response)
 
             // Check if response is successful
             // After successful ProceedAMC response
@@ -125,7 +118,6 @@ const AMCList = () => {
                 // Extract the amc_complaint_id from response
                 const amcComplaintId = response?.data?.amc_complaint_id || response?.amc_complaint_id
 
-                console.log('AMC Complaint ID from response:', amcComplaintId)
 
                 // Navigate to next screen with response data
                 navigation.replace('ComplaintAMCDetails', {
@@ -144,7 +136,6 @@ const AMCList = () => {
                 )
             }
         } catch (error) {
-            console.error('Error proceeding with AMC:', error)
             toast.custom(
                 <StatusMessage
                     type='error'

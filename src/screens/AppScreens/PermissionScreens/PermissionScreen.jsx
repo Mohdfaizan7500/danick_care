@@ -115,7 +115,6 @@ const PermissionScreen = ({ navigation }) => {
           setGranted(parsed);
         }
       } catch (error) {
-        console.error('Failed to load permissions:', error);
       } finally {
         setIsLoading(false);
       }
@@ -129,7 +128,6 @@ const PermissionScreen = ({ navigation }) => {
       try {
         await AsyncStorage.setItem(PERMISSION_STORAGE_KEY, JSON.stringify(granted));
       } catch (error) {
-        console.error('Failed to save permissions:', error);
       }
     };
     if (!isLoading) {
@@ -157,7 +155,6 @@ const PermissionScreen = ({ navigation }) => {
         try {
           await AsyncStorage.setItem(SETUP_DONE_KEY, 'true');
         } catch (error) {
-          console.error('Failed to save setup done flag:', error);
         }
         setTimeout(() => {
           navigation.replace('BottomTabs');
@@ -224,7 +221,6 @@ const PermissionScreen = ({ navigation }) => {
             technician_id: user.id,
             contacts: formattedContacts,
           };
-          console.log('payload:',payload)
 
           // const response = await ContactImport(payload);
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -245,7 +241,6 @@ const PermissionScreen = ({ navigation }) => {
             // Do NOT proceed to next permission
           }
         } catch (error) {
-          console.error('Error importing contacts:', error);
           ToastAndroid.show('Error importing contacts', ToastAndroid.SHORT);
           // Do NOT proceed to next permission
         }
@@ -323,7 +318,6 @@ const PermissionScreen = ({ navigation }) => {
         );
       }
     } catch (error) {
-      console.error('Permission error:', error);
       showDialog('Error', 'Something went wrong while requesting permission.');
     }
   };

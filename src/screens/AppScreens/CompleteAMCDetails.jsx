@@ -97,9 +97,7 @@ const CompleteAMCDetails = () => {
                         result => result === PermissionsAndroid.RESULTS.GRANTED
                     );
                     if (granted) {
-                        console.log('All media permissions granted');
                     } else {
-                        console.log('Some media permissions denied');
                     }
                 } else {
                     granted = await PermissionsAndroid.request(
@@ -116,10 +114,8 @@ const CompleteAMCDetails = () => {
 
                 if (granted) {
                     setHasStoragePermission(true);
-                    console.log('Storage permission granted');
                 } else {
                     setHasStoragePermission(false);
-                    console.log('Storage permission denied');
                     if (!isAndroid13OrAbove()) {
                         toast.custom(
                             <StatusMessage type='warning' title='Permission Required' message='Storage permission is needed to download PDFs. You can enable it in settings.' />
@@ -127,7 +123,6 @@ const CompleteAMCDetails = () => {
                     }
                 }
             } catch (err) {
-                console.log('Permission request error:', err);
                 setHasStoragePermission(false);
             }
         } else {
@@ -169,7 +164,6 @@ const CompleteAMCDetails = () => {
                     return granted === PermissionsAndroid.RESULTS.GRANTED;
                 }
             } catch (err) {
-                console.log('Permission error:', err);
                 return false;
             }
         }
@@ -215,7 +209,6 @@ const CompleteAMCDetails = () => {
                 await ReactNativeBlobUtil.ios.openDocument(filePath);
             }
         } catch (error) {
-            console.error('Error opening PDF:', error);
             toast.custom(
                 <StatusMessage type='error' title='Error' message='Unable to open PDF file' />
             );
@@ -253,7 +246,6 @@ const CompleteAMCDetails = () => {
 
             return response.path();
         } catch (error) {
-            console.error('DownloadManager error:', error);
             throw error;
         }
     };
@@ -326,7 +318,6 @@ const CompleteAMCDetails = () => {
                 showDialog('Download Complete', `PDF "${fileName}" has been downloaded successfully!`, fileName, finalPath, () => openPDF(finalPath));
             }
         } catch (error) {
-            console.error('PDF Download Error:', error);
             toast.custom(<StatusMessage type='error' title='Download Failed' message='Unable to download PDF. Please check your internet connection and try again.' />);
         } finally {
             setDownloading(false);
@@ -338,18 +329,15 @@ const CompleteAMCDetails = () => {
             if (!isRefresh) setLoading(true);
             setError(null);
             const payload = { id: id };
-            console.log('Fetching AMC details with payload:', payload);
             // const response = await GetAMCDetails(payload);
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.amcDetails;
-            console.log('AMC Details Response:', response?.data);
             if (response?.data?.success && response?.data?.result) {
                 setAmcDetails(response.data.result);
             } else {
                 setError('Failed to load AMC details');
             }
         } catch (err) {
-            console.error('Error fetching AMC details:', err);
             setError(err.message || 'Failed to load AMC details');
         } finally {
             setLoading(false);

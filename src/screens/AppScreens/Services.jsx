@@ -30,12 +30,10 @@ const Services = () => {
                 city_id: user?.city_id?.toString() || "1"
             };
 
-            console.log('Fetching services with payload:', payload);
 
             // const response = await TechnicianServices(payload);
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.services;
-            console.log('Full API response:', response);
 
             // Handle different response structures
             let servicesData = [];
@@ -54,11 +52,9 @@ const Services = () => {
             } else if (response?.data && response.data.success && Array.isArray(response.data.data)) {
                 servicesData = response.data.data;
             } else {
-                console.log('Unexpected response structure:', response);
                 servicesData = [];
             }
 
-            console.log('Extracted services data:', servicesData);
 
             // Transform API data to component format
             const transformedServices = servicesData.map(service => ({
@@ -70,10 +66,8 @@ const Services = () => {
             }));
 
             setServices(transformedServices);
-            console.log(`Loaded ${transformedServices.length} services`);
 
         } catch (error) {
-            console.error('Error fetching services:', error);
             setError(error?.message || 'Failed to load services');
             Alert.alert('Error', error?.message || 'Failed to load services');
         } finally {

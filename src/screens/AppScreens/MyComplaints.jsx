@@ -70,12 +70,10 @@ const MyComplaints = () => {
   const fetchDashboardCounts = useCallback(async () => {
     // Prevent duplicate calls
     if (isFetchingDashboard.current) {
-      console.log('Dashboard counts already fetching, skipping...')
       return
     }
 
     if (!technicianId) {
-      console.error('No technician ID found')
       return
     }
 
@@ -85,11 +83,9 @@ const MyComplaints = () => {
         technician_id: technicianId.toString()
       }
 
-      console.log('Fetching Dashboard Counts API...')
       // const response = await getDeshBoardCount(payload)
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.dashboardCount;
-      console.log('Dashboard Counts Response:', response?.data)
 
       if (response?.data?.success) {
         setDashboardCounts({
@@ -108,7 +104,6 @@ const MyComplaints = () => {
         })
       }
     } catch (error) {
-      console.error('Error fetching dashboard counts:', error)
     } finally {
       isFetchingDashboard.current = false
     }
@@ -118,12 +113,10 @@ const MyComplaints = () => {
   const fetchComplaints = useCallback(async (page = 1, isRefresh = false, showToast = false) => {
     // Prevent duplicate simultaneous fetches
     if (isFetchingComplaints.current) {
-      console.log('Already fetching complaints, skipping...')
       return
     }
 
     if (!technicianId) {
-      console.error('No technician ID found')
       toast.custom(
         <StatusMessage type='error' title='Error' message='Technician ID not found' />
       )
@@ -141,12 +134,10 @@ const MyComplaints = () => {
         setLoadingMore(true)
       }
 
-      console.log(`Fetching Complaints API - Page: ${page}, Refresh: ${isRefresh}`)
       // Always fetch with status 'success'
       // const response = await getComplaints(technicianId, 'success', page)
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.complaintsList;
-      console.log('Complaints API Response:', response?.data)
 
       if (response?.data?.success && response?.data?.result) {
         const newComplaints = response.data.result
@@ -200,7 +191,6 @@ const MyComplaints = () => {
         }
       }
     } catch (error) {
-      console.error('Error fetching complaints:', error)
 
       // Show error toast on refresh if explicitly requested
       if (showToast && !toastShownRef.current) {
@@ -232,12 +222,10 @@ const MyComplaints = () => {
   useEffect(() => {
     // Check if already initialized
     if (isInitialized.current) {
-      console.log('Already initialized, skipping initial load...')
       return
     }
 
     if (technicianId) {
-      console.log('Initial load started...')
       isInitialized.current = true
 
       const initializeData = async () => {
@@ -245,20 +233,17 @@ const MyComplaints = () => {
           fetchDashboardCounts(),
           fetchComplaints(1, false, false)
         ])
-        console.log('Initial load completed')
       }
       initializeData()
     }
 
     // Cleanup function
     return () => {
-      console.log('Component unmounting...')
     }
   }, [technicianId]) // Only run when technicianId changes
 
   // Handle refresh - reset refs to allow new fetch
   const onRefresh = useCallback(async () => {
-    console.log('Manual refresh triggered...')
 
     // Reset fetching flags to allow new requests
     isFetchingDashboard.current = false
@@ -270,9 +255,7 @@ const MyComplaints = () => {
         fetchDashboardCounts(),
         fetchComplaints(1, true, true)
       ])
-      console.log('Manual refresh completed')
     } catch (error) {
-      console.error('Refresh error:', error)
       if (!toastShownRef.current) {
         toastShownRef.current = true
         toast.custom(
@@ -292,7 +275,6 @@ const MyComplaints = () => {
   // Handle load more
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore && !loading && !refreshing && !isFetchingComplaints.current) {
-      console.log(`Loading more - Page: ${currentPage + 1}`)
       fetchComplaints(currentPage + 1, false, false)
     }
   }, [loadingMore, hasMore, loading, refreshing, currentPage, fetchComplaints])

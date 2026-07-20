@@ -99,7 +99,6 @@ const AllNotification = ({ route }) => {
 
   // Navigate based on notification status
   const handleNavigation = (notificationStatus) => {
-    console.log('Notification status:', notificationStatus);
     
     // Reset all routes and navigate to the target screen
     if (notificationStatus === 'pending') {
@@ -150,11 +149,9 @@ const AllNotification = ({ route }) => {
         read_status: "Read" // Empty string for all notifications
       };
       
-      console.log('Fetching all notifications with payload:', payload);
       // const response = await FetchNotification(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.notifications;
-      console.log('FetchNotification response:', response);
 
       if (response?.data?.success && response?.data?.data && isMounted.current) {
         const transformedData = response.data.data.map(item => ({
@@ -193,7 +190,6 @@ const AllNotification = ({ route }) => {
         setNotifications([]);
       }
     } catch (err) {
-      console.error('Error fetching notifications:', err);
       const errorMessage = err.message || 'Network error. Please check your connection.';
       setError(errorMessage);
       setNotifications([]);
@@ -212,8 +208,6 @@ const AllNotification = ({ route }) => {
   };
 
   const handleNotificationPress = (item) => {
-    console.log('Notification pressed:', item.id);
-    console.log('Notification status:', item.notificationStatus);
     
     // Navigate based on notification status
     handleNavigation(item.notificationStatus);

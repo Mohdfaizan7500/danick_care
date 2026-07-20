@@ -27,7 +27,6 @@ const Password = () => {
   const navigation = useNavigation();
   const { user, imagUrl } = useAuth();
   const tech_id = user?.id;
-  console.log('id:', tech_id);
 
   const [userData, setUserData] = useState({});
   const [loading, setLoading] = useState(true);
@@ -59,8 +58,6 @@ const Password = () => {
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.profileData;
       const data = response?.data?.data[0];
-      console.log('response:', data);
-      console.log("image url :", imagUrl + data?.profile_photo);
       setUserData({
         name: data?.technician_name,
         phone: data?.technician_mobile,
@@ -68,8 +65,6 @@ const Password = () => {
         profileImage: imagUrl + data?.profile_photo,
       });
     } catch (error) {
-      console.log('fetch profile error:', error);
-      console.error('fetch profile error:', error);
       showDialog('error', 'Error', 'Failed to load profile data');
     } finally {
       setLoading(false);
@@ -163,12 +158,10 @@ const handleSave = async () => {
       new_password: newPassword,
     };
 
-    console.log('Changing password with payload:', payload);
 
     // const response = await changePassword(payload);
     await new Promise(resolve => setTimeout(resolve, 500));
     const response = dummyData.changePassword;
-    console.log('Password change response:', response);
 
     // Check the success flag from the response data
     if (response.data && response.data.success === true) {
@@ -181,7 +174,6 @@ const handleSave = async () => {
       showDialog('error', 'Error', errorMessage);
     }
   } catch (error) {
-    console.log('Password change error:', error);
     const errorMessage = error.response?.data?.msg ||
                         error.response?.data?.message ||
                         error.response?.data?.error ||

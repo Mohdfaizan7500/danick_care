@@ -20,7 +20,6 @@ const AllBucket = ({ route }) => {
   const { refreshCounts: refreshGlobalCounts } = useBucket();
   const navigation = useNavigation();
   const name = route.name;
-  console.log("name:", name);
 
   // Internet connection state
   const [isConnected, setIsConnected] = useState(true);
@@ -106,7 +105,6 @@ const AllBucket = ({ route }) => {
 
   const fetchTechnicianParts = useCallback(async (isRefresh = false) => {
     if (isFetchingRef.current && !isRefresh) {
-      console.log('Fetch already in progress, skipping...');
       return;
     }
     if (!isConnected) {
@@ -124,7 +122,6 @@ const AllBucket = ({ route }) => {
         technician_id: user?.id?.toString() || "1",
         transfer_by: getStatus(name),
       };
-      console.log('Fetch parts payload:', payload);
       // const response = await technicianAssignPart(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.bucketParts;
@@ -137,7 +134,6 @@ const AllBucket = ({ route }) => {
         setError('Failed to fetch data');
       }
     } catch (err) {
-      console.error('Error fetching parts:', err);
       setError(err.message || 'An error occurred');
     } finally {
       setLoading(false);
@@ -237,7 +233,6 @@ const AllBucket = ({ route }) => {
         case 'cancelTransfer':
         case 'cancelReceived':
           const cancelPayload = { part_id: confirmItem.id.toString() };
-          console.log(`${confirmAction} payload:`, cancelPayload);
           // response = await partTransferCancel(cancelPayload);
           await new Promise(resolve => setTimeout(resolve, 500));
           response = dummyData.partTransfer;
@@ -264,7 +259,6 @@ const AllBucket = ({ route }) => {
         showDialog('success', 'Success', successMessage);
       }
     } catch (error) {
-      console.log(`${confirmAction} error:`, error);
       const errMsg = getErrorMessage(error);
       showDialog('error', 'Error', errMsg);
       setShouldAutoRefresh(true);

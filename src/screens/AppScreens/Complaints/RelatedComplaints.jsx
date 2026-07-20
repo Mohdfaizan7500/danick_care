@@ -47,7 +47,6 @@ const RelatedComplaints = () => {
             // const response = await CSNComplaints({ csn: currentComplaintCsn });
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.complaintsList;
-            console.log('CSNComplaints response:', response);
 
             if (response?.data?.success) {
                 setRelatedComplaints(response.data.result || []);
@@ -73,7 +72,6 @@ const RelatedComplaints = () => {
                 );
             }
         } catch (error) {
-            console.error('Error fetching related complaints:', error);
             setError(error.message || 'Failed to fetch related complaints');
             toast.custom(
                 <StatusMessage

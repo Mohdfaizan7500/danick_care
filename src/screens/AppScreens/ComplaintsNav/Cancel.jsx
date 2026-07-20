@@ -32,7 +32,6 @@ const Cancel = () => {
       if (fetchId !== fetchIdRef.current) return;
       const response = dummyData.complaintsList;
 
-      console.log('API Response for Cancelled complaints:', response);
 
       if (response?.data?.success && response?.data?.result) {
         const newComplaints = response.data.result;
@@ -59,7 +58,6 @@ const Cancel = () => {
       }
     } catch (error) {
       if (fetchId !== fetchIdRef.current) return;
-      console.error('Error fetching cancelled complaints:', error);
       if (isRefresh) setComplaints([]);
     } finally {
       if (fetchId !== fetchIdRef.current) return;
@@ -76,10 +74,8 @@ const Cancel = () => {
 
   useFocusEffect(
     useCallback(() => {
-      console.log('Cancel screen focused - refreshing data');
       fetchComplaints(1, true);
       return () => {
-        console.log('Cancel screen unfocused');
       };
     }, [])
   );

@@ -144,7 +144,6 @@ const Complaints = () => {
       // const response = await getComplaints(technicianId, apiStatus, page);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.complaintsList;
-      console.log('API Response for', tab, 'page', page, ':', response);
 
       // Handle response structure based on your API
       let result = [];
@@ -169,7 +168,6 @@ const Complaints = () => {
           const hasMorePages = currentPageNum < calculatedTotalPages;
           setHasMore(hasMorePages);
 
-          console.log(`Page ${currentPageNum} of ${calculatedTotalPages}, Has more: ${hasMorePages}, Items loaded: ${result.length}`);
         } else {
           // If no total count from dashboard, determine based on result length
           if (result.length === itemsPerPage) {
@@ -211,7 +209,6 @@ const Complaints = () => {
       }
 
     } catch (error) {
-      console.error('Error fetching complaints:', error);
       if (!isLoadMore && !isRefresh) {
         setComplaintsData([]);
       }
@@ -229,7 +226,6 @@ const Complaints = () => {
 
   // Refresh all data (dashboard counts and complaints)
   const refreshAllData = async () => {
-    console.log('Refreshing all data...');
     setRefreshing(true);
     
     try {
@@ -242,9 +238,7 @@ const Complaints = () => {
       // Then refresh complaints for current tab
       await fetchComplaints(selectedTab, 1, false, true);
       
-      console.log('All data refreshed successfully');
     } catch (error) {
-      console.error('Error refreshing data:', error);
     } finally {
       setRefreshing(false);
     }
@@ -254,13 +248,11 @@ const Complaints = () => {
   const loadMoreComplaints = () => {
     // Prevent multiple calls while loading
     if (loadingMore || loading || refreshing) {
-      console.log('Skipping load more - already loading');
       return;
     }
 
     // Check if there are more pages to load
     if (!hasMore) {
-      console.log('No more pages to load');
       return;
     }
 
@@ -269,25 +261,21 @@ const Complaints = () => {
 
     // Check if next page exceeds total pages
     if (nextPage > totalPages) {
-      console.log(`Next page ${nextPage} exceeds total pages ${totalPages}`);
       setHasMore(false);
       return;
     }
 
-    console.log(`Loading more complaints: Page ${nextPage} of ${totalPages}`);
     fetchComplaints(selectedTab, nextPage, true, false);
   };
 
   // Refresh data (pull to refresh)
   const onRefresh = () => {
-    console.log('Pull to refresh triggered');
     refreshAllData();
   };
 
   // Fetch dashboard counts from API
   const fetchTabCount = async () => {
     if (!user?.id) {
-      console.log('No user ID available');
       return;
     }
 
@@ -315,7 +303,6 @@ const Complaints = () => {
         });
       }
     } catch (error) {
-      console.log('Fetch dashboard error:', error);
     }
   };
 
@@ -366,12 +353,10 @@ const Complaints = () => {
   // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      console.log('Screen focused - refreshing data');
       refreshAllData();
       
       return () => {
         // Cleanup if needed
-        console.log('Screen unfocused');
       };
     }, [selectedTab]) // Re-run when selectedTab changes
   );
@@ -427,7 +412,6 @@ const Complaints = () => {
   };
 
   const handleComplaintPress = (complaint) => {
-    console.log('Selected complaint:', complaint);
     if (complaint?.status === 'success') {
       navigation.navigate('QRCodeDetails', { complaint, status: "complaint" });
     }

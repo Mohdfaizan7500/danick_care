@@ -64,7 +64,6 @@ const AMC = () => {
       }
     }
     catch (error) {
-      console.log("fetch AMC error:", error);
       if (isRefresh) {
         toast.custom(
           <StatusMessage type='error' title='Failed to refresh AMC services' />,

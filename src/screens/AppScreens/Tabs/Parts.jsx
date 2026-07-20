@@ -63,8 +63,6 @@ const Parts = () => {
   const isFromBilling = route.params?.fromBilling || false;
   const previousScreen = route.params?.previousScreen || '';
 
-  console.log('Parts screen - isFromBilling:', isFromBilling);
-  console.log('Parts screen - previousScreen:', previousScreen);
 
   // Fetch categories from API
   const fetchCategories = useCallback(async () => {
@@ -74,7 +72,6 @@ const Parts = () => {
       // const response = await getAllSparePartcategories(cityId);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.sparePartCategories;
-      console.log('Fetched spare part categories:', response);
 
       const fetchedData = response?.data?.data;
       if (Array.isArray(fetchedData) && fetchedData.length > 0) {
@@ -84,7 +81,6 @@ const Parts = () => {
           imageUrl: item.image?.startsWith('http') ? item.image : `${imagUrl}${item.image}`,
         }));
         setCategories(mappedCategories);
-        console.log('Mapped categories:', mappedCategories);
         setError(null);
       } else {
         toast.custom(
@@ -94,7 +90,6 @@ const Parts = () => {
         setCategories([]);
       }
     } catch (err) {
-      console.error('Error fetching categories:', err);
       setError(err.message);
       toast.custom(
         <StatusMessage type='error' title='Failed to load categories. Please try again.' />,
@@ -168,7 +163,6 @@ const Parts = () => {
                 source={{ uri: item?.imageUrl }}
                 className="w-full h-full rounded-lg"
                 resizeMode="cover"
-                onError={(e) => console.log('Image load error for', item.name, e.nativeEvent.error)}
                 defaultSource={require('../../../assets/images/imageplaceholder.png')}
               />
             ) : (
@@ -176,7 +170,6 @@ const Parts = () => {
                 source={require('../../../assets/images/imageplaceholder.png')}
                 className="w-full h-full rounded-lg bg-zinc-100"
                 resizeMode="cover"
-                onError={(e) => console.log('Image load error for', item.name, e.nativeEvent.error)}
                 defaultSource={require('../../../assets/images/imageplaceholder.png')}
               />
             )

@@ -28,7 +28,6 @@ const Support = () => {
       // const response = await TermsSupport() // Call the imported API function directly
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.termsData;
-      console.log('TermsSupport api response:', response)
 
       if (response.data?.success && response.data?.data?.length > 0) {
         const supportInfo = response.data.data[0]
@@ -50,7 +49,6 @@ const Support = () => {
         })
       }
     } catch (error) {
-      console.error('Error fetching support data:', error)
       // Set default values if API fails
       setSupportData({
         mobile: '+917055880880',

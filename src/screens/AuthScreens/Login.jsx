@@ -65,12 +65,9 @@ const Login = ({ navigation }) => {
     useEffect(() => {
         const getToken = async () => {
             try {
-                console.log('🔄 Getting FCM token on Login screen...');
                 const token = await getFCMToken();;
                 setFcmToken(token);
-                console.log("✅ FCM token on Login screen:", token);
             } catch (error) {
-                console.error('❌ Failed to get FCM token:', error);
                 setFcmToken(null);
             }
         };
@@ -127,7 +124,6 @@ const Login = ({ navigation }) => {
             });
 
         } catch (error) {
-            console.error('❌ Login error:', error);
             showDialog('error', 'Login Failed', error.message || 'Login failed. Please try again.');
         } finally {
             setIsLoading(false);

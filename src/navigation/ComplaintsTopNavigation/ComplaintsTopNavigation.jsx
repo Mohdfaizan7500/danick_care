@@ -169,40 +169,28 @@ const CustomTabBar = ({ state, descriptors, navigation, position, counts }) => {
 
 const ComplaintsTopNavigation = () => {
   const route = useRoute();
-  console.log('========== COMPLAINTS TOP NAVIGATION ==========');
-  console.log('Full route params:', route?.params);
 
   // Get tab parameter from deep linking
   const tabParam = route?.params?.tab;
   const statusParam = route?.params?.status;
 
-  console.log('Tab param:', tabParam);
-  console.log('Status param:', statusParam);
 
   // Determine initial tab
   let initialTabName = 'AllComplaints';
 
   if (tabParam === 'assign' || statusParam === 'Assign') {
     initialTabName = 'Assigned';
-    console.log('✅ Navigating to ASSIGNED tab');
   } else if (tabParam === 'all' || statusParam === 'All') {
     initialTabName = 'AllComplaints';
-    console.log('✅ Navigating to ALL tab');
   } else if (tabParam === 'onworking' || statusParam === 'Onworking') {
     initialTabName = 'OnProgress';
-    console.log('✅ Navigating to ON PROGRESS tab');
   } else if (tabParam === 'complete' || statusParam === 'Complete') {
     initialTabName = 'Complete';
-    console.log('✅ Navigating to COMPLETE tab');
   } else if (tabParam === 'cancel' || statusParam === 'Cancel') {
     initialTabName = 'Cancel';
-    console.log('✅ Navigating to CANCELLED tab');
   } else {
-    console.log('⚠️ No valid tab parameter, defaulting to ALL tab');
   }
 
-  console.log('Initial tab name:', initialTabName);
-  console.log('================================================');
 
   const [dashboardCounts, setDashboardCounts] = useState({
     all: 0,
@@ -227,12 +215,10 @@ const ComplaintsTopNavigation = () => {
         city_id: user?.city_id?.toString(),
       };
 
-      console.log('Fetching dashboard counts with payload:', payload);
 
       // Using dummy data
       await new Promise(resolve => setTimeout(resolve, 300));
       const response = dummyData.dashboardCount;
-      console.log('Dashboard counts response:', response);
 
       if (response?.data?.success) {
         const data = response.data;
@@ -247,10 +233,8 @@ const ComplaintsTopNavigation = () => {
           prebooking: data.prebooking || 0,
           payout: data.payout || 0,
         });
-        console.log('Dashboard counts updated - Assign count:', data.assign);
       }
     } catch (error) {
-      console.error('Error fetching dashboard counts:', error);
     } finally {
       setLoading(false);
     }

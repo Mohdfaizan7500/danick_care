@@ -16,7 +16,6 @@ const showToast = (message) => {
 
 const Complaintscard = ({ item, onPress }) => {
     const [modalVisible, setModalVisible] = useState(false);
-    console.log("item:", item)
 
     if (!item) return null;
 
@@ -109,7 +108,6 @@ const Complaintscard = ({ item, onPress }) => {
         if (onPress) {
             onPress(complaint);
         } else {
-            console.log('Complaint pressed:', complaint);
         }
     };
 
@@ -251,7 +249,6 @@ const Complaintscard = ({ item, onPress }) => {
                                         source={{ uri: item.image }}
                                         style={{ width: '100%', height: '100%' }}
                                         resizeMode='cover'
-                                        onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
                                     />
                                 </View>
                             ) : (

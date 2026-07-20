@@ -41,7 +41,6 @@ const buildDates = (currentSlotDate = null) => {
                 currentDateObj = new Date(year, month, day)
             }
         } catch (e) {
-            console.log('Error parsing current slot date:', e)
         }
     }
 
@@ -220,7 +219,6 @@ const Reschedule = () => {
 
         }
 
-        console.log('Reschedule Payload:', payload)
 
         setIsLoading(true)
         try {
@@ -253,7 +251,6 @@ const Reschedule = () => {
                 })
             }
         } catch (error) {
-            console.error('Reschedule error:', error)
             Toast.show({
                 type: 'error',
                 text1: 'Error',

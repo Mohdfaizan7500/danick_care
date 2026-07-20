@@ -62,7 +62,6 @@ const AMCBilling = () => {
         return await check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
       }
     } catch (error) {
-      console.log('Permission check error:', error);
       return RESULTS.UNAVAILABLE;
     }
   };
@@ -75,7 +74,6 @@ const AMCBilling = () => {
         return await request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
       }
     } catch (error) {
-      console.log('Permission request error:', error);
       return RESULTS.UNAVAILABLE;
     }
   };
@@ -154,7 +152,6 @@ const AMCBilling = () => {
       }
       throw new Error('Unable to check location permission');
     } catch (error) {
-      console.log('Location initialization error:', error);
       throw error;
     }
   };
@@ -165,9 +162,7 @@ const AMCBilling = () => {
       setIsFetchingLocation(true);
       try {
         const location = await initializeLocation();
-        if (location) console.log('Location obtained:', location);
       } catch (err) {
-        console.error('Location fetch failed:', err.message);
         toast.custom(
           <StatusMessage type="error" title={err.message || 'Failed to get location'} />,
           { duration: 3000 }

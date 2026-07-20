@@ -33,7 +33,6 @@ export const BucketProvider = ({ children }) => {
     
     // Prevent multiple simultaneous calls
     if (isFetchingRef.current) {
-      console.log('Bucket counts fetch already in progress, skipping...');
       return;
     }
 
@@ -48,11 +47,9 @@ export const BucketProvider = ({ children }) => {
         technician_id: user?.id?.toString()
       };
       
-      console.log('Fetching bucket counts with payload:', payload);
       // Using dummy data
       await new Promise(resolve => setTimeout(resolve, 300));
       const response = dummyData.bucketPartCount;
-      console.log('Bucket counts response:', response);
 
       if (response) {
         setBucketCounts({
@@ -69,7 +66,6 @@ export const BucketProvider = ({ children }) => {
         }
       }
     } catch (err) {
-      console.error('Error fetching bucket counts:', err);
       if (!silent) {
         setError(err.message || 'Network error. Please check your connection.');
       }

@@ -26,7 +26,6 @@ const MyAmc = () => {
     const [modalVisible, setModalVisible] = useState(false);
     const [expandedCard, setExpandedCard] = useState(null);
 
-    console.log("user:", user);
 
     const handleCardPress = (item) => {
         navigation.navigate('CompleteAMCDetails', { amcData: item });
@@ -53,13 +52,11 @@ const MyAmc = () => {
                 page: page.toString()
             };
 
-            console.log('Fetching AMC data with payload:', payload, 'params:', params);
 
             // const response = await TechnicianAMC(payload, params);
             await new Promise(resolve => setTimeout(resolve, 500));
             const response = dummyData.technicianAMC;
 
-            console.log('API Response:', response?.data);
 
             if (response?.data?.success && response?.data?.result) {
                 const newData = response.data.result;
@@ -81,7 +78,6 @@ const MyAmc = () => {
                 setHasMore(false);
             }
         } catch (err) {
-            console.error('Error fetching AMC data:', err);
             setError(err.message || 'Failed to load AMC data');
             setHasMore(false);
         } finally {

@@ -33,9 +33,7 @@ const QRCodeDetails = () => {
   const status = route.params?.status || 'complaint';
   const [imageErrors, setImageErrors] = useState({});
 
-  console.log('Status in QRCodeDetails:', status);
   const qrCode = route.params.qrData || route.params.complaint || route.params.qrCode || {};
-  console.log('Route params in QRCodeDetails:', qrCode);
   const { imagUrl } = useAuth();
 
   const [loading, setLoading] = useState(false);
@@ -60,9 +58,7 @@ const QRCodeDetails = () => {
     onConfirm: null
   });
 
-  console.log('Received QR Code:', qrCode);
   const complaint_id = qrCode.complaintId || qrCode.complaint_id || qrCode.id || 'N/A';
-  console.log('Complaint ID:', complaint_id);
 
   // Check if Android 13+ (API 33+)
   const isAndroid13OrAbove = () => {
@@ -88,9 +84,7 @@ const QRCodeDetails = () => {
           );
 
           if (granted) {
-            console.log('All media permissions granted');
           } else {
-            console.log('Some media permissions denied');
           }
         } else {
           granted = await PermissionsAndroid.request(
@@ -107,10 +101,8 @@ const QRCodeDetails = () => {
 
         if (granted) {
           setHasStoragePermission(true);
-          console.log('Storage permission granted');
         } else {
           setHasStoragePermission(false);
-          console.log('Storage permission denied');
           if (!isAndroid13OrAbove()) {
             toast.custom(
               <StatusMessage type='warning' title='Permission Required' message='Storage permission is needed to download PDFs. You can enable it in settings.' />
@@ -118,7 +110,6 @@ const QRCodeDetails = () => {
           }
         }
       } catch (err) {
-        console.log('Permission request error:', err);
         setHasStoragePermission(false);
       }
     } else {
@@ -159,7 +150,6 @@ const QRCodeDetails = () => {
           return granted === PermissionsAndroid.RESULTS.GRANTED;
         }
       } catch (err) {
-        console.log('Permission error:', err);
         return false;
       }
     }
@@ -200,11 +190,9 @@ const QRCodeDetails = () => {
     try {
       if (!skipLoading) setLoading(true);
       const payload = { complaint_id: complaint_id.toString() };
-      console.log('Fetch complaint details payload:', payload);
       // const response = await GetComplaintsDetails(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.complaintDetail;
-      console.log('Complaint Details Response:', response?.data);
 
       if (response?.data?.success && response?.data?.result) {
         setComplaintDetails(response.data.result);
@@ -214,7 +202,6 @@ const QRCodeDetails = () => {
         );
       }
     } catch (error) {
-      console.log('Error fetching complaint details:', error);
       toast.custom(
         <StatusMessage type='error' title='Error' description={error.message} />
       );
@@ -253,7 +240,6 @@ const QRCodeDetails = () => {
         await ReactNativeBlobUtil.ios.openDocument(filePath);
       }
     } catch (error) {
-      console.error('Error opening PDF:', error);
       toast.custom(
         <StatusMessage type='error' title='Error' message='Unable to open PDF file' />
       );
@@ -291,7 +277,6 @@ const QRCodeDetails = () => {
 
       return response.path();
     } catch (error) {
-      console.error('DownloadManager error:', error);
       throw error;
     }
   };
@@ -346,11 +331,6 @@ const QRCodeDetails = () => {
           message={`The invoice data is not a valid download link.\n\nAvailable data:\n${availableInfo}`}
         />
       );
-      console.log('Invalid invoice URL/data:', {
-        originalData: complaintDetails?.invoice,
-        dataType: typeof complaintDetails?.invoice,
-        fullComplaintDetails: complaintDetails
-      });
       return;
     }
 
@@ -392,22 +372,16 @@ const QRCodeDetails = () => {
       if (Platform.OS === 'android') {
         const { fs } = ReactNativeBlobUtil;
         const downloadPath = `${fs.dirs.DownloadDir}/${fileName}`;
-        console.log('Download path:', downloadPath);
-        console.log('Download URL:', invoiceUrl);
 
         try {
           finalPath = await downloadWithDownloadManager(invoiceUrl, fileName, downloadPath);
-          console.log('DownloadManager completed, file at:', finalPath);
         } catch (dmError) {
-          console.log('DownloadManager failed, falling back to direct download:', dmError);
           finalPath = await downloadDirectly(invoiceUrl, downloadPath);
-          console.log('Direct download completed, file at:', finalPath);
         }
 
         const exists = await fs.exists(finalPath);
         if (exists) {
           const fileInfo = await fs.stat(finalPath);
-          console.log('File size:', fileInfo.size, 'bytes');
           toast.custom(
             <StatusMessage
               type='success'
@@ -430,7 +404,6 @@ const QRCodeDetails = () => {
         const documentsDir = fs.dirs.DocumentDir;
         const downloadPath = `${documentsDir}/${fileName}`;
         finalPath = await downloadDirectly(invoiceUrl, downloadPath);
-        console.log('Download completed on iOS:', finalPath);
         toast.custom(
           <StatusMessage type='success' title='Download Complete' message='PDF downloaded successfully!' />
         );
@@ -443,7 +416,6 @@ const QRCodeDetails = () => {
         );
       }
     } catch (error) {
-      console.error('PDF Download Error:', error);
       toast.custom(
         <StatusMessage type='error' title='Download Failed' message='Unable to download PDF. Please check your internet connection and try again.' />
       );

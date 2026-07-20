@@ -159,12 +159,10 @@ const PartDetails = () => {
           flash: 'off',
           enableShutterSound: false,
         });
-        console.log('Photo captured:', photo.path);
         setCapturedImage(photo.path);
         setCapturedImageUri(`file://${photo.path}`);
         setImageCameraVisible(false);
       } catch (error) {
-        console.error('Error taking photo:', error);
         toast.custom(
           <StatusMessage type='error' title='Error' description='Failed to capture photo' />,
           { duration: 2000 }
@@ -208,22 +206,13 @@ const PartDetails = () => {
         name: `part_photo_${Date.now()}.jpg`,
       });
 
-      console.log('Purchase payload with image:', {
-        technician_id: technician_id?.toString() || '1',
-        part_id: part_id?.toString(),
-        QRcode: qrCode.trim(),
-        image: capturedImageUri
-      });
-
       // Using the API function from api.js
       // const response = await PurchaseMarketPart(formData);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.purchaseMarketPart;
 
-      console.log('Purchase response:', response);
 
       if (response?.data?.status == '2') {
-        console.log('Part already in use');
         toast.custom(
           <StatusMessage type='info' title='QR code Already Used for another Complaint' />,
           { duration: 2000 }
@@ -250,7 +239,6 @@ const PartDetails = () => {
         );
       }
     } catch (error) {
-      console.error('Error in purchase with image:', error);
 
       if (error.code === 'ECONNABORTED') {
         toast.custom(
@@ -290,7 +278,6 @@ const PartDetails = () => {
         setLoading(true);
       }
 
-      console.log('Refreshing part details...');
 
       setTimeout(() => {
         toast.custom(
@@ -300,7 +287,6 @@ const PartDetails = () => {
       }, 500);
 
     } catch (error) {
-      console.error('Error fetching updated part details:', error);
       toast.custom(
         <StatusMessage type='error' title='Failed to refresh part details' />,
         { duration: 2000 }
@@ -327,7 +313,6 @@ const PartDetails = () => {
       // const response = await GetPartDetailQRCode(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.getPartDetailQRCode;
-      console.log('QR Code Details Response:', response);
 
       if (response?.data?.success && response?.data?.data?.length > 0) {
         const productData = response.data.data[0];
@@ -354,7 +339,6 @@ const PartDetails = () => {
         setQrProductData(null);
       }
     } catch (error) {
-      console.error('Error fetching QR code details:', error);
       toast.custom(
         <StatusMessage type='error' title='Failed to fetch product details' />,
         { duration: 2000 }
@@ -430,7 +414,6 @@ const PartDetails = () => {
     try {
       await fetchQRCodeDetails(qrCode.trim());
     } catch (error) {
-      console.error('Error in search:', error);
       toast.custom(
         <StatusMessage
           type='error'
@@ -670,7 +653,6 @@ const PartDetails = () => {
                 onCodeScanned: (codes) => {
                   if (codes.length > 0 && codes[0].value) {
                     const scannedValue = codes[0].value;
-                    console.log('Scanned QR code:', scannedValue);
                     setQrCode(scannedValue);
                     setCameraVisible(false);
                     toast.custom(

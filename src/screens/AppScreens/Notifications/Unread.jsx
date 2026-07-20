@@ -105,11 +105,9 @@ const AllNotification = ({ route }) => {
         id: notificationId.toString()
       };
       
-      console.log('Marking notification as read with payload:', payload);
       // const response = await ReadNotification(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.notifications;
-      console.log('ReadNotification response:', response);
       
       if (response?.data?.success) {
         // Update local state to mark as read
@@ -141,14 +139,12 @@ const AllNotification = ({ route }) => {
       }
       return false;
     } catch (error) {
-      console.error('Error marking notification as read:', error);
       return false;
     }
   };
 
   // Navigate based on notification status
   const handleNavigation = (notificationStatus) => {
-    console.log('Notification status:', notificationStatus);
     
     // Reset all routes and navigate to the target screen
     if (notificationStatus === 'pending') {
@@ -184,9 +180,6 @@ const AllNotification = ({ route }) => {
 
   // Handle notification press
   const handleNotificationPress = async (item) => {
-    console.log('Notification pressed:', item.id);
-    console.log('Notification status:', item.notificationStatus);
-    console.log('Read status:', item.readStatus);
     
     // Set loading state for this notification
     setReadingNotificationId(item.id);
@@ -196,7 +189,6 @@ const AllNotification = ({ route }) => {
       const marked = await markNotificationAsRead(item.id);
       if (!marked) {
         // If failed to mark as read, still navigate but show error
-        console.log('Failed to mark notification as read');
       }
     }
     
@@ -223,11 +215,9 @@ const AllNotification = ({ route }) => {
         read_status: "Unread" // Empty string for all notifications
       };
       
-      console.log('Fetching all notifications with payload:', payload);
       // const response = await FetchNotification(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.notifications;
-      console.log('FetchNotification response:', response);
 
       if (response?.data?.success && response?.data?.data && isMounted.current) {
         const transformedData = response.data.data.map(item => ({
@@ -266,7 +256,6 @@ const AllNotification = ({ route }) => {
         setNotifications([]);
       }
     } catch (err) {
-      console.error('Error fetching notifications:', err);
       const errorMessage = err.message || 'Network error. Please check your connection.';
       setError(errorMessage);
       setNotifications([]);

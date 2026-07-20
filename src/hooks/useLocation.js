@@ -18,15 +18,12 @@ const useLocation = () => {
         try {
             if (Platform.OS === 'ios') {
                 const status = await check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-                console.log('iOS location permission status:', status);
                 return status;
             } else {
                 const status = await check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
-                console.log('Android location permission status:', status);
                 return status;
             }
         } catch (error) {
-            console.log('Permission check error:', error);
             return RESULTS.UNAVAILABLE;
         }
     }, []);
@@ -39,7 +36,6 @@ const useLocation = () => {
                 return await request(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
             }
         } catch (error) {
-            console.log('Permission request error:', error);
             return RESULTS.UNAVAILABLE;
         }
     }, []);
@@ -57,11 +53,6 @@ const useLocation = () => {
             const successCallback = (position) => {
                 if (timeoutId) clearTimeout(timeoutId);
                 const { latitude, longitude } = position.coords;
-                console.log('=== LOCATION OBTAINED ===');
-                console.log('Latitude:', latitude);
-                console.log('Longitude:', longitude);
-                console.log('Accuracy:', position.coords.accuracy);
-                console.log('=============================================');
                 resolve({
                     latitude: latitude.toString(),
                     longitude: longitude.toString(),
@@ -71,8 +62,6 @@ const useLocation = () => {
 
             const errorCallback = (error) => {
                 if (timeoutId) clearTimeout(timeoutId);
-                console.log('Location error code:', error.code);
-                console.log('Location error message:', error.message);
 
                 let errorMessage = 'Failed to get location';
                 if (error.code === 1) {
@@ -98,7 +87,6 @@ const useLocation = () => {
                     maximumAge: 10000,
                 });
             } catch (error) {
-                console.error('Geolocation.getCurrentPosition error:', error);
                 reject(new Error('Failed to get location: ' + error.message));
             }
         });
@@ -108,10 +96,8 @@ const useLocation = () => {
         const maxRetries = 2;
 
         try {
-            console.log('Initializing location, attempt:', retryCount + 1);
 
             let permissionStatus = await checkLocationPermission();
-            console.log('Current permission status:', permissionStatus);
 
             if (permissionStatus === RESULTS.GRANTED) {
                 setHasLocationPermission(true);
@@ -120,20 +106,15 @@ const useLocation = () => {
                 try {
                     const location = await getCurrentLocation();
                     setCurrentLocation(location);
-                    console.log('✅ LOCATION SUCCESSFULLY OBTAINED');
-                    console.log('Latitude:', location.latitude);
-                    console.log('Longitude:', location.longitude);
                     toast.custom(
                         <StatusMessage type="success" title="Location obtained successfully" />,
                         { duration: 2000 }
                     );
                     return location;
                 } catch (error) {
-                    console.log('Error getting location:', error.message);
 
                     // Retry logic
                     if (retryCount < maxRetries) {
-                        console.log(`Retrying location fetch (${retryCount + 1}/${maxRetries})...`);
                         await new Promise(resolve => setTimeout(resolve, 2000));
                         return initializeLocation(retryCount + 1);
                     }
@@ -149,9 +130,7 @@ const useLocation = () => {
             }
 
             if (permissionStatus === RESULTS.DENIED) {
-                console.log('Permission denied, requesting...');
                 const requestStatus = await requestLocationPermission();
-                console.log('Request result:', requestStatus);
 
                 if (requestStatus === RESULTS.GRANTED) {
                     setHasLocationPermission(true);
@@ -159,14 +138,12 @@ const useLocation = () => {
                     try {
                         const location = await getCurrentLocation();
                         setCurrentLocation(location);
-                        console.log('✅ LOCATION SUCCESSFULLY OBTAINED AFTER PERMISSION');
                         toast.custom(
                             <StatusMessage type="success" title="Location obtained successfully" />,
                             { duration: 2000 }
                         );
                         return location;
                     } catch (error) {
-                        console.log('Error getting location:', error.message);
                         toast.custom(
                             <StatusMessage type="error" title={error.message} />,
                             { duration: 3000 }
@@ -200,7 +177,6 @@ const useLocation = () => {
 
             return null;
         } catch (error) {
-            console.log('Location initialization error:', error);
             setIsGettingLocation(false);
             return null;
         }
@@ -217,10 +193,8 @@ const useLocation = () => {
         try {
             const location = await getCurrentLocation();
             setCurrentLocation(location);
-            console.log('✅ LOCATION REFRESHED');
             return location;
         } catch (error) {
-            console.log('Error refreshing location:', error.message);
             toast.custom(
                 <StatusMessage type="error" title={error.message} />,
                 { duration: 3000 }

@@ -24,7 +24,6 @@ const ConetToAMCScreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { complaintData } = route.params || {};
-    console.log('Complaint Data received:', complaintData);
 
     // Check if this is already an AMC complaint
     const isAMCComplaint = complaintData?.complaint_type === 'AMC';
@@ -100,7 +99,6 @@ const ConetToAMCScreen = () => {
                 setAmcComplaintId(null);
             }
         } catch (error) {
-            console.error('Error checking AMC status:', error);
             setConvertToAMC(false);
             setIsAMCLocked(false);
             setAmcComplaintId(null);

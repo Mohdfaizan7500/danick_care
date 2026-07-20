@@ -115,11 +115,9 @@ const AllNotification = ({ route }) => {
         id: notificationId.toString()
       };
 
-      console.log('Marking notification as read with payload:', payload);
       // const response = await ReadNotification(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.notifications;
-      console.log('ReadNotification response:', response);
 
       if (response?.data?.success) {
         // Update local state to mark as read
@@ -147,10 +145,8 @@ const AllNotification = ({ route }) => {
           });
         }
 
-        console.log('Notification marked as read successfully');
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
     } finally {
       setReadNotificationId(null);
     }
@@ -158,7 +154,6 @@ const AllNotification = ({ route }) => {
 
   // Navigate based on notification status
   const handleNavigation = (notificationStatus) => {
-    console.log('Notification status:', notificationStatus);
 
     // Reset all routes and navigate to the target screen
     if (notificationStatus === 'pending') {
@@ -173,8 +168,6 @@ const AllNotification = ({ route }) => {
 
   // Handle notification press
   const handleNotificationPress = async (item) => {
-    console.log('Notification pressed:', item.id);
-    console.log('Notification status:', item.notificationStatus);
 
     // First mark as read (if unread)
     if (item.readStatus !== 'Read') {
@@ -201,11 +194,9 @@ const AllNotification = ({ route }) => {
         read_status: "" // Empty string for all notifications
       };
 
-      console.log('Fetching all notifications with payload:', payload);
       // const response = await FetchNotification(payload);
       await new Promise(resolve => setTimeout(resolve, 500));
       const response = dummyData.notifications;
-      console.log('FetchNotification response:', response);
 
       if (response?.data?.success && response?.data?.data && isMounted.current) {
         const transformedData = response.data.data.map(item => ({
@@ -244,7 +235,6 @@ const AllNotification = ({ route }) => {
         setNotifications([]);
       }
     } catch (err) {
-      console.error('Error fetching notifications:', err);
       const errorMessage = err.message || 'Network error. Please check your connection.';
       setError(errorMessage);
       setNotifications([]);

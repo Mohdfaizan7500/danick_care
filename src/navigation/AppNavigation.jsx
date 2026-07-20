@@ -89,48 +89,39 @@ const AppNavigation = forwardRef((props, ref) => {
 
     async getInitialURL() {
       try {
-        console.log('🔗 Getting initial URL...');
 
         // Check for deep link from app open
         const url = await Linking.getInitialURL();
         if (typeof url === 'string' && url) {
-          console.log('✅ Initial URL found:', url);
           return url;
         }
 
         // Check for notification that opened the app from quit state
         const message = await messaging().getInitialNotification();
-        console.log('Initial notification message:', message);
 
         if (message) {
           const notificationScreen = message?.data?.screen;
           const notificationTitle = message?.notification?.title;
           const screenToNavigate = notificationScreen || notificationTitle;
 
-          console.log('📱 Initial notification screen:', screenToNavigate);
 
           if (screenToNavigate) {
             const deeplinkURL = buildDeepLinkFromNotificationData(screenToNavigate);
             if (deeplinkURL) {
-              console.log('🔗 Built deeplink from notification:', deeplinkURL);
               return deeplinkURL;
             }
           }
         }
 
-        console.log('❌ No initial URL or notification found');
         return null;
       } catch (error) {
-        console.error('❌ Error getting initial URL:', error);
         return null;
       }
     },
 
     subscribe(listener) {
-      console.log('🔗 Setting up deep link subscribers...');
 
       const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
-        console.log('🔗 Deep link received:', url);
         listener(url);
       });
 
@@ -139,13 +130,10 @@ const AppNavigation = forwardRef((props, ref) => {
         const notificationTitle = remoteMessage?.notification?.title;
         const screenToNavigate = notificationScreen || notificationTitle;
 
-        console.log('📱 Notification opened from background, screen:', screenToNavigate);
 
         const url = buildDeepLinkFromNotificationData(screenToNavigate);
         if (url) {
-          console.log('🔗 Navigating via notification title:', url);
           Linking.openURL(url).catch(err => {
-            console.error('❌ Error opening URL from background:', err);
           });
           listener(url);
         }
@@ -153,12 +141,10 @@ const AppNavigation = forwardRef((props, ref) => {
 
       const appStateSubscription = AppState.addEventListener('change', nextAppState => {
         if (nextAppState === 'active') {
-          console.log('📱 App became active, checking for pending deep links...');
         }
       });
 
       return () => {
-        console.log('🔗 Cleaning up deep link subscribers');
         linkingSubscription.remove();
         unsubscribeNotification();
         appStateSubscription.remove();

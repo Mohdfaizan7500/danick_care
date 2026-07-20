@@ -34,7 +34,6 @@ const Complete = () => {
       if (fetchId !== fetchIdRef.current) return;
       const response = dummyData.complaintsList;
       
-      console.log('API Response for Complete complaints:', response);
       
       if (response?.data?.success && response?.data?.result) {
         const newComplaints = response.data.result;
@@ -59,7 +58,6 @@ const Complete = () => {
         setHasMore(newComplaints.length === limit);
       } else {
         if (fetchId !== fetchIdRef.current) return;
-        console.log('No data or invalid response structure');
         if (isRefresh) {
           setComplaints([]);
         }
@@ -67,7 +65,6 @@ const Complete = () => {
       }
     } catch (error) {
       if (fetchId !== fetchIdRef.current) return;
-      console.error('Error fetching completed complaints:', error);
       if (isRefresh) {
         setComplaints([]);
       }
@@ -87,17 +84,14 @@ const Complete = () => {
 
   // Handle card press - conditional navigation based on status
   const handleComplaintPress = (complaint) => {
-    console.log('Complaint pressed:', complaint);
     
     // Check if complaint status is 'success'
     if (complaint?.status === 'success') {
-      console.log('Navigating to QRCodeDetails for completed complaint');
       navigation.navigate('QRCodeDetails', { 
         complaint, 
         status: "complaint" 
       });
     } else {
-      console.log('Navigating to ComplaintDetail');
       navigation.navigate('ComplaintDetail', { 
         complaint, 
         status: "complaint" 
@@ -108,10 +102,8 @@ const Complete = () => {
   // Refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log('Complete screen focused - refreshing data');
       fetchComplaints(1, true);
       return () => {
-        console.log('Complete screen unfocused');
       };
     }, [])
   );
